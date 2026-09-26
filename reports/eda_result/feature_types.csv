@@ -1,0 +1,41 @@
+column,dtype,n_unique,unique_ratio,feature_role,possible_identifier
+Variance,float64,1230050,0.24041360404238066,numeric,False
+Std,float64,1163018,0.227312181574864,numeric,False
+IAT,float64,752217,0.1470210153993313,numeric,False
+Rate,float64,715846,0.13991229364604854,numeric,False
+AVG,float64,78815,0.015404412993455739,numeric,False
+Tot size,float64,78815,0.015404412993455739,numeric,False
+Tot sum,int64,66562,0.013009560840834877,numeric,False
+Time_To_Live,float64,10668,0.002085063475406786,numeric,False
+Max,int64,8023,0.0015680975124848747,numeric,False
+Header_Length,float64,1960,0.00038308252828996064,numeric,False
+Min,int64,1449,0.0002832074405572209,numeric,False
+ack_flag_number,float64,532,0.00010397954339298931,numeric,False
+syn_flag_number,float64,435,8.502086724802698e-05,numeric,False
+psh_flag_number,float64,418,8.169821266592018e-05,numeric,False
+TCP,float64,408,7.974370997056324e-05,numeric,False
+UDP,float64,384,7.505290350170657e-05,numeric,False
+HTTPS,float64,336,6.567129056399325e-05,numeric,False
+rst_flag_number,float64,329,6.430313867724339e-05,numeric,False
+HTTP,float64,293,5.7266928973958404e-05,numeric,False
+fin_flag_number,float64,245,4.788531603624508e-05,numeric,False
+DNS,float64,216,4.221725821970995e-05,numeric,False
+IPv,float64,208,4.06536560634244e-05,numeric,False
+ARP,float64,208,4.06536560634244e-05,numeric,False
+LLC,float64,208,4.06536560634244e-05,numeric,False
+ICMP,float64,171,3.342199609060371e-05,numeric,False
+fin_count,int64,101,1.9740477223105116e-05,numeric,False
+ack_count,int64,101,1.9740477223105116e-05,numeric,False
+syn_count,int64,101,1.9740477223105116e-05,numeric,False
+rst_count,int64,101,1.9740477223105116e-05,numeric,False
+Number,int64,100,1.954502695356942e-05,numeric,False
+DHCP,float64,48,9.381612937713321e-06,numeric,False
+SSH,float64,28,5.472607546999438e-06,numeric,False
+ece_flag_number,float64,26,5.08170700792805e-06,numeric,False
+cwr_flag_number,float64,20,3.909005390713884e-06,numeric,False
+IGMP,float64,17,3.3226545821068013e-06,numeric,False
+IRC,float64,16,3.127204312571107e-06,numeric,False
+SMTP,float64,12,2.3454032344283303e-06,numeric,False
+Telnet,float64,11,2.149952964892636e-06,numeric,False
+group_class_name,object,8,1.5636021562855536e-06,target,False
+Protocol Type,int64,6,1.1727016172141651e-06,categorical_candidate,False
