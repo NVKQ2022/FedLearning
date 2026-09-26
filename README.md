@@ -185,7 +185,7 @@ FedLearning/
 
 ```bash
 # Clone repository
-git clone https://github.com/vietkyquan/FedLearning.git
+git clone https://github.com/NVKQ2022/FedLearning.git
 cd FedLearning
 
 # Create and activate virtual environment
