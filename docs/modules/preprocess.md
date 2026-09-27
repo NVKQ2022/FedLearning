@@ -66,7 +66,7 @@ Where $N$ is total samples, $C = 8$ classes, and $N_c$ is the sample count of cl
 
 #### 4. `load_and_preprocess_ciciot2023(...)` (Function)
 One-stop automated factory that loads CSV data, performs stratified train/val/test splitting, fits preprocessors, scales partitions, and returns a structured dictionary containing feature matrices, label arrays, class weights, and native PyTorch `DataLoader` instances (`train_loader`, `val_loader`, `test_loader`).
-* Accepts either `csv_path` or `data_path`, `test_size` or `test_ratio`, `val_size` or `val_ratio`, `sample_size`, and `batch_size`.
+* **Fixed Parameters:** `csv_path: str`, `test_size: float = 0.2`, `val_size: float = 0.1`, `sample_size: Optional[int] = None`, `scaler_type: str = 'robust'`, `batch_size: int = 128`, `random_state: int = 42`, `save_preprocessor_path: Optional[str] = None`.
 
 ---
 

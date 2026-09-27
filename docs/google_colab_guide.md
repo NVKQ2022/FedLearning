@@ -187,14 +187,16 @@ if not os.path.exists(dummy_path):
 ```python
 from src.data.preprocess import load_and_preprocess_ciciot2023, compute_balanced_class_weights
 
-data_path = "/content/FedLearning/datasets/CICIOT2023/merged_CICIOT2023_data.csv"
+csv_path = "/content/FedLearning/datasets/CICIOT2023/merged_CICIOT2023_data.csv"
 
 # sample_size=100000 enables rapid iteration; set sample_size=None for full 5.11M rows
 data = load_and_preprocess_ciciot2023(
-    data_path=data_path,
+    csv_path=csv_path,
+    test_size=0.2,
+    val_size=0.1,
     sample_size=100000,
-    test_ratio=0.2,
-    val_ratio=0.1,
+    scaler_type="robust",
+    batch_size=128,
     random_state=42
 )
 

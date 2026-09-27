@@ -61,7 +61,11 @@ from src.training.trainer import LocalClientTrainer
 from src.evaluation.evaluator import evaluate_comprehensive
 
 # 1. Preprocess tabular flows
-data = load_and_preprocess_ciciot2023(sample_size=50000, random_state=42)
+data = load_and_preprocess_ciciot2023(
+    csv_path="datasets/CICIOT2023/merged_CICIOT2023_data.csv",
+    sample_size=50000,
+    random_state=42
+)
 
 # 2. Partition across 3 clients with Dirichlet Non-IID skew (alpha=0.5)
 parts = partition_dirichlet(data["y_train"], num_clients=3, alpha=0.5, min_samples_per_client=100)

@@ -136,7 +136,7 @@ from src.data.partition import partition_dirichlet, create_client_dataloaders
 
 # Step 1: Preprocess dataset
 data = load_and_preprocess_ciciot2023(
-    data_path="data/merged_CICIOT2023_data.csv",
+    csv_path="datasets/CICIOT2023/merged_CICIOT2023_data.csv",
     sample_size=100000,
     random_state=42
 )

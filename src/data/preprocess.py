@@ -193,34 +193,27 @@ def compute_balanced_class_weights(y: np.ndarray, num_classes: int) -> np.ndarra
 
 
 def load_and_preprocess_ciciot2023(
-    csv_path: Optional[str] = None,
+    csv_path: str,
     test_size: float = 0.2,
     val_size: float = 0.1,
     sample_size: Optional[int] = None,
     scaler_type: str = "robust",
-    random_state: int = 42,
-    save_preprocessor_path: Optional[str] = None,
     batch_size: int = 128,
-    data_path: Optional[str] = None,
-    test_ratio: Optional[float] = None,
-    val_ratio: Optional[float] = None,
-    **kwargs
+    random_state: int = 42,
+    save_preprocessor_path: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     High-level end-to-end data loading and preprocessing pipeline for CICIoT2023.
 
     Args:
-        csv_path: Path to merged_CICIOT2023_data.csv (alias: data_path).
-        test_size: Fraction of dataset reserved for holdout global test set (alias: test_ratio).
-        val_size: Fraction of training set reserved for validation (alias: val_ratio).
+        csv_path: Path to merged_CICIOT2023_data.csv.
+        test_size: Fraction of dataset reserved for holdout global test set.
+        val_size: Fraction of training set reserved for validation.
         sample_size: Optional stratified downsampling (e.g. 50,000) for rapid development.
         scaler_type: 'robust' (default) or 'standard'.
+        batch_size: Mini-batch size for returned PyTorch DataLoaders.
         random_state: Deterministic random seed.
         save_preprocessor_path: Optional path to persist fitted preprocessor.
-        batch_size: Mini-batch size for returned PyTorch DataLoaders.
-        data_path: Alternative alias for csv_path.
-        test_ratio: Alternative alias for test_size.
-        val_ratio: Alternative alias for val_size.
 
     Returns:
         Dictionary containing:
@@ -230,20 +223,12 @@ def load_and_preprocess_ciciot2023(
         - class_weights, class_names, feature_names
         - input_dim, num_classes, preprocessor
     """
-    # 0. Resolve parameter aliases
-    resolved_csv_path = csv_path or data_path or kwargs.get("filepath")
-    if resolved_csv_path is None:
-        raise ValueError("Must provide either 'csv_path' or 'data_path' pointing to the dataset CSV.")
-
-    actual_test_size = test_ratio if test_ratio is not None else test_size
-    actual_val_size = val_ratio if val_ratio is not None else val_size
-
-    logger.info(f"Loading CICIoT2023 dataset from: {resolved_csv_path}")
-    if not os.path.exists(resolved_csv_path):
-        raise FileNotFoundError(f"Dataset file not found at: {resolved_csv_path}")
+    logger.info(f"Loading CICIoT2023 dataset from: {csv_path}")
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"Dataset file not found at: {csv_path}")
 
     # 1. Read CSV
-    df = pd.read_csv(resolved_csv_path)
+    df = pd.read_csv(csv_path)
     logger.info(f"Raw dataset shape: {df.shape}")
 
     # 2. Stratified downsampling for rapid prototyping if requested
@@ -260,14 +245,14 @@ def load_and_preprocess_ciciot2023(
     # 3. Leak-free Train/Test split BEFORE any transformation
     df_train_full, df_test = train_test_split(
         df,
-        test_size=actual_test_size,
+        test_size=test_size,
         stratify=df[TARGET_COLUMN],
         random_state=random_state
     )
 
     # 4. Optional Train/Val split
-    if actual_val_size > 0.0:
-        val_relative_size = actual_val_size / (1.0 - actual_test_size)
+    if val_size > 0.0:
+        val_relative_size = val_size / (1.0 - test_size)
         df_train, df_val = train_test_split(
             df_train_full,
             test_size=val_relative_size,
