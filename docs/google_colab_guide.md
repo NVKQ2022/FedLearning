@@ -3,7 +3,9 @@
 Comprehensive, step-by-step technical guide for configuring, pulling, and orchestrating multi-scenario Federated Learning and Centralized benchmark experiments on **Google Colab**.
 
 * **Repository:** [`https://github.com/NVKQ2022/FedLearning.git`](https://github.com/NVKQ2022/FedLearning.git)
-* **Associated Notebook:** [`notebooks/colab_experiment_runner.ipynb`](file:///home/quan/projects/FedLearning/notebooks/colab_experiment_runner.ipynb)
+* **Associated Notebooks:**
+  * Centralized Pipeline: [`notebooks/centralized_training_pipeline.ipynb`](file:///home/quan/projects/FedLearning/notebooks/centralized_training_pipeline.ipynb)
+  * Multi-Scenario Runner: [`notebooks/colab_experiment_runner.ipynb`](file:///home/quan/projects/FedLearning/notebooks/colab_experiment_runner.ipynb)
 * **Skill Reference:** [skills/experiment-orchestration/SKILL.md](file:///home/quan/projects/FedLearning/.agents/skills/experiment-orchestration/SKILL.md) & [skills/code-documentation/SKILL.md](file:///home/quan/projects/FedLearning/.agents/skills/code-documentation/SKILL.md)
 
 ---
@@ -108,13 +110,23 @@ print(f"✅ Current working directory: {os.getcwd()}")
 
 ---
 
-### Step 3: Install Required Dependencies
+### Step 3: Install Dependencies & Set Deterministic Seed
 
 Install the exact versions specified in `requirements.txt`:
 
 ```python
 !pip install -q -r requirements.txt
 print("✅ All dependencies installed successfully!")
+```
+
+Enforce a global deterministic seed across Python, NumPy, and PyTorch (CPU & CUDA) for 100% scientific reproducibility:
+
+```python
+from src.utils.seed import set_seed
+
+EXPERIMENT_SEED = 42
+set_seed(EXPERIMENT_SEED)
+print(f"✅ Deterministic random seed set to: {EXPERIMENT_SEED}")
 ```
 
 ---
@@ -132,9 +144,15 @@ import shutil
 
 drive.mount('/content/drive')
 
-# Specify your Google Drive path where the CSV is stored
-gdrive_csv_path = "/content/drive/MyDrive/FedLearning/merged_CICIOT2023_data.csv"
+# Primary path configured for thesis project
+gdrive_csv_path = "/content/drive/MyDrive/NguyenVietKyQuanKLTN/datasets/merged_CICIOT2023_data.csv"
 target_csv_path = "/content/FedLearning/datasets/CICIOT2023/merged_CICIOT2023_data.csv"
+
+# Fallback check if stored under alternative Drive folder
+if not os.path.exists(gdrive_csv_path):
+    alt_gdrive_csv = "/content/drive/MyDrive/FedLearning/merged_CICIOT2023_data.csv"
+    if os.path.exists(alt_gdrive_csv):
+        gdrive_csv_path = alt_gdrive_csv
 
 os.makedirs(os.path.dirname(target_csv_path), exist_ok=True)
 
@@ -221,7 +239,7 @@ optimizer = build_optimizer(model, "adamw", lr=1e-3, weight_decay=1e-4)
 criterion = build_loss_function("focal_loss", class_weights=class_weights, gamma=2.0, device=device)
 
 trainer = CentralizedTrainer(model, optimizer, criterion, device=device, max_grad_norm=5.0)
-history = trainer.fit(data["train_loader"], data["val_loader"], epochs=15, patience=3)
+history = trainer.fit(data["train_loader"], data["val_loader"], epochs=15, patience=3, verbose=True)
 
 # Evaluate on holdout test set
 e1_results = evaluate_comprehensive(
@@ -347,13 +365,13 @@ plt.ylabel("Macro-F1 Score (%)")
 plt.title("Comparative IDS Performance Across Experimental Scenarios")
 plt.ylim(0, 100)
 
-os.makedirs("/content/drive/MyDrive/FedLearning/reports", exist_ok=True)
-plot_path = "/content/drive/MyDrive/FedLearning/reports/scenario_comparison.png"
+os.makedirs("/content/drive/MyDrive/NguyenVietKyQuanKLTN/reports", exist_ok=True)
+plot_path = "/content/drive/MyDrive/NguyenVietKyQuanKLTN/reports/scenario_comparison.png"
 plt.savefig(plot_path, dpi=300, bbox_inches="tight")
 plt.show()
 
 # 2. Export Metrics JSON
-metrics_path = "/content/drive/MyDrive/FedLearning/reports/experiment_metrics.json"
+metrics_path = "/content/drive/MyDrive/NguyenVietKyQuanKLTN/reports/experiment_metrics.json"
 with open(metrics_path, "w") as f:
     json.dump({
         "E1_Centralized": {k: v for k, v in e1_results.items() if k != "confusion_matrix"},

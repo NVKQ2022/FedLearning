@@ -167,10 +167,18 @@ if HAS_TORCH:
             train_loader: DataLoader,
             val_loader: Optional[DataLoader] = None,
             epochs: int = 20,
-            patience: int = 5
+            patience: int = 5,
+            verbose: bool = True
         ) -> Dict[str, List[float]]:
             """
-            Executes full centralized training with optional early stopping.
+            Executes full centralized training with optional early stopping and live progress reporting.
+
+            Args:
+                train_loader: Training DataLoader.
+                val_loader: Validation DataLoader.
+                epochs: Total training epochs.
+                patience: Early stopping patience.
+                verbose: Whether to print live progress to stdout.
 
             Returns:
                 History dictionary containing 'train_loss', 'train_acc', 'val_loss', 'val_acc'.
@@ -185,7 +193,21 @@ if HAS_TORCH:
                 # 1. Train epoch
                 self.model.train()
                 t_loss, t_correct, t_total = 0.0, 0, 0
-                for X_b, y_b in train_loader:
+
+                iterator = train_loader
+                if verbose:
+                    try:
+                        from tqdm.auto import tqdm
+                        iterator = tqdm(
+                            train_loader,
+                            desc=f"Epoch {epoch:02d}/{epochs:02d} [Train]",
+                            leave=False,
+                            dynamic_ncols=True
+                        )
+                    except ImportError:
+                        iterator = train_loader
+
+                for X_b, y_b in iterator:
                     X_b, y_b = X_b.to(self.device), y_b.to(self.device)
                     self.optimizer.zero_grad()
                     out = self.model(X_b)
@@ -194,10 +216,17 @@ if HAS_TORCH:
                     if self.max_grad_norm > 0.0:
                         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
                     self.optimizer.step()
-                    
-                    t_loss += loss.item() * len(y_b)
+
+                    batch_samples = len(y_b)
+                    t_loss += loss.item() * batch_samples
                     t_correct += (out.argmax(dim=1) == y_b).sum().item()
-                    t_total += len(y_b)
+                    t_total += batch_samples
+
+                    if verbose and hasattr(iterator, "set_postfix"):
+                        iterator.set_postfix({
+                            "loss": f"{loss.item():.4f}",
+                            "acc": f"{(t_correct / max(t_total, 1)) * 100:.1f}%"
+                        })
 
                 train_loss = t_loss / max(t_total, 1)
                 train_acc = t_correct / max(t_total, 1)
@@ -206,6 +235,9 @@ if HAS_TORCH:
 
                 # 2. Validation step
                 val_loss, val_acc = 0.0, 0.0
+                is_best = ""
+                early_stop = False
+
                 if val_loader is not None:
                     self.model.eval()
                     v_loss, v_correct, v_total = 0.0, 0, 0
@@ -227,22 +259,34 @@ if HAS_TORCH:
                         self.best_val_loss = val_loss
                         self.best_model_weights = copy.deepcopy(self.model.state_dict())
                         patience_counter = 0
+                        is_best = " ⭐ (Best)"
                     else:
                         patience_counter += 1
                         if patience_counter >= patience:
-                            logger.info(f"Early stopping triggered at epoch {epoch}")
-                            break
+                            early_stop = True
 
-                logger.info(
-                    f"Epoch {epoch:02d}/{epochs:02d} - "
-                    f"Train Loss: {train_loss:.4f} Acc: {train_acc*100:.2f}% | "
-                    f"Val Loss: {val_loss:.4f} Acc: {val_acc*100:.2f}%"
+                progress_msg = (
+                    f"Epoch {epoch:02d}/{epochs:02d} | "
+                    f"Train Loss: {train_loss:.4f} - Train Acc: {train_acc*100:.2f}% | "
+                    f"Val Loss: {val_loss:.4f} - Val Acc: {val_acc*100:.2f}%{is_best}"
                 )
+                if verbose:
+                    print(progress_msg)
+                logger.info(progress_msg)
+
+                if early_stop:
+                    stop_msg = f"⏹️ Early stopping triggered at epoch {epoch} (patience={patience})"
+                    if verbose:
+                        print(stop_msg)
+                    logger.info(stop_msg)
+                    break
 
             # Restore best weights if available
             if self.best_model_weights is not None:
-                self.model.load_state_dict(self.best_model_weights)
-                logger.info(f"Restored model weights from best validation epoch (Loss: {self.best_val_loss:.4f})")
+                restore_msg = f"🏆 Restored model weights from best validation epoch (Loss: {self.best_val_loss:.4f})"
+                if verbose:
+                    print(restore_msg)
+                logger.info(restore_msg)
 
             return history
 
