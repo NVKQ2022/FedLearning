@@ -65,9 +65,23 @@ if HAS_TORCH:
                 inputs: Predicted logits of shape (batch_size, num_classes).
                 targets: Ground truth class indices of shape (batch_size,).
             """
-            ce_loss = F.cross_entropy(inputs, targets, weight=self.alpha, reduction="none")
-            pt = torch.exp(-ce_loss)  # Probability of ground-truth class: p_t in [0, 1]
-            focal_loss = ((1.0 - pt) ** self.gamma) * ce_loss
+            # Compute true class probabilities via log_softmax
+            log_pt = F.log_softmax(inputs, dim=1)
+            pt = torch.exp(log_pt)
+
+            # Extract probability and log probability of ground-truth target class
+            log_pt_target = log_pt.gather(1, targets.unsqueeze(1)).squeeze(1)
+            pt_target = pt.gather(1, targets.unsqueeze(1)).squeeze(1)
+
+            # Modulating factor (1 - p_t)^gamma focuses loss on hard examples
+            focal_modulator = (1.0 - pt_target) ** self.gamma
+
+            # Apply per-class weighting if specified
+            if self.alpha is not None:
+                alpha_t = self.alpha[targets]
+                focal_loss = -alpha_t * focal_modulator * log_pt_target
+            else:
+                focal_loss = -focal_modulator * log_pt_target
 
             if self.reduction == "mean":
                 return focal_loss.mean()
