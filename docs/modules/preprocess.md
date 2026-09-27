@@ -65,7 +65,8 @@ $$w_c = \frac{N}{C \times N_c}$$
 Where $N$ is total samples, $C = 8$ classes, and $N_c$ is the sample count of class $c$.
 
 #### 4. `load_and_preprocess_ciciot2023(...)` (Function)
-One-stop automated factory that loads CSV data, performs stratified train/val/test splitting, fits preprocessors, scales partitions, and returns a structured dictionary.
+One-stop automated factory that loads CSV data, performs stratified train/val/test splitting, fits preprocessors, scales partitions, and returns a structured dictionary containing feature matrices, label arrays, class weights, and native PyTorch `DataLoader` instances (`train_loader`, `val_loader`, `test_loader`).
+* Accepts either `csv_path` or `data_path`, `test_size` or `test_ratio`, `val_size` or `val_ratio`, `sample_size`, and `batch_size`.
 
 ---
 

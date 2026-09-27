@@ -14,7 +14,7 @@ Adheres to:
 import os
 import pickle
 import logging
-from typing import Tuple, Dict, List, Optional, Union
+from typing import Tuple, Dict, List, Optional, Union, Any
 
 import numpy as np
 import pandas as pd
@@ -24,11 +24,12 @@ from sklearn.utils.class_weight import compute_class_weight
 
 try:
     import torch
-    from torch.utils.data import Dataset
+    from torch.utils.data import Dataset, DataLoader
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
     Dataset = object
+    DataLoader = object
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -192,42 +193,57 @@ def compute_balanced_class_weights(y: np.ndarray, num_classes: int) -> np.ndarra
 
 
 def load_and_preprocess_ciciot2023(
-    csv_path: str,
+    csv_path: Optional[str] = None,
     test_size: float = 0.2,
     val_size: float = 0.1,
     sample_size: Optional[int] = None,
     scaler_type: str = "robust",
     random_state: int = 42,
-    save_preprocessor_path: Optional[str] = None
-) -> Dict[str, Union[np.ndarray, List[str], int, TabularDataPreprocessor]]:
+    save_preprocessor_path: Optional[str] = None,
+    batch_size: int = 128,
+    data_path: Optional[str] = None,
+    test_ratio: Optional[float] = None,
+    val_ratio: Optional[float] = None,
+    **kwargs
+) -> Dict[str, Any]:
     """
     High-level end-to-end data loading and preprocessing pipeline for CICIoT2023.
 
     Args:
-        csv_path: Path to merged_CICIOT2023_data.csv.
-        test_size: Fraction of dataset reserved for the holdout global test set.
-        val_size: Fraction of the training set reserved for validation.
-        sample_size: Optional stratified downsampling (e.g. 500,000) for rapid development.
+        csv_path: Path to merged_CICIOT2023_data.csv (alias: data_path).
+        test_size: Fraction of dataset reserved for holdout global test set (alias: test_ratio).
+        val_size: Fraction of training set reserved for validation (alias: val_ratio).
+        sample_size: Optional stratified downsampling (e.g. 50,000) for rapid development.
         scaler_type: 'robust' (default) or 'standard'.
         random_state: Deterministic random seed.
         save_preprocessor_path: Optional path to persist fitted preprocessor.
+        batch_size: Mini-batch size for returned PyTorch DataLoaders.
+        data_path: Alternative alias for csv_path.
+        test_ratio: Alternative alias for test_size.
+        val_ratio: Alternative alias for val_size.
 
     Returns:
         Dictionary containing:
-        - X_train, y_train
-        - X_val, y_val
-        - X_test, y_test
-        - class_weights
-        - class_names
-        - feature_names
-        - preprocessor
+        - X_train, y_train, X_val, y_val, X_test, y_test
+        - train_loader, val_loader, test_loader (if PyTorch is available)
+        - train_dataset, val_dataset, test_dataset
+        - class_weights, class_names, feature_names
+        - input_dim, num_classes, preprocessor
     """
-    logger.info(f"Loading CICIoT2023 dataset from: {csv_path}")
-    if not os.path.exists(csv_path):
-        raise FileNotFoundError(f"Dataset file not found at: {csv_path}")
+    # 0. Resolve parameter aliases
+    resolved_csv_path = csv_path or data_path or kwargs.get("filepath")
+    if resolved_csv_path is None:
+        raise ValueError("Must provide either 'csv_path' or 'data_path' pointing to the dataset CSV.")
+
+    actual_test_size = test_ratio if test_ratio is not None else test_size
+    actual_val_size = val_ratio if val_ratio is not None else val_size
+
+    logger.info(f"Loading CICIoT2023 dataset from: {resolved_csv_path}")
+    if not os.path.exists(resolved_csv_path):
+        raise FileNotFoundError(f"Dataset file not found at: {resolved_csv_path}")
 
     # 1. Read CSV
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(resolved_csv_path)
     logger.info(f"Raw dataset shape: {df.shape}")
 
     # 2. Stratified downsampling for rapid prototyping if requested
@@ -244,14 +260,14 @@ def load_and_preprocess_ciciot2023(
     # 3. Leak-free Train/Test split BEFORE any transformation
     df_train_full, df_test = train_test_split(
         df,
-        test_size=test_size,
+        test_size=actual_test_size,
         stratify=df[TARGET_COLUMN],
         random_state=random_state
     )
 
     # 4. Optional Train/Val split
-    if val_size > 0.0:
-        val_relative_size = val_size / (1.0 - test_size)
+    if actual_val_size > 0.0:
+        val_relative_size = actual_val_size / (1.0 - actual_test_size)
         df_train, df_val = train_test_split(
             df_train_full,
             test_size=val_relative_size,
@@ -282,7 +298,7 @@ def load_and_preprocess_ciciot2023(
     if save_preprocessor_path:
         preprocessor.save(save_preprocessor_path)
 
-    return {
+    results: Dict[str, Any] = {
         "X_train": X_train,
         "y_train": y_train,
         "X_val": X_val,
@@ -296,6 +312,26 @@ def load_and_preprocess_ciciot2023(
         "num_classes": preprocessor.num_classes_,
         "preprocessor": preprocessor
     }
+
+    # 8. Construct PyTorch DataLoaders if PyTorch is available
+    if HAS_TORCH:
+        train_ds = TabularFlowDataset(X_train, y_train)
+        results["train_dataset"] = train_ds
+        results["train_loader"] = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+
+        if X_val is not None and len(X_val) > 0:
+            val_ds = TabularFlowDataset(X_val, y_val)
+            results["val_dataset"] = val_ds
+            results["val_loader"] = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+        else:
+            results["val_dataset"] = None
+            results["val_loader"] = None
+
+        test_ds = TabularFlowDataset(X_test, y_test)
+        results["test_dataset"] = test_ds
+        results["test_loader"] = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+
+    return results
 
 
 if __name__ == "__main__":
