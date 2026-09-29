@@ -161,6 +161,7 @@ if HAS_TORCH:
             self.model.to(self.device)
             self.best_model_weights = None
             self.best_val_loss = float("inf")
+            self.best_val_acc = 0.0
 
         def fit(
             self,
@@ -168,6 +169,7 @@ if HAS_TORCH:
             val_loader: Optional[DataLoader] = None,
             epochs: int = 20,
             patience: int = 5,
+            monitor: str = "val_loss",
             verbose: bool = True
         ) -> Dict[str, List[float]]:
             """
@@ -178,6 +180,7 @@ if HAS_TORCH:
                 val_loader: Validation DataLoader.
                 epochs: Total training epochs.
                 patience: Early stopping patience.
+                monitor: Metric to monitor for best checkpointing ('val_loss' or 'val_acc').
                 verbose: Whether to print live progress to stdout.
 
             Returns:
@@ -254,9 +257,18 @@ if HAS_TORCH:
                     history["val_loss"].append(val_loss)
                     history["val_acc"].append(val_acc)
 
-                    # Checkpoint best model
-                    if val_loss < self.best_val_loss:
-                        self.best_val_loss = val_loss
+                    # Checkpoint best model based on monitored metric
+                    improved = False
+                    if monitor.lower() in ["val_acc", "accuracy", "acc"]:
+                        if val_acc > self.best_val_acc:
+                            self.best_val_acc = val_acc
+                            improved = True
+                    else:  # default 'val_loss'
+                        if val_loss < self.best_val_loss:
+                            self.best_val_loss = val_loss
+                            improved = True
+
+                    if improved:
                         self.best_model_weights = copy.deepcopy(self.model.state_dict())
                         patience_counter = 0
                         is_best = " ⭐ (Best)"
@@ -275,7 +287,7 @@ if HAS_TORCH:
                 logger.info(progress_msg)
 
                 if early_stop:
-                    stop_msg = f"⏹️ Early stopping triggered at epoch {epoch} (patience={patience})"
+                    stop_msg = f"⏹️ Early stopping triggered at epoch {epoch} (patience={patience} on '{monitor}')"
                     if verbose:
                         print(stop_msg)
                     logger.info(stop_msg)
@@ -283,7 +295,9 @@ if HAS_TORCH:
 
             # Restore best weights if available
             if self.best_model_weights is not None:
-                restore_msg = f"🏆 Restored model weights from best validation epoch (Loss: {self.best_val_loss:.4f})"
+                self.model.load_state_dict(self.best_model_weights)
+                best_summary = f"Loss: {self.best_val_loss:.4f}" if monitor.lower() not in ["val_acc", "accuracy", "acc"] else f"Acc: {self.best_val_acc*100:.2f}%"
+                restore_msg = f"🏆 Restored model weights from best validation epoch (Monitored '{monitor}': {best_summary})"
                 if verbose:
                     print(restore_msg)
                 logger.info(restore_msg)

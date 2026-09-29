@@ -182,13 +182,26 @@ class TabularDataPreprocessor:
         return preprocessor
 
 
-def compute_balanced_class_weights(y: np.ndarray, num_classes: int) -> np.ndarray:
+def compute_balanced_class_weights(
+    y: np.ndarray,
+    num_classes: int,
+    strategy: str = "balanced"
+) -> np.ndarray:
     """
-    Computes inverse frequency class weights to mitigate severe class imbalance:
-    w_c = N / (C * N_c)
+    Computes class weights to handle severe class imbalance:
+    - 'balanced': Standard inverse-frequency weights w_c = N / (C * N_c)
+    - 'sqrt_balanced': Square-root smoothed inverse-frequency weights w_c = sqrt(N / (C * N_c))
+                       (Prevents rare classes from overwhelming gradients, balancing Macro-F1 with overall accuracy)
+    - 'none': Uniform unit weights (ones)
     """
+    strategy_lower = strategy.lower()
+    if strategy_lower in ["none", "uniform", "unweighted"]:
+        return np.ones(num_classes, dtype=np.float32)
+
     classes = np.arange(num_classes)
     weights = compute_class_weight(class_weight="balanced", classes=classes, y=y)
+    if strategy_lower in ["sqrt", "sqrt_balanced", "square_root"]:
+        weights = np.sqrt(weights)
     return weights.astype(np.float32)
 
 

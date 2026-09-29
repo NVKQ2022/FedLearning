@@ -110,7 +110,7 @@ print(f"✅ Current working directory: {os.getcwd()}")
 
 ---
 
-### Step 3: Install Dependencies & Set Deterministic Seed
+### Step 3: Install Dependencies, Configure Hyperparameters & Set Seed
 
 Install the exact versions specified in `requirements.txt`:
 
@@ -119,14 +119,39 @@ Install the exact versions specified in `requirements.txt`:
 print("✅ All dependencies installed successfully!")
 ```
 
-Enforce a global deterministic seed across Python, NumPy, and PyTorch (CPU & CUDA) for 100% scientific reproducibility:
+Define all experimental hyperparameters upfront before running any data processing or training using the unified `ExperimentConfig`:
 
 ```python
+from src.utils.config import ExperimentConfig
 from src.utils.seed import set_seed
 
-EXPERIMENT_SEED = 42
-set_seed(EXPERIMENT_SEED)
-print(f"✅ Deterministic random seed set to: {EXPERIMENT_SEED}")
+CONFIG = ExperimentConfig(
+    experiment_name="centralized_e1_baseline",
+    seed=42,                            # Integer seed for 100% bit-level reproducibility
+    sample_size=100000,                 # 100000 for rapid iteration, or None for full 5.11M rows
+    test_size=0.2,                      # 20% holdout test set
+    val_size=0.1,                       # 10% validation set
+    scaler_type="robust",               # 'robust' or 'standard'
+    batch_size=128,                     # Mini-batch size
+    hidden_dims=(128, 64),              # (128, 64) or deeper funnel (256, 128, 64)
+    dropout_rate=0.2,
+    loss_type="focal_loss",             # 'focal_loss', 'cross_entropy', or 'weighted_ce'
+    class_weight_strategy="balanced",   # 'balanced', 'sqrt_balanced', or 'none'
+    focal_gamma=2.0,                    # Focusing parameter
+    optimizer_type="adamw",
+    learning_rate=1e-3,
+    weight_decay=1e-4,
+    epochs=15,
+    patience=4,
+    monitor_metric="val_loss",          # 'val_loss' (lowest loss) or 'val_acc' (highest accuracy)
+    verbose=True
+)
+
+# Enforce global deterministic seed
+set_seed(CONFIG.seed)
+
+# Display formatted configuration table
+CONFIG.display()
 ```
 
 ---
