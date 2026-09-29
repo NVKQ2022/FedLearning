@@ -34,9 +34,9 @@ logger = logging.getLogger(__name__)
 
 
 if HAS_TORCH:
-    class LocalClientTrainer(BaseTrainer):
+    class FederatedClientTrainer(BaseTrainer):
         """
-        Local client training orchestrator for Federated Learning rounds.
+        Federated client training orchestrator for Federated Learning rounds.
         
         Supports:
         - FedAvg: Standard SGD/Adam optimization (mu = 0.0).
@@ -140,6 +140,9 @@ if HAS_TORCH:
                     dataloader, global_model=global_model, mu=mu
                 )
             return epoch_loss, epoch_acc
+
+    # Clean alias for backward-compatibility
+    LocalClientTrainer = FederatedClientTrainer
 
 
     class CentralizedTrainer(BaseTrainer):
@@ -405,9 +408,11 @@ if HAS_TORCH:
 
 
 else:
-    class LocalClientTrainer:
+    class FederatedClientTrainer:
         def __init__(self, *args, **kwargs):
-            raise ImportError("PyTorch is required for LocalClientTrainer. Please install torch.")
+            raise ImportError("PyTorch is required for FederatedClientTrainer. Please install torch.")
+
+    LocalClientTrainer = FederatedClientTrainer
 
     class CentralizedTrainer:
         def __init__(self, *args, **kwargs):

@@ -61,7 +61,7 @@ class StratifiedIIDPartitioner(BasePartitioner):
         return result
 
 
-class DirichletPartitioner(BasePartitioner):
+class DirichletNonIIDPartitioner(BasePartitioner):
     """
     Dirichlet Non-IID Partitioner.
     Simulates label distribution skew across clients using a Dirichlet distribution Dir(alpha).
@@ -146,6 +146,10 @@ class DirichletPartitioner(BasePartitioner):
         )
 
 
+# Clean alias for backward-compatibility
+DirichletPartitioner = DirichletNonIIDPartitioner
+
+
 def partition_iid(
     y: np.ndarray,
     num_clients: int,
@@ -169,7 +173,7 @@ def partition_dirichlet(
     """
     Dirichlet Non-IID Partitioning (convenience functional interface).
     """
-    partitioner = DirichletPartitioner(
+    partitioner = DirichletNonIIDPartitioner(
         num_clients=num_clients,
         alpha=alpha,
         min_samples_per_client=min_samples_per_client,

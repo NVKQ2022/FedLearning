@@ -5,8 +5,10 @@ Exports:
 - BasePreprocessor: Abstract preprocessor contract ensuring leak-free tabular transformations.
 - BasePartitioner: Abstract client data partitioning contract with data leakage verification.
 - TabularDataPreprocessor: Robust tabular scaling, median imputation, and label encoding pipeline.
+- CICIoT2023Preprocessor: Alias for TabularDataPreprocessor.
 - StratifiedIIDPartitioner: Uniform IID client partitioner.
-- DirichletPartitioner: Dirichlet label distribution skew partitioner (alpha).
+- DirichletNonIIDPartitioner: Dirichlet label distribution skew partitioner (alpha).
+- DirichletPartitioner: Alias for DirichletNonIIDPartitioner.
 - partition_iid / partition_dirichlet: Convenience functional wrappers.
 - TabularFlowDataset: PyTorch Dataset wrapper.
 - load_and_preprocess_ciciot2023: End-to-end data pipeline factory.
@@ -18,12 +20,14 @@ Exports:
 from .base import BasePreprocessor, BasePartitioner
 from .preprocess import (
     TabularDataPreprocessor,
+    CICIoT2023Preprocessor,
     TabularFlowDataset,
     load_and_preprocess_ciciot2023,
     compute_balanced_class_weights,
 )
 from .partition import (
     StratifiedIIDPartitioner,
+    DirichletNonIIDPartitioner,
     DirichletPartitioner,
     partition_iid,
     partition_dirichlet,
@@ -35,8 +39,10 @@ __all__ = [
     "BasePreprocessor",
     "BasePartitioner",
     "TabularDataPreprocessor",
+    "CICIoT2023Preprocessor",
     "TabularFlowDataset",
     "StratifiedIIDPartitioner",
+    "DirichletNonIIDPartitioner",
     "DirichletPartitioner",
     "load_and_preprocess_ciciot2023",
     "compute_balanced_class_weights",

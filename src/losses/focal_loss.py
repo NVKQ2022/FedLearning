@@ -82,6 +82,9 @@ if HAS_TORCH:
 
             return self.apply_reduction(focal_loss)
 
+    # Clean alias
+    FocalLoss = MultiClassFocalLoss
+
 
     def build_loss_function(
         loss_type: str = "cross_entropy",
@@ -128,6 +131,8 @@ else:
     class MultiClassFocalLoss:
         def __init__(self, *args, **kwargs):
             raise ImportError("PyTorch is required for MultiClassFocalLoss. Please install torch.")
+
+    FocalLoss = MultiClassFocalLoss
 
     def build_loss_function(*args, **kwargs):
         raise ImportError("PyTorch is required for build_loss_function. Please install torch.")

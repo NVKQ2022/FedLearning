@@ -185,6 +185,10 @@ class TabularDataPreprocessor(BasePreprocessor):
         return preprocessor
 
 
+# Clean alias
+CICIoT2023Preprocessor = TabularDataPreprocessor
+
+
 def compute_balanced_class_weights(
     y: np.ndarray,
     num_classes: int,

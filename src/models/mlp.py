@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 if HAS_TORCH:
-    class TabularIoTMLP(BaseFederatedModel):
+    class TabularIoTMLPModel(BaseFederatedModel):
         """
         Lightweight Multi-Layer Perceptron for Network Flow Intrusion Detection.
 
@@ -87,10 +87,15 @@ if HAS_TORCH:
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             return self.network(x)
 
+    # Clean alias for backward-compatibility
+    TabularIoTMLP = TabularIoTMLPModel
+
 else:
-    class TabularIoTMLP:
+    class TabularIoTMLPModel:
         def __init__(self, *args, **kwargs):
-            raise ImportError("PyTorch is required for TabularIoTMLP. Please install torch.")
+            raise ImportError("PyTorch is required for TabularIoTMLPModel. Please install torch.")
+
+    TabularIoTMLP = TabularIoTMLPModel
 
 
 if __name__ == "__main__":

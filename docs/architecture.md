@@ -31,7 +31,7 @@ classDiagram
         +compute_l2_norm_delta(ref_model) float
     }
     BaseModel <|-- BaseFederatedModel
-    BaseFederatedModel <|-- TabularIoTMLP
+    BaseFederatedModel <|-- TabularIoTMLPModel
 
     %% Base Trainers
     class BaseTrainer {
@@ -48,7 +48,7 @@ classDiagram
         +load_checkpoint(filepath)
     }
     BaseTrainer <|-- CentralizedTrainer
-    BaseTrainer <|-- LocalClientTrainer
+    BaseTrainer <|-- FederatedClientTrainer
 
     %% Base Partitioner
     class BasePartitioner {
@@ -61,7 +61,7 @@ classDiagram
         +compute_heterogeneity_score(y, partition_dict) Dict
     }
     BasePartitioner <|-- StratifiedIIDPartitioner
-    BasePartitioner <|-- DirichletPartitioner
+    BasePartitioner <|-- DirichletNonIIDPartitioner
 
     %% Base Strategy
     class BaseFederatedStrategy {
