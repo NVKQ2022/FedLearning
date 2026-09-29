@@ -9,11 +9,8 @@ Exports:
 """
 
 from .base import BaseTrainer
-from .trainer import (
-    FederatedClientTrainer,
-    LocalClientTrainer,
-    CentralizedTrainer,
-)
+from .federated_trainer import FederatedClientTrainer, LocalClientTrainer
+from .centralized_trainer import CentralizedTrainer
 
 __all__ = [
     "BaseTrainer",

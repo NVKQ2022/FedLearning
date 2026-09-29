@@ -244,7 +244,23 @@ class LabelSmoothingCELoss(BaseLoss):
 
 ---
 
-## 🛡️ 3. Verification & Compliance Checklist
+## 📁 3. File Organization & Module Mapping
+
+To keep filenames intuitive, self-describing, and aligned with Clean Architecture, every concrete class resides in its own suitably named file. Legacy filenames are retained as lightweight proxy shims for zero-downtime backward-compatibility:
+
+| Component Domain | Base Class | Canonical Subclass | Primary File Path | Backward-Compatible Proxy |
+| :--- | :--- | :--- | :--- | :--- |
+| **Neural Models** | `BaseFederatedModel` | `TabularIoTMLPModel` | [`src/models/tabular_mlp.py`](file:///home/quan/projects/FedLearning/src/models/tabular_mlp.py) | [`src/models/mlp.py`](file:///home/quan/projects/FedLearning/src/models/mlp.py) |
+| **Data Preprocessing** | `BasePreprocessor` | `TabularDataPreprocessor` | [`src/data/preprocessor.py`](file:///home/quan/projects/FedLearning/src/data/preprocessor.py) | [`src/data/preprocess.py`](file:///home/quan/projects/FedLearning/src/data/preprocess.py) |
+| **Data Partitioning** | `BasePartitioner` | `StratifiedIIDPartitioner`<br>`DirichletNonIIDPartitioner` | [`src/data/partitioner.py`](file:///home/quan/projects/FedLearning/src/data/partitioner.py) | [`src/data/partition.py`](file:///home/quan/projects/FedLearning/src/data/partition.py) |
+| **Centralized Training** | `BaseTrainer` | `CentralizedTrainer` | [`src/training/centralized_trainer.py`](file:///home/quan/projects/FedLearning/src/training/centralized_trainer.py) | [`src/training/trainer.py`](file:///home/quan/projects/FedLearning/src/training/trainer.py) |
+| **Federated Training** | `BaseTrainer` | `FederatedClientTrainer` | [`src/training/federated_trainer.py`](file:///home/quan/projects/FedLearning/src/training/federated_trainer.py) | [`src/training/trainer.py`](file:///home/quan/projects/FedLearning/src/training/trainer.py) |
+| **Loss Functions** | `BaseLoss` | `MultiClassFocalLoss` | [`src/losses/focal_loss.py`](file:///home/quan/projects/FedLearning/src/losses/focal_loss.py) | *(Original name)* |
+| **Server Aggregation** | `BaseFederatedStrategy` | `FedAvgStrategy`<br>`FedProxStrategy`<br>`FedMedianStrategy` | [`src/federated/strategies.py`](file:///home/quan/projects/FedLearning/src/federated/strategies.py) | *(New module)* |
+
+---
+
+## 🛡️ 4. Verification & Compliance Checklist
 
 | Architecture Pillar | Verification Standard | Implementation Status |
 | :--- | :--- | :--- |
@@ -253,3 +269,4 @@ class LabelSmoothingCELoss(BaseLoss):
 | **Data Leakage Prevention** | `BasePreprocessor` fits on train splits only; `BasePartitioner.verify_partition()` enforces zero inter-client overlap. | ✅ Passed |
 | **Byzantine Robustness** | `BaseFederatedStrategy` provides coordinate-wise median and trimmed-mean aggregators. | ✅ Passed |
 | **Backward Compatibility** | All legacy functional calls (`partition_iid`, `CentralizedTrainer`, `TabularIoTMLP`) remain 100% intact. | ✅ Passed |
+

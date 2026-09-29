@@ -9,7 +9,7 @@ Exports:
 """
 
 from .base import BaseModel, BaseFederatedModel
-from .mlp import TabularIoTMLPModel, TabularIoTMLP
+from .tabular_mlp import TabularIoTMLPModel, TabularIoTMLP
 
 # Re-exports for backward-compatibility
 from src.losses.focal_loss import MultiClassFocalLoss

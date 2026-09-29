@@ -18,14 +18,14 @@ Exports:
 """
 
 from .base import BasePreprocessor, BasePartitioner
-from .preprocess import (
+from .preprocessor import (
     TabularDataPreprocessor,
     CICIoT2023Preprocessor,
     TabularFlowDataset,
     load_and_preprocess_ciciot2023,
     compute_balanced_class_weights,
 )
-from .partition import (
+from .partitioner import (
     StratifiedIIDPartitioner,
     DirichletNonIIDPartitioner,
     DirichletPartitioner,
