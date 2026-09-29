@@ -144,6 +144,7 @@ CONFIG = ExperimentConfig(
     epochs=15,
     patience=4,
     monitor_metric="val_loss",          # 'val_loss' (lowest loss) or 'val_acc' (highest accuracy)
+    save_top_k=3,                       # Automatically preserve Top-K best model checkpoints
     verbose=True
 )
 
@@ -264,9 +265,24 @@ optimizer = build_optimizer(model, "adamw", lr=1e-3, weight_decay=1e-4)
 criterion = build_loss_function("focal_loss", class_weights=class_weights, gamma=2.0, device=device)
 
 trainer = CentralizedTrainer(model, optimizer, criterion, device=device, max_grad_norm=5.0)
-history = trainer.fit(data["train_loader"], data["val_loader"], epochs=15, patience=3, verbose=True)
+history = trainer.fit(
+    train_loader=data["train_loader"],
+    val_loader=data["val_loader"],
+    epochs=15,
+    patience=3,
+    monitor="val_loss",    # or 'val_acc' to rank by validation accuracy
+    save_top_k=3,          # Preserves Top-3 model weight checkpoints
+    verbose=True
+)
 
-# Evaluate on holdout test set
+# Display Top-K Checkpoints preserved during training
+print("\n🏆 Top-K Best Model Versions Preserved in Memory:")
+top_k_summary = trainer.get_top_k_summary()
+if top_k_summary:
+    import pandas as pd
+    print(pd.DataFrame(top_k_summary).to_string(index=False))
+
+# Evaluate on holdout test set (automatically evaluated with the Top-1 best weights)
 e1_results = evaluate_comprehensive(
     model=model,
     dataloader=data["test_loader"],
@@ -373,14 +389,22 @@ print(f"🔥 Scenario E5 (Severe Non-IID FedProx) - Test Macro-F1: {e5_results['
 
 ---
 
-### Step 6: Visualizing & Exporting Results to Google Drive
+### Step 6: Preserving Top-K Models & Archiving to Google Drive
 
 ```python
 import matplotlib.pyplot as plt
 import seaborn as sns
-import json
+import json, shutil
 
-# 1. Compare Scenarios
+# 1. Serialize all Top-K model checkpoints & manifest locally
+os.makedirs("checkpoints", exist_ok=True)
+saved_ckpt_paths = trainer.save_top_k(
+    output_dir="checkpoints",
+    prefix="e1_centralized",
+    monitor="val_loss"
+)
+
+# 2. Compare Scenarios Plot
 scenarios = ["E1: Centralized", "E2: IID FedAvg", "E5: Non-IID FedProx"]
 macro_f1s = [e1_results['macro_f1'] * 100, e2_results['macro_f1'] * 100, e5_results['macro_f1'] * 100]
 
@@ -390,13 +414,14 @@ plt.ylabel("Macro-F1 Score (%)")
 plt.title("Comparative IDS Performance Across Experimental Scenarios")
 plt.ylim(0, 100)
 
-os.makedirs("/content/drive/MyDrive/NguyenVietKyQuanKLTN/reports", exist_ok=True)
-plot_path = "/content/drive/MyDrive/NguyenVietKyQuanKLTN/reports/scenario_comparison.png"
+plot_path = "reports/figures/colab_scenario_comparison.png"
+os.makedirs("reports/figures", exist_ok=True)
 plt.savefig(plot_path, dpi=300, bbox_inches="tight")
 plt.show()
 
-# 2. Export Metrics JSON
-metrics_path = "/content/drive/MyDrive/NguyenVietKyQuanKLTN/reports/experiment_metrics.json"
+# 3. Export Metrics JSON
+metrics_path = "reports/colab_benchmark_metrics.json"
+os.makedirs("reports", exist_ok=True)
 with open(metrics_path, "w") as f:
     json.dump({
         "E1_Centralized": {k: v for k, v in e1_results.items() if k != "confusion_matrix"},
@@ -404,8 +429,44 @@ with open(metrics_path, "w") as f:
         "E5_NonIID_FedProx": {k: v for k, v in e5_results.items() if k != "confusion_matrix"},
     }, f, indent=4)
 
-print(f"✅ Results safely exported to Google Drive: {metrics_path}")
+# 4. Copy all checkpoints, manifests, plots, and metrics to Google Drive
+drive_ckpt_dir = "/content/drive/MyDrive/NguyenVietKyQuanKLTN/checkpoints"
+drive_rep_dir = "/content/drive/MyDrive/NguyenVietKyQuanKLTN/reports"
+
+if os.path.exists("/content/drive/MyDrive"):
+    os.makedirs(drive_ckpt_dir, exist_ok=True)
+    os.makedirs(drive_rep_dir, exist_ok=True)
+    for p in saved_ckpt_paths:
+        shutil.copy(p, os.path.join(drive_ckpt_dir, os.path.basename(p)))
+    shutil.copy(plot_path, os.path.join(drive_rep_dir, "colab_scenario_comparison.png"))
+    shutil.copy(metrics_path, os.path.join(drive_rep_dir, "colab_benchmark_metrics.json"))
+    print(f"🎉 Successfully archived all Top-K models to Google Drive: {drive_ckpt_dir}")
+else:
+    print("Google Drive not mounted; artifacts saved locally in Colab runtime.")
 ```
+
+---
+
+### 📦 Top-K Model Checkpoint Management
+
+The `CentralizedTrainer` supports continuous ranking and multi-version persistence through the `save_top_k` and `monitor` arguments:
+
+1. **Ranking Metric (`monitor`)**:
+   - `"val_loss"`: Lower is better (ranks by lowest validation cross-entropy/focal loss).
+   - `"val_acc"`: Higher is better (ranks by highest validation accuracy percentage).
+2. **In-Memory Heap**: Up to `K` best models are maintained in memory as deep-copied `state_dict` objects during training. At the end of training, the model weights automatically correspond to the **Top-1 Best** model.
+3. **Serialization Schema**: When `trainer.save_top_k(...)` is called, it outputs:
+   - `{prefix}_best.pth`: Symlink or direct copy of the Top-1 model weights.
+   - `{prefix}_top1_epoch{epoch:02d}_{metric}_{score:.4f}.pth`
+   - `{prefix}_top2_epoch{epoch:02d}_{metric}_{score:.4f}.pth`
+   - `{prefix}_top3_epoch{epoch:02d}_{metric}_{score:.4f}.pth`
+   - `{prefix}_top_k_manifest.json`: Structured metadata listing each rank, epoch, val loss, val accuracy, and file path.
+4. **Restoring a Specific Version**:
+   ```python
+   # Load the rank-2 model back into the trainer's model:
+   trainer.load_checkpoint_by_rank(rank=2)
+   ```
+
 
 ---
 

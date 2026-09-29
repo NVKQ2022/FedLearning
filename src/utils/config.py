@@ -69,6 +69,7 @@ class ExperimentConfig:
     patience: int = 4
     max_grad_norm: float = 5.0
     monitor_metric: str = "val_loss"         # 'val_loss' (default) or 'val_acc'
+    save_top_k: int = 3                      # Number of best model checkpoints to keep
     verbose: bool = True
 
     # 7. Federated Learning Hyperparameters (Scenarios E2, E4, E5)
@@ -145,6 +146,7 @@ class ExperimentConfig:
                 ("Max Epochs", self.epochs),
                 ("Early Stopping Patience", self.patience),
                 ("Monitored Metric", f"{self.monitor_metric} {'(min)' if self.monitor_metric == 'val_loss' else '(max)'}"),
+                ("Save Top-K Checkpoints", f"Top {self.save_top_k} models"),
                 ("Max Gradient Norm", self.max_grad_norm),
             ],
             "Federated Simulation": [

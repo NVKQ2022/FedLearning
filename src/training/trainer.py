@@ -162,6 +162,7 @@ if HAS_TORCH:
             self.best_model_weights = None
             self.best_val_loss = float("inf")
             self.best_val_acc = 0.0
+            self.top_k_checkpoints: List[Dict[str, Any]] = []
 
         def fit(
             self,
@@ -170,6 +171,7 @@ if HAS_TORCH:
             epochs: int = 20,
             patience: int = 5,
             monitor: str = "val_loss",
+            save_top_k: int = 3,
             verbose: bool = True
         ) -> Dict[str, List[float]]:
             """
@@ -181,6 +183,7 @@ if HAS_TORCH:
                 epochs: Total training epochs.
                 patience: Early stopping patience.
                 monitor: Metric to monitor for best checkpointing ('val_loss' or 'val_acc').
+                save_top_k: Number of best model versions to track and preserve.
                 verbose: Whether to print live progress to stdout.
 
             Returns:
@@ -257,21 +260,45 @@ if HAS_TORCH:
                     history["val_loss"].append(val_loss)
                     history["val_acc"].append(val_acc)
 
-                    # Checkpoint best model based on monitored metric
-                    improved = False
-                    if monitor.lower() in ["val_acc", "accuracy", "acc"]:
-                        if val_acc > self.best_val_acc:
-                            self.best_val_acc = val_acc
-                            improved = True
-                    else:  # default 'val_loss'
-                        if val_loss < self.best_val_loss:
-                            self.best_val_loss = val_loss
-                            improved = True
+                    # Determine optimization direction ('max' for accuracy, 'min' for loss)
+                    mode = "max" if monitor.lower() in ["val_acc", "accuracy", "acc"] else "min"
+                    score = val_acc if mode == "max" else val_loss
 
-                    if improved:
-                        self.best_model_weights = copy.deepcopy(self.model.state_dict())
-                        patience_counter = 0
-                        is_best = " ⭐ (Best)"
+                    # Check if current epoch qualifies for Top-K best models
+                    qualifies_top_k = False
+                    if len(self.top_k_checkpoints) < save_top_k:
+                        qualifies_top_k = True
+                    elif mode == "max" and score > self.top_k_checkpoints[-1]["score"]:
+                        qualifies_top_k = True
+                    elif mode == "min" and score < self.top_k_checkpoints[-1]["score"]:
+                        qualifies_top_k = True
+
+                    is_best = ""
+                    if qualifies_top_k:
+                        ckpt_entry = {
+                            "epoch": epoch,
+                            "score": float(score),
+                            "val_loss": float(val_loss),
+                            "val_acc": float(val_acc),
+                            "train_loss": float(train_loss),
+                            "train_acc": float(train_acc),
+                            "state_dict": copy.deepcopy(self.model.state_dict())
+                        }
+                        self.top_k_checkpoints.append(ckpt_entry)
+                        self.top_k_checkpoints.sort(key=lambda x: x["score"], reverse=(mode == "max"))
+                        if len(self.top_k_checkpoints) > save_top_k:
+                            self.top_k_checkpoints.pop()
+
+                        # Determine rank of current epoch
+                        rank = next(i + 1 for i, c in enumerate(self.top_k_checkpoints) if c["epoch"] == epoch)
+                        if rank == 1:
+                            self.best_model_weights = copy.deepcopy(self.model.state_dict())
+                            self.best_val_loss = val_loss
+                            self.best_val_acc = val_acc
+                            patience_counter = 0
+                            is_best = " ⭐ (Top-1 Best)"
+                        else:
+                            is_best = f" 🎖️ (Top-{rank})"
                     else:
                         patience_counter += 1
                         if patience_counter >= patience:
@@ -303,6 +330,76 @@ if HAS_TORCH:
                 logger.info(restore_msg)
 
             return history
+
+        def get_top_k_summary(self) -> List[Dict[str, Any]]:
+            """Returns metadata summary of all preserved Top-K model checkpoints."""
+            summary = []
+            for rank, ckpt in enumerate(self.top_k_checkpoints, start=1):
+                summary.append({
+                    "rank": rank,
+                    "epoch": ckpt["epoch"],
+                    "score": round(ckpt["score"], 4),
+                    "val_loss": round(ckpt["val_loss"], 4),
+                    "val_acc": round(ckpt["val_acc"], 4),
+                    "train_loss": round(ckpt["train_loss"], 4),
+                    "train_acc": round(ckpt["train_acc"], 4),
+                })
+            return summary
+
+        def save_top_k(
+            self,
+            output_dir: str = "checkpoints",
+            prefix: str = "model",
+            monitor: str = "val_loss"
+        ) -> List[str]:
+            """
+            Serializes all preserved Top-K model checkpoints to disk and generates
+            a manifest JSON tracking their ranks, epochs, and validation metrics.
+
+            Args:
+                output_dir: Target directory to save checkpoints.
+                prefix: Filename prefix.
+                monitor: Metric monitored during training.
+
+            Returns:
+                List of saved filepaths.
+            """
+            import json
+            import os
+            os.makedirs(output_dir, exist_ok=True)
+            saved_paths: List[str] = []
+
+            for rank, ckpt in enumerate(self.top_k_checkpoints, start=1):
+                metric_tag = "valacc" if monitor.lower() in ["val_acc", "accuracy", "acc"] else "valloss"
+                filename = f"{prefix}_top{rank}_epoch{ckpt['epoch']:02d}_{metric_tag}_{ckpt['score']:.4f}.pth"
+                filepath = os.path.join(output_dir, filename)
+                torch.save(ckpt["state_dict"], filepath)
+                saved_paths.append(filepath)
+
+            # Also save canonical best model checkpoint (copy of rank 1)
+            if self.top_k_checkpoints:
+                best_path = os.path.join(output_dir, f"{prefix}_best.pth")
+                torch.save(self.top_k_checkpoints[0]["state_dict"], best_path)
+                saved_paths.append(best_path)
+
+            manifest_path = os.path.join(output_dir, f"{prefix}_top_k_manifest.json")
+            with open(manifest_path, "w") as f:
+                json.dump(self.get_top_k_summary(), f, indent=4)
+            saved_paths.append(manifest_path)
+
+            logger.info(f"Saved {len(self.top_k_checkpoints)} Top-K model versions to {output_dir}")
+            return saved_paths
+
+        def load_checkpoint_by_rank(self, rank: int = 1) -> None:
+            """Loads model weights corresponding to a specific Top-K rank (1 to K)."""
+            if not self.top_k_checkpoints:
+                raise ValueError("No Top-K checkpoints have been recorded.")
+            if not 1 <= rank <= len(self.top_k_checkpoints):
+                raise IndexError(f"Rank {rank} out of range (available ranks: 1 to {len(self.top_k_checkpoints)})")
+            target_ckpt = self.top_k_checkpoints[rank - 1]
+            self.model.load_state_dict(target_ckpt["state_dict"])
+            logger.info(f"Loaded model weights for Rank {rank} (Epoch {target_ckpt['epoch']}, Score: {target_ckpt['score']:.4f})")
+
 
 else:
     class LocalClientTrainer:
