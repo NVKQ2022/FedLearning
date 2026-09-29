@@ -58,13 +58,16 @@ class TabularFlowDataset(Dataset):
         return self.features[idx], self.labels[idx]
 
 
-class TabularDataPreprocessor:
+from src.base.preprocessor import BasePreprocessor
+
+class TabularDataPreprocessor(BasePreprocessor):
     """
     Leak-free preprocessor for tabular network flow traffic.
     Guarantees all statistics (imputation medians, scalers, label encodings)
     are fitted strictly on the training set and applied without leakage.
     """
     def __init__(self, scaler_type: str = "robust", apply_log1p: bool = True):
+        super().__init__()
         self.scaler_type = scaler_type.lower()
         self.apply_log1p = apply_log1p
         self.scaler = RobustScaler() if self.scaler_type == "robust" else StandardScaler()

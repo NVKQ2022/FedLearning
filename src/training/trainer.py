@@ -28,11 +28,13 @@ except ImportError:
     nn = object
     torch = None
 
+from src.base.trainer import BaseTrainer
+
 logger = logging.getLogger(__name__)
 
 
 if HAS_TORCH:
-    class LocalClientTrainer:
+    class LocalClientTrainer(BaseTrainer):
         """
         Local client training orchestrator for Federated Learning rounds.
         
@@ -50,12 +52,13 @@ if HAS_TORCH:
             device: Union[str, torch.device] = "cpu",
             max_grad_norm: float = 5.0
         ):
-            self.model = model
-            self.optimizer = optimizer
-            self.criterion = criterion
-            self.device = torch.device(device)
-            self.max_grad_norm = max_grad_norm
-            self.model.to(self.device)
+            super().__init__(
+                model=model,
+                optimizer=optimizer,
+                criterion=criterion,
+                device=device,
+                max_grad_norm=max_grad_norm
+            )
 
         def train_epoch(
             self,
@@ -107,8 +110,7 @@ if HAS_TORCH:
                 total_batch_loss.backward()
 
                 # Gradient clipping to maintain stability on edge clients
-                if self.max_grad_norm > 0.0:
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=self.max_grad_norm)
+                self.clip_gradients()
 
                 self.optimizer.step()
 
@@ -140,7 +142,7 @@ if HAS_TORCH:
             return epoch_loss, epoch_acc
 
 
-    class CentralizedTrainer:
+    class CentralizedTrainer(BaseTrainer):
         """
         Standalone centralized baseline trainer (Scenario E1).
         Includes epoch loop, validation tracking, early stopping, and history recording.
@@ -153,16 +155,62 @@ if HAS_TORCH:
             device: Union[str, torch.device] = "cpu",
             max_grad_norm: float = 5.0
         ):
-            self.model = model
-            self.optimizer = optimizer
-            self.criterion = criterion
-            self.device = torch.device(device)
-            self.max_grad_norm = max_grad_norm
-            self.model.to(self.device)
+            super().__init__(
+                model=model,
+                optimizer=optimizer,
+                criterion=criterion,
+                device=device,
+                max_grad_norm=max_grad_norm
+            )
             self.best_model_weights = None
             self.best_val_loss = float("inf")
             self.best_val_acc = 0.0
             self.top_k_checkpoints: List[Dict[str, Any]] = []
+
+        def train_epoch(
+            self,
+            dataloader: DataLoader,
+            verbose: bool = False,
+            desc: str = "Training",
+            **kwargs: Any
+        ) -> Tuple[float, float]:
+            """
+            Executes a single epoch of centralized training.
+            """
+            self.model.train()
+            t_loss, t_correct, t_total = 0.0, 0, 0
+
+            iterator = dataloader
+            if verbose:
+                try:
+                    from tqdm.auto import tqdm
+                    iterator = tqdm(dataloader, desc=desc, leave=False, dynamic_ncols=True)
+                except ImportError:
+                    iterator = dataloader
+
+            for X_b, y_b in iterator:
+                X_b, y_b = X_b.to(self.device), y_b.to(self.device)
+                self.optimizer.zero_grad()
+                out = self.model(X_b)
+                loss = self.criterion(out, y_b)
+                loss.backward()
+                self.clip_gradients()
+                self.optimizer.step()
+
+                batch_samples = len(y_b)
+                t_loss += loss.item() * batch_samples
+                t_correct += (out.argmax(dim=1) == y_b).sum().item()
+                t_total += batch_samples
+
+                if verbose and hasattr(iterator, "set_postfix"):
+                    iterator.set_postfix({
+                        "loss": f"{loss.item():.4f}",
+                        "acc": f"{(t_correct / max(t_total, 1)) * 100:.1f}%"
+                    })
+
+            train_loss = t_loss / max(t_total, 1)
+            train_acc = t_correct / max(t_total, 1)
+            return train_loss, train_acc
 
         def fit(
             self,
@@ -197,45 +245,11 @@ if HAS_TORCH:
 
             for epoch in range(1, epochs + 1):
                 # 1. Train epoch
-                self.model.train()
-                t_loss, t_correct, t_total = 0.0, 0, 0
-
-                iterator = train_loader
-                if verbose:
-                    try:
-                        from tqdm.auto import tqdm
-                        iterator = tqdm(
-                            train_loader,
-                            desc=f"Epoch {epoch:02d}/{epochs:02d} [Train]",
-                            leave=False,
-                            dynamic_ncols=True
-                        )
-                    except ImportError:
-                        iterator = train_loader
-
-                for X_b, y_b in iterator:
-                    X_b, y_b = X_b.to(self.device), y_b.to(self.device)
-                    self.optimizer.zero_grad()
-                    out = self.model(X_b)
-                    loss = self.criterion(out, y_b)
-                    loss.backward()
-                    if self.max_grad_norm > 0.0:
-                        torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
-                    self.optimizer.step()
-
-                    batch_samples = len(y_b)
-                    t_loss += loss.item() * batch_samples
-                    t_correct += (out.argmax(dim=1) == y_b).sum().item()
-                    t_total += batch_samples
-
-                    if verbose and hasattr(iterator, "set_postfix"):
-                        iterator.set_postfix({
-                            "loss": f"{loss.item():.4f}",
-                            "acc": f"{(t_correct / max(t_total, 1)) * 100:.1f}%"
-                        })
-
-                train_loss = t_loss / max(t_total, 1)
-                train_acc = t_correct / max(t_total, 1)
+                train_loss, train_acc = self.train_epoch(
+                    train_loader,
+                    verbose=verbose,
+                    desc=f"Epoch {epoch:02d}/{epochs:02d} [Train]"
+                )
                 history["train_loss"].append(train_loss)
                 history["train_acc"].append(train_acc)
 
@@ -245,18 +259,7 @@ if HAS_TORCH:
                 early_stop = False
 
                 if val_loader is not None:
-                    self.model.eval()
-                    v_loss, v_correct, v_total = 0.0, 0, 0
-                    with torch.no_grad():
-                        for X_v, y_v in val_loader:
-                            X_v, y_v = X_v.to(self.device), y_v.to(self.device)
-                            out_v = self.model(X_v)
-                            loss_v = self.criterion(out_v, y_v)
-                            v_loss += loss_v.item() * len(y_v)
-                            v_correct += (out_v.argmax(dim=1) == y_v).sum().item()
-                            v_total += len(y_v)
-                    val_loss = v_loss / max(v_total, 1)
-                    val_acc = v_correct / max(v_total, 1)
+                    val_loss, val_acc = self.evaluate(val_loader)
                     history["val_loss"].append(val_loss)
                     history["val_acc"].append(val_acc)
 

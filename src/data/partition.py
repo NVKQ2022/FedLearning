@@ -11,7 +11,7 @@ Adheres to:
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Any
 
 import numpy as np
 import pandas as pd
@@ -27,46 +27,135 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 
+from src.base.partitioner import BasePartitioner
+
+
+class StratifiedIIDPartitioner(BasePartitioner):
+    """
+    Uniform Stratified IID Partitioner.
+    Distributes samples such that each client observes an identical or near-identical
+    class distribution.
+    """
+    def partition(self, y: np.ndarray, **kwargs: Any) -> Dict[int, np.ndarray]:
+        logger.info(f"Generating Stratified IID partition for {self.num_clients} clients (seed={self.seed})...")
+        rng = np.random.default_rng(self.seed)
+        unique_classes = np.unique(y)
+        client_indices: Dict[int, List[int]] = {i: [] for i in range(self.num_clients)}
+
+        for c in unique_classes:
+            class_idx = np.where(y == c)[0]
+            rng.shuffle(class_idx)
+            
+            # Split class indices across clients as evenly as possible
+            splits = np.array_split(class_idx, self.num_clients)
+            for client_id, split in enumerate(splits):
+                client_indices[client_id].extend(split.tolist())
+
+        # Shuffle indices per client to eliminate ordering bias
+        result = {}
+        for client_id, indices in client_indices.items():
+            arr = np.array(indices, dtype=np.int64)
+            rng.shuffle(arr)
+            result[client_id] = arr
+            
+        return result
+
+
+class DirichletPartitioner(BasePartitioner):
+    """
+    Dirichlet Non-IID Partitioner.
+    Simulates label distribution skew across clients using a Dirichlet distribution Dir(alpha).
+    - alpha -> inf: Uniform IID distribution.
+    - alpha = 1.0: Mild statistical heterogeneity.
+    - alpha = 0.5: Moderate statistical heterogeneity.
+    - alpha = 0.1: Severe statistical heterogeneity (extreme label skew).
+    """
+    def __init__(
+        self,
+        num_clients: int,
+        alpha: float = 0.5,
+        min_samples_per_client: int = 100,
+        seed: int = 42,
+        max_retries: int = 50
+    ):
+        super().__init__(num_clients=num_clients, seed=seed)
+        self.alpha = alpha
+        self.min_samples_per_client = min_samples_per_client
+        self.max_retries = max_retries
+
+    def partition(self, y: np.ndarray, **kwargs: Any) -> Dict[int, np.ndarray]:
+        logger.info(
+            f"Generating Dirichlet Non-IID partition (alpha={self.alpha}, K={self.num_clients}, min_samples={self.min_samples_per_client})..."
+        )
+        unique_classes = np.unique(y)
+        total_samples = len(y)
+
+        for attempt in range(self.max_retries):
+            current_seed = self.seed + attempt
+            rng = np.random.default_rng(current_seed)
+            client_indices: Dict[int, List[int]] = {i: [] for i in range(self.num_clients)}
+
+            for c in unique_classes:
+                class_idx = np.where(y == c)[0]
+                rng.shuffle(class_idx)
+                n_class = len(class_idx)
+
+                # Sample class-wise client proportions from Dirichlet distribution
+                proportions = rng.dirichlet(np.repeat(self.alpha, self.num_clients))
+                
+                # Convert continuous proportions to discrete sample counts
+                counts = (proportions * n_class).astype(int)
+
+                # Adjust rounding disparity to ensure all samples are assigned
+                disparity = n_class - counts.sum()
+                if disparity > 0:
+                    # Add remainder to clients with highest fractional remainder
+                    remainders = (proportions * n_class) - counts
+                    for top_client in np.argsort(-remainders)[:disparity]:
+                        counts[top_client] += 1
+
+                current_pos = 0
+                for client_id, count in enumerate(counts):
+                    if count > 0:
+                        client_indices[client_id].extend(
+                            class_idx[current_pos : current_pos + count].tolist()
+                        )
+                        current_pos += count
+
+            # Verify that all clients meet the minimum sample requirement
+            min_size = min(len(indices) for indices in client_indices.values())
+            if min_size >= self.min_samples_per_client:
+                logger.info(
+                    f"Valid Dirichlet partition found on attempt {attempt + 1}. Minimum client size: {min_size:,}"
+                )
+                result = {}
+                for client_id, indices in client_indices.items():
+                    arr = np.array(indices, dtype=np.int64)
+                    rng.shuffle(arr)
+                    result[client_id] = arr
+                return result
+            else:
+                logger.debug(
+                    f"Attempt {attempt + 1} produced client with {min_size} samples (< {self.min_samples_per_client}). Retrying..."
+                )
+
+        raise RuntimeError(
+            f"Failed to generate a valid Dirichlet partition after {self.max_retries} retries. "
+            f"Consider lowering min_samples_per_client (currently {self.min_samples_per_client}) "
+            f"or increasing alpha (currently {self.alpha})."
+        )
+
+
 def partition_iid(
     y: np.ndarray,
     num_clients: int,
     seed: int = 42
 ) -> Dict[int, np.ndarray]:
     """
-    Uniform Stratified IID Partitioning.
-    Distributes samples such that each client observes an identical or near-identical
-    class distribution.
-
-    Args:
-        y: 1D array of class labels for the training set.
-        num_clients: Number of simulated clients (K).
-        seed: Random seed for reproducibility.
-
-    Returns:
-        Dictionary mapping client_id (0 to K-1) to an array of indices.
+    Uniform Stratified IID Partitioning (convenience functional interface).
     """
-    logger.info(f"Generating Stratified IID partition for {num_clients} clients (seed={seed})...")
-    rng = np.random.default_rng(seed)
-    unique_classes = np.unique(y)
-    client_indices: Dict[int, List[int]] = {i: [] for i in range(num_clients)}
-
-    for c in unique_classes:
-        class_idx = np.where(y == c)[0]
-        rng.shuffle(class_idx)
-        
-        # Split class indices across clients as evenly as possible
-        splits = np.array_split(class_idx, num_clients)
-        for client_id, split in enumerate(splits):
-            client_indices[client_id].extend(split.tolist())
-
-    # Shuffle indices per client to eliminate ordering bias
-    result = {}
-    for client_id, indices in client_indices.items():
-        arr = np.array(indices, dtype=np.int64)
-        rng.shuffle(arr)
-        result[client_id] = arr
-        
-    return result
+    partitioner = StratifiedIIDPartitioner(num_clients=num_clients, seed=seed)
+    return partitioner.partition(y)
 
 
 def partition_dirichlet(
@@ -78,84 +167,16 @@ def partition_dirichlet(
     max_retries: int = 50
 ) -> Dict[int, np.ndarray]:
     """
-    Dirichlet Non-IID Partitioning.
-    Simulates label distribution skew across clients using a Dirichlet distribution Dir(alpha).
-    - alpha -> inf: Uniform IID distribution.
-    - alpha = 1.0: Mild statistical heterogeneity.
-    - alpha = 0.5: Moderate statistical heterogeneity.
-    - alpha = 0.1: Severe statistical heterogeneity (extreme label skew).
-
-    Args:
-        y: 1D array of class labels for the training set.
-        num_clients: Number of simulated clients (K).
-        alpha: Concentration parameter controlling heterogeneity.
-        min_samples_per_client: Minimum samples required per client to prevent degenerate partitions.
-        seed: Random seed.
-        max_retries: Maximum attempts to find a valid partition satisfying min_samples_per_client.
-
-    Returns:
-        Dictionary mapping client_id (0 to K-1) to an array of indices.
+    Dirichlet Non-IID Partitioning (convenience functional interface).
     """
-    logger.info(
-        f"Generating Dirichlet Non-IID partition (alpha={alpha}, K={num_clients}, min_samples={min_samples_per_client})..."
+    partitioner = DirichletPartitioner(
+        num_clients=num_clients,
+        alpha=alpha,
+        min_samples_per_client=min_samples_per_client,
+        seed=seed,
+        max_retries=max_retries
     )
-    unique_classes = np.unique(y)
-    num_classes = len(unique_classes)
-    total_samples = len(y)
-
-    for attempt in range(max_retries):
-        current_seed = seed + attempt
-        rng = np.random.default_rng(current_seed)
-        client_indices: Dict[int, List[int]] = {i: [] for i in range(num_clients)}
-
-        for c in unique_classes:
-            class_idx = np.where(y == c)[0]
-            rng.shuffle(class_idx)
-            n_class = len(class_idx)
-
-            # Sample class-wise client proportions from Dirichlet distribution
-            proportions = rng.dirichlet(np.repeat(alpha, num_clients))
-            
-            # Convert continuous proportions to discrete sample counts
-            counts = (proportions * n_class).astype(int)
-            # Adjust rounding disparity to ensure all samples are assigned
-            disparity = n_class - counts.sum()
-            if disparity > 0:
-                # Add remainder to clients with highest fractional remainder
-                remainders = (proportions * n_class) - counts
-                for top_client in np.argsort(-remainders)[:disparity]:
-                    counts[top_client] += 1
-
-            current_pos = 0
-            for client_id, count in enumerate(counts):
-                if count > 0:
-                    client_indices[client_id].extend(
-                        class_idx[current_pos : current_pos + count].tolist()
-                    )
-                    current_pos += count
-
-        # Verify that all clients meet the minimum sample requirement
-        min_size = min(len(indices) for indices in client_indices.values())
-        if min_size >= min_samples_per_client:
-            logger.info(
-                f"Valid Dirichlet partition found on attempt {attempt + 1}. Minimum client size: {min_size:,}"
-            )
-            result = {}
-            for client_id, indices in client_indices.items():
-                arr = np.array(indices, dtype=np.int64)
-                rng.shuffle(arr)
-                result[client_id] = arr
-            return result
-        else:
-            logger.debug(
-                f"Attempt {attempt + 1} produced client with {min_size} samples (< {min_samples_per_client}). Retrying..."
-            )
-
-    raise RuntimeError(
-        f"Failed to generate a valid Dirichlet partition after {max_retries} retries. "
-        f"Consider lowering min_samples_per_client (currently {min_samples_per_client}) "
-        f"or increasing alpha (currently {alpha})."
-    )
+    return partitioner.partition(y)
 
 
 def summarize_client_partitions(

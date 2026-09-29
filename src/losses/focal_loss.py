@@ -26,11 +26,13 @@ except ImportError:
     nn = object
     torch = None
 
+from src.base.loss import BaseLoss
+
 logger = logging.getLogger(__name__)
 
 
 if HAS_TORCH:
-    class MultiClassFocalLoss(nn.Module):
+    class MultiClassFocalLoss(BaseLoss):
         """
         Multi-Class Focal Loss for imbalanced classification tasks.
         
@@ -48,16 +50,9 @@ if HAS_TORCH:
             gamma: float = 2.0,
             reduction: str = "mean"
         ):
-            super().__init__()
-            if alpha is not None:
-                if not isinstance(alpha, torch.Tensor):
-                    alpha = torch.tensor(alpha, dtype=torch.float32)
-                self.register_buffer("alpha", alpha)
-            else:
-                self.alpha = None
-                
+            super().__init__(class_weights=alpha, reduction=reduction)
             self.gamma = gamma
-            self.reduction = reduction
+            self.alpha = self.class_weights
 
         def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
             """
@@ -65,6 +60,8 @@ if HAS_TORCH:
                 inputs: Predicted logits of shape (batch_size, num_classes).
                 targets: Ground truth class indices of shape (batch_size,).
             """
+            self.validate_inputs(inputs, targets)
+
             # Compute true class probabilities via log_softmax
             log_pt = F.log_softmax(inputs, dim=1)
             pt = torch.exp(log_pt)
@@ -83,11 +80,7 @@ if HAS_TORCH:
             else:
                 focal_loss = -focal_modulator * log_pt_target
 
-            if self.reduction == "mean":
-                return focal_loss.mean()
-            elif self.reduction == "sum":
-                return focal_loss.sum()
-            return focal_loss
+            return self.apply_reduction(focal_loss)
 
 
     def build_loss_function(

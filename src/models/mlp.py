@@ -23,6 +23,8 @@ except ImportError:
     nn = object
     torch = None
 
+from src.base.model import BaseFederatedModel
+
 # Backward-compatibility imports from isolated packages
 from src.losses.focal_loss import MultiClassFocalLoss
 from src.training.trainer import LocalClientTrainer
@@ -32,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 if HAS_TORCH:
-    class TabularIoTMLP(nn.Module):
+    class TabularIoTMLP(BaseFederatedModel):
         """
         Lightweight Multi-Layer Perceptron for Network Flow Intrusion Detection.
 
@@ -84,24 +86,6 @@ if HAS_TORCH:
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             return self.network(x)
-
-        def get_weights(self) -> List[np.ndarray]:
-            """Extracts model parameters as a list of NumPy arrays for Flower aggregation."""
-            return [val.detach().cpu().numpy() for _, val in self.state_dict().items()]
-
-        def set_weights(self, weights: List[np.ndarray]) -> None:
-            """Loads aggregated NumPy parameter arrays into the model state dictionary."""
-            state_dict = dict(zip(self.state_dict().keys(), [torch.tensor(w) for w in weights]))
-            self.load_state_dict(state_dict, strict=True)
-
-        def get_num_parameters(self) -> int:
-            """Returns the total number of trainable parameters."""
-            return sum(p.numel() for p in self.parameters() if p.requires_grad)
-
-        def get_model_size_kb(self) -> float:
-            """Computes model weight payload in Kilobytes (assuming float32 precision)."""
-            num_params = self.get_num_parameters()
-            return (num_params * 4) / 1024.0
 
 else:
     class TabularIoTMLP:
