@@ -45,6 +45,7 @@ flowchart TD
 | **`focal_loss`** | [`src/losses/focal_loss.py`](file:///home/quan/projects/FedLearning/src/losses/focal_loss.py) | [Documentation](file:///home/quan/projects/FedLearning/docs/modules/focal_loss.md) | Multi-Class Focal Loss down-weighting easy background samples ($400\times$ suppression) and focusing gradients on rare minority attacks (147:1 imbalance). |
 | **`optimizer`** | [`src/optimizers/optimizer.py`](file:///home/quan/projects/FedLearning/src/optimizers/optimizer.py) | [Documentation](file:///home/quan/projects/FedLearning/docs/modules/optimizer.md) | Factory for Adam, AdamW (decoupled decay), SGD with momentum, and Cosine Annealing learning rate schedulers. |
 | **`evaluator`** | [`src/evaluation/evaluator.py`](file:///home/quan/projects/FedLearning/src/evaluation/evaluator.py) | [Documentation](file:///home/quan/projects/FedLearning/docs/modules/evaluator.md) | Multi-metric evaluation preventing "the accuracy paradox": Macro-F1, isolated Minority Recall, and row-normalized confusion matrices. |
+| **`visualization`** | [`src/visualization/plots.py`](file:///home/quan/projects/FedLearning/src/visualization/plots.py) | [Documentation](file:///home/quan/projects/FedLearning/docs/modules/visualization.md) | Turnkey, publication-ready plotting suite: dual-panel learning curves, normalized confusion matrices, Dirichlet skew distributions, and scenario comparisons. |
 
 ---
 

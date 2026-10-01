@@ -9,6 +9,7 @@ from .partitioner import (
     partition_iid,
     partition_dirichlet,
     summarize_client_partitions,
+    get_client_distribution,
     create_client_dataloaders,
 )
 
@@ -19,5 +20,6 @@ __all__ = [
     "partition_iid",
     "partition_dirichlet",
     "summarize_client_partitions",
+    "get_client_distribution",
     "create_client_dataloaders",
 ]

@@ -224,6 +224,10 @@ def summarize_client_partitions(
     return df_summary
 
 
+# Intuitive alias for visualization & distribution analysis
+get_client_distribution = summarize_client_partitions
+
+
 def create_client_dataloaders(
     X: np.ndarray,
     y: np.ndarray,

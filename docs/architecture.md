@@ -257,6 +257,7 @@ To keep filenames intuitive, self-describing, and aligned with Clean Architectur
 | **Federated Training** | `BaseTrainer` | `FederatedClientTrainer` | [`src/training/federated_trainer.py`](file:///home/quan/projects/FedLearning/src/training/federated_trainer.py) | [`src/training/trainer.py`](file:///home/quan/projects/FedLearning/src/training/trainer.py) |
 | **Loss Functions** | `BaseLoss` | `MultiClassFocalLoss` | [`src/losses/focal_loss.py`](file:///home/quan/projects/FedLearning/src/losses/focal_loss.py) | *(Original name)* |
 | **Server Aggregation** | `BaseFederatedStrategy` | `FedAvgStrategy`<br>`FedProxStrategy`<br>`FedMedianStrategy` | [`src/federated/strategies.py`](file:///home/quan/projects/FedLearning/src/federated/strategies.py) | *(New module)* |
+| **Visualization & Diagnostics** | *(Turnkey Suite)* | `plot_learning_curves`<br>`plot_confusion_matrix`<br>`plot_scenario_comparison`<br>`plot_client_distribution` | [`src/visualization/plots.py`](file:///home/quan/projects/FedLearning/src/visualization/plots.py) | [`src/visualization/__init__.py`](file:///home/quan/projects/FedLearning/src/visualization/__init__.py) |
 
 ---
 
