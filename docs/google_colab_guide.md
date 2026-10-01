@@ -392,8 +392,7 @@ print(f"🔥 Scenario E5 (Severe Non-IID FedProx) - Test Macro-F1: {e5_results['
 ### Step 6: Preserving Top-K Models & Archiving to Google Drive
 
 ```python
-import matplotlib.pyplot as plt
-import seaborn as sns
+from src.visualization import plot_learning_curves, plot_confusion_matrix, plot_scenario_comparison
 import json, shutil
 
 # 1. Serialize all Top-K model checkpoints & manifest locally
@@ -404,20 +403,17 @@ saved_ckpt_paths = trainer.save_top_k(
     monitor="val_loss"
 )
 
-# 2. Compare Scenarios Plot
-scenarios = ["E1: Centralized", "E2: IID FedAvg", "E5: Non-IID FedProx"]
-macro_f1s = [e1_results['macro_f1'] * 100, e2_results['macro_f1'] * 100, e5_results['macro_f1'] * 100]
-
-plt.figure(figsize=(8, 5))
-sns.barplot(x=scenarios, y=macro_f1s, palette="viridis")
-plt.ylabel("Macro-F1 Score (%)")
-plt.title("Comparative IDS Performance Across Experimental Scenarios")
-plt.ylim(0, 100)
-
-plot_path = "reports/figures/colab_scenario_comparison.png"
-os.makedirs("reports/figures", exist_ok=True)
-plt.savefig(plot_path, dpi=300, bbox_inches="tight")
-plt.show()
+# 2. Generate publication-grade scenario comparison plot
+plot_scenario_comparison(
+    results={
+        "E1: Centralized": e1_results["macro_f1"],
+        "E2: IID FedAvg": e2_results["macro_f1"],
+        "E5: Non-IID FedProx": e5_results["macro_f1"]
+    },
+    metric="macro_f1",
+    save_path="reports/figures/colab_scenario_comparison.png",
+    show=True
+)
 
 # 3. Export Metrics JSON
 metrics_path = "reports/colab_benchmark_metrics.json"
