@@ -120,3 +120,43 @@ strategy = FlowerIoTServerStrategy(
     evaluate_fn=eval_fn
 )
 ```
+
+---
+
+## 4. Evaluation Paradigms: Client-Side vs Server-Side Evaluation
+
+A critical design consideration in Federated Learning and this thesis is the distinction between **where** and **what** is being evaluated.
+
+### 4.1 Evaluation Taxonomy
+
+| Evaluation Type | Model Evaluated | Dataset Evaluated | Question It Answers | Primary Role in Thesis |
+| :--- | :--- | :--- | :--- | :--- |
+| **Client Evaluation**<br>(`client.evaluate()` in Flower) | **Global Model** ($w_t$)<br>sent from server | **Local Private Data** ($D_k^{\text{val}}$)<br>client's private partition | *"How well does the global consensus model perform on this specific edge subnet?"* | Measures edge fairness and client disparity across heterogeneous nodes. |
+| **Server Evaluation**<br>(`evaluate_fn` in Flower) | **Global Model** ($w_t$)<br>aggregated weights | **Global Holdout Benchmark** ($D^{\text{test}}$)<br>unseen 20% CICIoT2023 | *"How well does the global model generalize across all 8 attack classes in the real world?"* | **Primary thesis benchmark metric** (Macro-F1, Minority Recall, Confusion Matrix). |
+| **Local Training Metric**<br>(inside `client.fit()`) | **Local Model** ($w_k^t$)<br>after local SGD steps | **Local Private Training Set** ($D_k^{\text{train}}$) | *"Did local gradient steps successfully decrease loss on local traffic?"* | Optimization convergence and gradient health diagnostic. |
+
+### 4.2 Exact Execution Flow in `FlowerIoTClient.evaluate()`
+
+```python
+def evaluate(self, parameters: List[np.ndarray], config: Dict[str, Scalar]):
+    # 1. Injects the incoming GLOBAL parameters received from the server
+    self.model.set_weights(parameters)
+
+    # 2. Runs inference strictly on the client's own PRIVATE LOCAL validation partition
+    loss, acc = self.trainer.evaluate(self.val_loader)
+
+    # 3. Returns scalar loss and accuracy back to server over gRPC
+    return float(loss), len(self.val_loader.dataset), {"accuracy": float(acc)}
+```
+
+### 4.3 Why Client Evaluation Exists in Flower
+1. **Zero-Knowledge Privacy (Production FL):** In production cross-silo FL (e.g., hospitals, banks, smartphone telemetry), the central server owns **zero raw data**. Client evaluation is the only mathematical mechanism to monitor loss convergence without violating privacy regulations (GDPR/HIPAA).
+2. **Fairness & Disparity Auditing:** A global model may achieve 85% average accuracy, but under Dirichlet label skew ($\alpha = 0.1$), client-side evaluation reveals if specific edge clients suffer severe accuracy drops.
+3. **Local Safety Verification:** Edge IoT routers can test incoming global parameters against local traffic before accepting them into active intrusion prevention filters.
+
+### 4.4 Why Your Thesis Relies on Server-Side Evaluation for Benchmark Claims
+Under severe non-IID partitioning (Dirichlet $\alpha = 0.1$), client-side metrics suffer from the **"Statistical Illusion"**:
+* A client with 98% Benign traffic naturally reports **98.5% accuracy**, despite being completely blind to network intrusions.
+* A client with 70% rare `Web-based` attacks might report **52% accuracy**, despite being the most critical node learning stealth penetration.
+
+Averaging these client scores yields misleading results. Therefore, as specified in the thesis proposal (Sections 2.2 & 9), all official benchmark claims are evaluated via `build_flower_server_eval_fn()` on the balanced holdout test set using **Macro-F1** and isolated **Minority Recall**.
