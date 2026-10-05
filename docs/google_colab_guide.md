@@ -5,7 +5,8 @@ Comprehensive, step-by-step technical guide for configuring, pulling, and orches
 * **Repository:** [`https://github.com/NVKQ2022/FedLearning.git`](https://github.com/NVKQ2022/FedLearning.git)
 * **Associated Notebooks:**
   * Centralized Pipeline: [`notebooks/centralized_training_pipeline.ipynb`](file:///home/quan/projects/FedLearning/notebooks/centralized_training_pipeline.ipynb)
-  * Federated Pipeline: [`notebooks/federated_training_pipeline.ipynb`](file:///home/quan/projects/FedLearning/notebooks/federated_training_pipeline.ipynb)
+  * Native Federated Pipeline: [`notebooks/federated_training_pipeline.ipynb`](file:///home/quan/projects/FedLearning/notebooks/federated_training_pipeline.ipynb)
+  * Flower Federated Pipeline: [`notebooks/flower_federated_pipeline.ipynb`](file:///home/quan/projects/FedLearning/notebooks/flower_federated_pipeline.ipynb)
   * Multi-Scenario Runner: [`notebooks/colab_experiment_runner.ipynb`](file:///home/quan/projects/FedLearning/notebooks/colab_experiment_runner.ipynb)
 * **Skill Reference:** [skills/experiment-orchestration/SKILL.md](file:///home/quan/projects/FedLearning/.agents/skills/experiment-orchestration/SKILL.md) & [skills/code-documentation/SKILL.md](file:///home/quan/projects/FedLearning/.agents/skills/code-documentation/SKILL.md)
 

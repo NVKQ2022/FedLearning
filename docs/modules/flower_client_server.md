@@ -4,6 +4,7 @@ Publication-grade Flower framework implementation for decentralized IoT Network 
 
 * **Client File:** [`src/federated/flower_client.py`](file:///home/quan/projects/FedLearning/src/federated/flower_client.py)
 * **Server File:** [`src/federated/flower_server.py`](file:///home/quan/projects/FedLearning/src/federated/flower_server.py)
+* **Interactive Notebook:** [`notebooks/flower_federated_pipeline.ipynb`](file:///home/quan/projects/FedLearning/notebooks/flower_federated_pipeline.ipynb)
 * **Thesis Mapping:** Directly realizes Sections 5, 6, 7, 8, and 9 of the thesis proposal:
   *"Xây dựng và đánh giá prototype hệ thống phát hiện xâm nhập IoT sử dụng Federated Learning trong môi trường dữ liệu non-IID"* (Nguyễn Việt Kỳ Quân, 2026).
 
