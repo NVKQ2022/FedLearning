@@ -227,3 +227,60 @@ class FedTrimmedMeanStrategy(BaseFederatedStrategy):
         losses = [res[1] for res in client_eval_results]
         mean_loss = float(np.mean(losses))
         return mean_loss, {"eval_loss": mean_loss, "trim_fraction": self.trim_fraction}
+
+
+def build_strategy(
+    strategy_name: str = "fedavg",
+    mu: float = 0.05,
+    trim_fraction: float = 0.1,
+    fraction_fit: float = 1.0,
+    min_fit_clients: int = 2,
+    min_available_clients: int = 2,
+    **kwargs: Any
+) -> BaseFederatedStrategy:
+    """
+    Factory function to instantiate server aggregation strategies.
+
+    Args:
+        strategy_name: Name of strategy ('fedavg', 'fedprox', 'fedmedian', 'fedtrimmedmean').
+        mu: Proximal parameter for FedProx (mu=0.0 equivalent to FedAvg).
+        trim_fraction: Trimming fraction for FedTrimmedMean.
+        fraction_fit: Fraction of available clients selected per round.
+        min_fit_clients: Minimum clients participating per round.
+        min_available_clients: Minimum total clients required.
+
+    Returns:
+        Instance of BaseFederatedStrategy subclass.
+    """
+    strat = strategy_name.lower().replace("-", "").replace("_", "")
+    if strat in ("fedavg", "avg"):
+        return FedAvgStrategy(
+            fraction_fit=fraction_fit,
+            min_fit_clients=min_fit_clients,
+            min_available_clients=min_available_clients
+        )
+    elif strat in ("fedprox", "prox"):
+        return FedProxStrategy(
+            mu=mu,
+            fraction_fit=fraction_fit,
+            min_fit_clients=min_fit_clients,
+            min_available_clients=min_available_clients
+        )
+    elif strat in ("fedmedian", "median"):
+        return FedMedianStrategy(
+            fraction_fit=fraction_fit,
+            min_fit_clients=max(min_fit_clients, 3),
+            min_available_clients=max(min_available_clients, 3)
+        )
+    elif strat in ("fedtrimmedmean", "trimmedmean"):
+        return FedTrimmedMeanStrategy(
+            trim_fraction=trim_fraction,
+            fraction_fit=fraction_fit,
+            min_fit_clients=max(min_fit_clients, 3),
+            min_available_clients=max(min_available_clients, 3)
+        )
+    else:
+        raise ValueError(
+            f"Unknown federated strategy: '{strategy_name}'. "
+            f"Expected one of: 'fedavg', 'fedprox', 'fedmedian', 'fedtrimmedmean'."
+        )

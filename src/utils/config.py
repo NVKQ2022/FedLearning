@@ -78,6 +78,8 @@ class ExperimentConfig:
     local_epochs: int = 2
     mu: float = 0.05                         # FedProx proximal coefficient (0.0 for FedAvg)
     dirichlet_alpha: float = 0.1             # Dirichlet heterogeneity parameter (0.1 severe, 0.5 moderate)
+    federated_strategy: str = "fedprox"      # 'fedavg', 'fedprox', 'fedmedian', 'fedtrimmedmean'
+    partition_type: str = "dirichlet"        # 'iid' or 'dirichlet'
 
     def to_dict(self) -> Dict[str, Any]:
         """Converts configuration dataclass to a standard Python dictionary."""

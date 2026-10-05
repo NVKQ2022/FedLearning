@@ -15,6 +15,7 @@ from .strategies import (
     FedProxStrategy,
     FedMedianStrategy,
     FedTrimmedMeanStrategy,
+    build_strategy,
 )
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     "FedProxStrategy",
     "FedMedianStrategy",
     "FedTrimmedMeanStrategy",
+    "build_strategy",
 ]
