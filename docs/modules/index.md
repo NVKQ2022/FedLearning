@@ -46,6 +46,7 @@ flowchart TD
 | **`optimizer`** | [`src/optimizers/optimizer.py`](file:///home/quan/projects/FedLearning/src/optimizers/optimizer.py) | [Documentation](file:///home/quan/projects/FedLearning/docs/modules/optimizer.md) | Factory for Adam, AdamW (decoupled decay), SGD with momentum, and Cosine Annealing learning rate schedulers. |
 | **`evaluator`** | [`src/evaluation/evaluator.py`](file:///home/quan/projects/FedLearning/src/evaluation/evaluator.py) | [Documentation](file:///home/quan/projects/FedLearning/docs/modules/evaluator.md) | Multi-metric evaluation preventing "the accuracy paradox": Macro-F1, isolated Minority Recall, and row-normalized confusion matrices. |
 | **`visualization`** | [`src/visualization/plots.py`](file:///home/quan/projects/FedLearning/src/visualization/plots.py) | [Documentation](file:///home/quan/projects/FedLearning/docs/modules/visualization.md) | Turnkey, publication-ready plotting suite: dual-panel learning curves, normalized confusion matrices, Dirichlet skew distributions, and scenario comparisons. |
+| **`flower_layer`** | [`src/federated/flower_client.py`](file:///home/quan/projects/FedLearning/src/federated/flower_client.py)<br>[`src/federated/flower_server.py`](file:///home/quan/projects/FedLearning/src/federated/flower_server.py) | [Documentation](file:///home/quan/projects/FedLearning/docs/modules/flower_client_server.md) | Official Flower framework client (`NumPyClient`) and server strategy with centralized holdout evaluation and communication cost tracking. |
 
 ---
 

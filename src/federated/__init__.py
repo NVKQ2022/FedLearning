@@ -17,6 +17,12 @@ from .strategies import (
     FedTrimmedMeanStrategy,
     build_strategy,
 )
+from .flower_client import FlowerIoTClient, start_flower_client
+from .flower_server import (
+    FlowerIoTServerStrategy,
+    start_flower_server,
+    build_flower_server_eval_fn,
+)
 
 __all__ = [
     "BaseFederatedStrategy",
@@ -25,4 +31,9 @@ __all__ = [
     "FedMedianStrategy",
     "FedTrimmedMeanStrategy",
     "build_strategy",
+    "FlowerIoTClient",
+    "start_flower_client",
+    "FlowerIoTServerStrategy",
+    "start_flower_server",
+    "build_flower_server_eval_fn",
 ]
