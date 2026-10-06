@@ -52,7 +52,7 @@ class ExperimentConfig:
 
     # 4. Neural Network Architecture Hyperparameters
     input_dim: int = 39
-    hidden_dims: Tuple[int, ...] = (128, 64)  # (128, 64) or (256, 128, 64)
+    hidden_dims: Union[Tuple[int, ...], List[int]] = (128, 64)  # (128, 64) or (256, 128, 64)
     num_classes: int = 8
     dropout_rate: float = 0.2
 
@@ -60,10 +60,12 @@ class ExperimentConfig:
     loss_type: str = "focal_loss"            # 'focal_loss', 'cross_entropy', 'weighted_ce'
     class_weight_strategy: str = "balanced"  # 'balanced', 'sqrt_balanced', or 'none'
     focal_gamma: float = 2.0                 # Focusing parameter gamma (e.g. 1.5, 2.0)
+    use_class_weights: bool = True           # Convenience boolean flag for class weights
 
     # 6. Optimization & Training Loop Hyperparameters
     optimizer_type: str = "adamw"            # 'adamw', 'adam', or 'sgd'
     learning_rate: float = 1e-3
+    lr: Optional[float] = None               # Backward-compatible alias for learning_rate
     weight_decay: float = 1e-4
     epochs: int = 15
     patience: int = 4
@@ -80,6 +82,26 @@ class ExperimentConfig:
     dirichlet_alpha: float = 0.1             # Dirichlet heterogeneity parameter (0.1 severe, 0.5 moderate)
     federated_strategy: str = "fedprox"      # 'fedavg', 'fedprox', 'fedmedian', 'fedtrimmedmean'
     partition_type: str = "dirichlet"        # 'iid' or 'dirichlet'
+
+    def __post_init__(self):
+        """Validates and synchronizes parameter aliases."""
+        if self.lr is not None:
+            self.learning_rate = self.lr
+        else:
+            self.lr = self.learning_rate
+        if isinstance(self.hidden_dims, list):
+            self.hidden_dims = tuple(self.hidden_dims)
+        if not self.use_class_weights:
+            self.class_weight_strategy = "none"
+        elif self.class_weight_strategy == "none" and self.use_class_weights:
+            self.class_weight_strategy = "balanced"
+
+    def save(self, filepath: str) -> None:
+        """Universal save method delegating to save_yaml or save_json based on extension."""
+        if filepath.endswith((".yaml", ".yml")):
+            self.save_yaml(filepath)
+        else:
+            self.save_json(filepath)
 
     def to_dict(self) -> Dict[str, Any]:
         """Converts configuration dataclass to a standard Python dictionary."""
