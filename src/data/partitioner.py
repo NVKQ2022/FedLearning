@@ -250,17 +250,25 @@ def create_client_dataloaders(
     Returns:
         Dict mapping client_id to PyTorch DataLoader.
     """
-    if not HAS_TORCH:
-        raise ImportError("PyTorch is required to instantiate DataLoaders. Please install torch.")
-
     dataloaders = {}
+    from torch.utils.data import Subset
+    # Use zero-copy torch tensors and Subset to prevent duplicating memory across clients
+    if isinstance(X, np.ndarray):
+        X_tensor = torch.from_numpy(np.ascontiguousarray(X, dtype=np.float32))
+    else:
+        X_tensor = X
+
+    if isinstance(y, np.ndarray):
+        y_tensor = torch.from_numpy(np.ascontiguousarray(y, dtype=np.int64))
+    else:
+        y_tensor = y
+
+    base_dataset = TensorDataset(X_tensor, y_tensor)
+
     for client_id, indices in client_partitions.items():
-        X_client = torch.tensor(X[indices], dtype=torch.float32)
-        y_client = torch.tensor(y[indices], dtype=torch.long)
-        dataset = TensorDataset(X_client, y_client)
-        
+        client_dataset = Subset(base_dataset, indices)
         loader = DataLoader(
-            dataset,
+            client_dataset,
             batch_size=batch_size,
             shuffle=shuffle,
             num_workers=num_workers,

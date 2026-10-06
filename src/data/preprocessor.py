@@ -44,12 +44,20 @@ NON_NEGATIVE_COLUMNS = ["IAT", "Rate", "Time_To_Live", "Header_Length", "Min", "
 class TabularFlowDataset(Dataset):
     """
     PyTorch Dataset wrapper for tabular network flow features and labels.
+    Uses zero-copy torch.from_numpy to share underlying array memory.
     """
-    def __init__(self, features: np.ndarray, labels: np.ndarray):
+    def __init__(self, features: Union[np.ndarray, torch.Tensor], labels: Union[np.ndarray, torch.Tensor]):
         if not HAS_TORCH:
             raise ImportError("PyTorch is required for TabularFlowDataset. Please install torch.")
-        self.features = torch.tensor(features, dtype=torch.float32)
-        self.labels = torch.tensor(labels, dtype=torch.long)
+        if isinstance(features, np.ndarray):
+            self.features = torch.from_numpy(np.ascontiguousarray(features, dtype=np.float32))
+        else:
+            self.features = features
+
+        if isinstance(labels, np.ndarray):
+            self.labels = torch.from_numpy(np.ascontiguousarray(labels, dtype=np.int64))
+        else:
+            self.labels = labels
 
     def __len__(self) -> int:
         return len(self.labels)
@@ -147,27 +155,25 @@ class TabularDataPreprocessor(BasePreprocessor):
     def _clean_features(self, X: pd.DataFrame) -> pd.DataFrame:
         """
         Applies cleaning routines (inf replacement, imputation, clipping, log1p)
-        using statistics learned during fit().
+        using statistics learned during fit(). Modifies DataFrame in-place to conserve memory.
         """
-        X_clean = X.copy()
-        
         for col in self.feature_columns:
             # Replace inf with nan
-            X_clean[col] = X_clean[col].replace([np.inf, -np.inf], np.nan)
+            X[col] = X[col].replace([np.inf, -np.inf], np.nan)
             
             # Impute using train median
             median_val = self.medians_.get(col, 0.0)
-            X_clean[col] = X_clean[col].fillna(median_val)
+            X[col] = X[col].fillna(median_val)
 
             # Non-negative clip for physical flow properties
             if col in NON_NEGATIVE_COLUMNS or "iat" in col.lower() or "time" in col.lower():
-                X_clean[col] = X_clean[col].clip(lower=0.0)
+                X[col] = X[col].clip(lower=0.0)
 
             # Apply log1p on heavy-tailed columns to compress dynamic range
             if self.apply_log1p and (col in HEAVY_TAIL_COLUMNS or "tot" in col.lower() or "iat" in col.lower()):
-                X_clean[col] = np.log1p(X_clean[col])
+                X[col] = np.log1p(X[col])
 
-        return X_clean
+        return X
 
     def save(self, filepath: str) -> None:
         """Saves fitted preprocessor state to disk."""
@@ -254,48 +260,60 @@ def load_and_preprocess_ciciot2023(
     # 2. Stratified downsampling for rapid prototyping if requested
     if sample_size is not None and sample_size < len(df):
         logger.info(f"Applying stratified sampling to {sample_size:,} records...")
-        df, _ = train_test_split(
-            df,
+        sampled_indices, _ = train_test_split(
+            np.arange(len(df)),
             train_size=sample_size,
             stratify=df[TARGET_COLUMN],
             random_state=random_state
         )
+        df = df.iloc[sampled_indices].reset_index(drop=True)
         logger.info(f"Subsampled dataset shape: {df.shape}")
 
-    # 3. Leak-free Train/Test split BEFORE any transformation
-    df_train_full, df_test = train_test_split(
-        df,
+    # 3. Leak-free index splits BEFORE any transformation (avoids DataFrame duplication)
+    indices = np.arange(len(df))
+    train_idx, test_idx = train_test_split(
+        indices,
         test_size=test_size,
         stratify=df[TARGET_COLUMN],
         random_state=random_state
     )
 
-    # 4. Optional Train/Val split
     if val_size > 0.0:
         val_relative_size = val_size / (1.0 - test_size)
-        df_train, df_val = train_test_split(
-            df_train_full,
+        train_idx, val_idx = train_test_split(
+            train_idx,
             test_size=val_relative_size,
-            stratify=df_train_full[TARGET_COLUMN],
+            stratify=df[TARGET_COLUMN].iloc[train_idx],
             random_state=random_state
         )
     else:
-        df_train = df_train_full
-        df_val = pd.DataFrame()
+        val_idx = np.array([], dtype=int)
 
-    logger.info(f"Partition sizes: Train={len(df_train):,}, Val={len(df_val):,}, Test={len(df_test):,}")
+    logger.info(f"Partition sizes: Train={len(train_idx):,}, Val={len(val_idx):,}, Test={len(test_idx):,}")
 
-    # 5. Fit preprocessor strictly on df_train
+    # 5. Fit preprocessor strictly on df.iloc[train_idx]
     preprocessor = TabularDataPreprocessor(scaler_type=scaler_type, apply_log1p=True)
-    preprocessor.fit(df_train, target_col=TARGET_COLUMN)
+    df_train_chunk = df.iloc[train_idx]
+    preprocessor.fit(df_train_chunk, target_col=TARGET_COLUMN)
 
-    # 6. Transform partitions
-    X_train, y_train = preprocessor.transform(df_train, target_col=TARGET_COLUMN)
-    X_test, y_test = preprocessor.transform(df_test, target_col=TARGET_COLUMN)
-    
+    # 6. Transform partitions sequentially to keep memory usage minimal
+    X_train, y_train = preprocessor.transform(df_train_chunk, target_col=TARGET_COLUMN)
+    del df_train_chunk
+
+    df_test_chunk = df.iloc[test_idx]
+    X_test, y_test = preprocessor.transform(df_test_chunk, target_col=TARGET_COLUMN)
+    del df_test_chunk
+
     X_val, y_val = None, None
-    if len(df_val) > 0:
-        X_val, y_val = preprocessor.transform(df_val, target_col=TARGET_COLUMN)
+    if len(val_idx) > 0:
+        df_val_chunk = df.iloc[val_idx]
+        X_val, y_val = preprocessor.transform(df_val_chunk, target_col=TARGET_COLUMN)
+        del df_val_chunk
+
+    # Reclaim raw DataFrame memory immediately
+    del df
+    import gc
+    gc.collect()
 
     # 7. Compute balanced class weights on training labels
     class_weights = compute_balanced_class_weights(y_train, num_classes=preprocessor.num_classes_)
