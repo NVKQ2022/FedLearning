@@ -189,10 +189,16 @@ class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
         results: List[Tuple[ClientProxy, FitRes]],
         failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]]
     ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
-        """
-        Aggregates client model updates and updates thesis communication & system metrics.
-        """
+        if failures:
+            logger.warning(f"[Server Round {server_round:02d}] ⚠️ {len(failures)} client(s) failed during fit:")
+            for idx, fail in enumerate(failures[:3]):
+                logger.warning(f"   Failure {idx + 1}: {fail}")
+
         if not results:
+            logger.error(
+                f"[Server Round {server_round:02d}] ❌ No successful client updates received! "
+                f"Check client resources or device configurations."
+            )
             return None, {}
 
         # 1. Execute parameter aggregation (standard sample-weighted FedAvg)
