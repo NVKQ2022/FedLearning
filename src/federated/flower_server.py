@@ -348,26 +348,37 @@ def start_flower_server(
     mu: float = 0.05,
     min_fit_clients: int = 2,
     min_available_clients: int = 2,
-    evaluate_fn: Optional[Callable] = None
+    evaluate_fn: Optional[Callable] = None,
+    partitions_dir: Optional[str] = None,
+    history_save_path: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Configures and starts the Flower server process communicating over gRPC.
-
-    Args:
-        server_address: IP and port to bind (default: '0.0.0.0:8080').
-        num_rounds: Total federated communication rounds.
-        strategy: Pre-built strategy instance. If None, builds FlowerIoTServerStrategy.
-        strategy_name: 'fedavg' or 'fedprox'.
-        mu: Proximal parameter for FedProx.
-        min_fit_clients: Minimum client connections required per round.
-        min_available_clients: Minimum clients connected before training starts.
-        evaluate_fn: Optional centralized evaluation callback.
-
-    Returns:
-        Server history / summary dictionary.
     """
     if not HAS_FLWR:
         raise ImportError("Flower (flwr) is required to run start_flower_server. Run: pip install flwr")
+
+    # If partitions_dir is provided and evaluate_fn is not, build evaluate_fn from server_val.npz
+    if evaluate_fn is None and partitions_dir and os.path.exists(partitions_dir):
+        meta_path = os.path.join(partitions_dir, "meta.json")
+        val_path = os.path.join(partitions_dir, "server_val.npz")
+        if os.path.exists(meta_path) and os.path.exists(val_path):
+            with open(meta_path) as f:
+                meta = json.load(f)
+            val_npz = np.load(val_path)
+            from src.models.tabular_mlp import TabularIoTMLPModel
+            from torch.utils.data import TensorDataset, DataLoader
+            eval_model = TabularIoTMLPModel(input_dim=meta["input_dim"], num_classes=meta["num_classes"])
+            eval_ds = TensorDataset(torch.from_numpy(val_npz["X"]), torch.from_numpy(val_npz["y"]))
+            eval_loader = DataLoader(eval_ds, batch_size=128, shuffle=False)
+            eval_device = "cuda" if torch.cuda.is_available() else "cpu"
+            evaluate_fn = build_flower_server_eval_fn(
+                model=eval_model,
+                val_loader=eval_loader,
+                class_names=meta.get("class_names", []),
+                device=eval_device
+            )
+            logger.info(f"Loaded server holdout validation set ({len(val_npz['X']):,} samples) for evaluation.")
 
     if strategy is None:
         strategy = FlowerIoTServerStrategy(
@@ -385,6 +396,9 @@ def start_flower_server(
         strategy=strategy
     )
 
+    if history_save_path and hasattr(strategy, "save_round_history"):
+        strategy.save_round_history(history_save_path)
+
     if hasattr(strategy, "round_history"):
         return strategy.round_history
     return {}
@@ -397,6 +411,8 @@ if __name__ == "__main__":
     parser.add_argument("--strategy", type=str, default="fedprox", choices=["fedavg", "fedprox"], help="FL Strategy.")
     parser.add_argument("--mu", type=float, default=0.05, help="FedProx proximal parameter mu.")
     parser.add_argument("--min-clients", type=int, default=2, help="Minimum connected clients.")
+    parser.add_argument("--partitions-dir", type=str, default=None, help="Directory containing server_val.npz and meta.json.")
+    parser.add_argument("--history-save-path", type=str, default=None, help="Filepath to export round history JSON.")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -407,5 +423,7 @@ if __name__ == "__main__":
         strategy_name=args.strategy,
         mu=args.mu,
         min_fit_clients=args.min_clients,
-        min_available_clients=args.min_clients
+        min_available_clients=args.min_clients,
+        partitions_dir=args.partitions_dir,
+        history_save_path=args.history_save_path
     )

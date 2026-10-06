@@ -238,10 +238,16 @@ def start_flower_client(
     )
 
     logger.info(f"Connecting Flower IoT Client {client_id} to server at {server_address}...")
-    fl.client.start_numpy_client(
-        server_address=server_address,
-        client=client
-    )
+    try:
+        fl.client.start_client(
+            server_address=server_address,
+            client=client.to_client()
+        )
+    except Exception:
+        fl.client.start_numpy_client(
+            server_address=server_address,
+            client=client
+        )
 
 
 if __name__ == "__main__":
@@ -249,7 +255,39 @@ if __name__ == "__main__":
     parser.add_argument("--client-id", type=int, default=0, help="Client ID index.")
     parser.add_argument("--server-address", type=str, default="127.0.0.1:8080", help="Flower server gRPC address.")
     parser.add_argument("--device", type=str, default="cpu", help="Compute device ('cpu' or 'cuda').")
+    parser.add_argument("--partitions-dir", type=str, default="checkpoints/partitions", help="Directory containing client npz files.")
+    parser.add_argument("--batch-size", type=int, default=64, help="Local mini-batch size.")
+    parser.add_argument("--strategy", type=str, default="fedprox", choices=["fedavg", "fedprox"], help="Strategy name.")
+    parser.add_argument("--epochs", type=int, default=2, help="Local training epochs.")
+    parser.add_argument("--lr", type=float, default=1e-3, help="Client learning rate.")
+    parser.add_argument("--mu", type=float, default=0.05, help="FedProx proximal parameter mu.")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     print(f"Flower Client CLI: Client ID {args.client_id} connecting to {args.server_address}")
+
+    import os
+    import json
+    meta_path = os.path.join(args.partitions_dir, "meta.json")
+    client_file = os.path.join(args.partitions_dir, f"client_{args.client_id}.npz")
+    if not os.path.exists(client_file):
+        raise FileNotFoundError(f"Client partition file not found at: {client_file}")
+
+    with open(meta_path) as f:
+        meta = json.load(f)
+    client_npz = np.load(client_file)
+
+    from src.models.tabular_mlp import TabularIoTMLPModel
+    from torch.utils.data import TensorDataset, DataLoader
+
+    model = TabularIoTMLPModel(input_dim=meta["input_dim"], num_classes=meta["num_classes"])
+    train_ds = TensorDataset(torch.from_numpy(client_npz["X"]), torch.from_numpy(client_npz["y"]))
+    train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
+
+    start_flower_client(
+        client_id=args.client_id,
+        server_address=args.server_address,
+        model=model,
+        train_loader=train_loader,
+        device=args.device
+    )

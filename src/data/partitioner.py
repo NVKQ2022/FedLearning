@@ -279,6 +279,54 @@ def create_client_dataloaders(
     return dataloaders
 
 
+def save_partitions_for_grpc(
+    client_partitions: Dict[int, np.ndarray],
+    X: np.ndarray,
+    y: np.ndarray,
+    output_dir: str = "checkpoints/partitions",
+    X_val: Optional[np.ndarray] = None,
+    y_val: Optional[np.ndarray] = None,
+    class_names: Optional[List[str]] = None
+) -> str:
+    """
+    Serializes partitioned client arrays and server holdout validation data to disk (.npz)
+    for standalone multi-process gRPC execution.
+    """
+    import json
+    import os
+    os.makedirs(output_dir, exist_ok=True)
+
+    input_dim = int(X.shape[1])
+    num_classes = len(class_names) if class_names else int(len(np.unique(y)))
+    meta = {
+        "input_dim": input_dim,
+        "num_classes": num_classes,
+        "num_clients": len(client_partitions),
+        "class_names": class_names or [f"Class_{i}" for i in range(num_classes)]
+    }
+    with open(os.path.join(output_dir, "meta.json"), "w") as f:
+        json.dump(meta, f, indent=2)
+
+    for client_id, indices in client_partitions.items():
+        client_file = os.path.join(output_dir, f"client_{int(client_id)}.npz")
+        np.savez_compressed(
+            client_file,
+            X=np.ascontiguousarray(X[indices], dtype=np.float32),
+            y=np.ascontiguousarray(y[indices], dtype=np.int64)
+        )
+
+    if X_val is not None and y_val is not None:
+        val_file = os.path.join(output_dir, "server_val.npz")
+        np.savez_compressed(
+            val_file,
+            X=np.ascontiguousarray(X_val, dtype=np.float32),
+            y=np.ascontiguousarray(y_val, dtype=np.int64)
+        )
+
+    logger.info(f"Successfully serialized {len(client_partitions)} client partitions to: {output_dir}")
+    return output_dir
+
+
 if __name__ == "__main__":
     print("--- Running Data Partition Verification Test ---")
     # Generate mock dataset with severe class imbalance
