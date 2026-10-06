@@ -189,8 +189,8 @@ def summarize_client_partitions(
     class_names: Optional[List[str]] = None
 ) -> pd.DataFrame:
     """
-    Generates a detailed statistical summary of the client partitions.
-    Shows total samples per client and per-class distributions.
+    Generates a detailed statistical summary of the client partitions using src.eda.
+    Shows total samples per client, per-class distributions, and normalized Shannon entropy.
 
     Args:
         client_partitions: Dict mapping client_id to sample indices.
@@ -200,28 +200,8 @@ def summarize_client_partitions(
     Returns:
         DataFrame where rows represent clients and columns represent class sample counts and percentages.
     """
-    unique_classes = sorted(np.unique(y))
-    num_classes = len(unique_classes)
-    if class_names is None or len(class_names) != num_classes:
-        class_names = [f"Class_{c}" for c in unique_classes]
-
-    summary_rows = []
-    for client_id, indices in sorted(client_partitions.items()):
-        client_labels = y[indices]
-        total_samples = len(client_labels)
-        
-        row = {"client_id": client_id, "total_samples": total_samples}
-        
-        for c, name in zip(unique_classes, class_names):
-            cnt = int((client_labels == c).sum())
-            pct = (cnt / total_samples * 100.0) if total_samples > 0 else 0.0
-            row[f"{name}_count"] = cnt
-            row[f"{name}_pct"] = round(pct, 2)
-            
-        summary_rows.append(row)
-
-    df_summary = pd.DataFrame(summary_rows)
-    return df_summary
+    from src.eda import summarize_partitions
+    return summarize_partitions(client_partitions=client_partitions, y=y, class_names=class_names)
 
 
 # Intuitive alias for visualization & distribution analysis

@@ -43,126 +43,15 @@ import matplotlib.pyplot as plt
 logger = logging.getLogger(__name__)
 
 
-def compute_partition_eda(
-    y: np.ndarray,
-    class_names: List[str],
-    client_id: Optional[int] = None
-) -> Dict[str, Any]:
-    """
-    Computes statistical Exploratory Data Analysis (EDA) on a client partition.
+from src.eda import (
+    analyze_partition,
+    plot_class_distribution,
+    export_client_eda,
+    export_scenario_eda_summary,
+)
 
-    Args:
-        y: 1D array of categorical integer labels.
-        class_names: List of human-readable class names.
-        client_id: Optional client identifier index.
-
-    Returns:
-        Structured EDA dictionary with sample counts, percentages, and Shannon entropy.
-    """
-    total_samples = int(len(y))
-    num_classes = len(class_names)
-    unique_labels, counts = np.unique(y, return_counts=True)
-    label_to_count = dict(zip(unique_labels.tolist(), counts.tolist()))
-
-    class_counts: Dict[str, int] = {}
-    class_percentages: Dict[str, float] = {}
-
-    for idx, name in enumerate(class_names):
-        cnt = int(label_to_count.get(idx, 0))
-        pct = round((cnt / total_samples * 100.0), 2) if total_samples > 0 else 0.0
-        class_counts[name] = cnt
-        class_percentages[name] = pct
-
-    # Calculate Shannon Entropy: H(p) = -sum(p * ln(p))
-    probs = np.array([class_counts[name] / total_samples for name in class_names if class_counts[name] > 0])
-    if len(probs) > 0:
-        entropy = float(-np.sum(probs * np.log(probs)))
-        max_possible_entropy = float(np.log(num_classes)) if num_classes > 1 else 1.0
-        norm_entropy = float(entropy / max_possible_entropy) if max_possible_entropy > 0 else 1.0
-    else:
-        entropy = 0.0
-        norm_entropy = 0.0
-
-    dominant_class = max(class_counts.items(), key=lambda kv: kv[1])[0] if class_counts else "Unknown"
-    dominant_pct = class_percentages.get(dominant_class, 0.0)
-
-    eda = {
-        "client_id": client_id,
-        "total_samples": total_samples,
-        "num_classes": num_classes,
-        "dominant_class": dominant_class,
-        "dominant_class_pct": dominant_pct,
-        "shannon_entropy": round(entropy, 4),
-        "normalized_entropy": round(norm_entropy, 4),
-        "class_counts": class_counts,
-        "class_percentages": class_percentages,
-    }
-    return eda
-
-
-def plot_class_distribution(
-    eda: Dict[str, Any],
-    save_path: str,
-    title: Optional[str] = None
-) -> str:
-    """
-    Renders and saves a clean, publication-ready horizontal bar chart of class distribution.
-
-    Args:
-        eda: Output dictionary from compute_partition_eda.
-        save_path: Path where the PNG image will be written.
-        title: Optional plot title override.
-
-    Returns:
-        Absolute filepath to the saved image.
-    """
-    os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
-    client_id = eda.get("client_id")
-    total_samples = eda.get("total_samples", 0)
-    counts = eda.get("class_counts", {})
-    percentages = eda.get("class_percentages", {})
-
-    classes = list(counts.keys())
-    sample_values = [counts[c] for c in classes]
-
-    # Invert order for natural top-to-bottom reading on horizontal bar chart
-    classes_rev = classes[::-1]
-    values_rev = sample_values[::-1]
-
-    fig, ax = plt.subplots(figsize=(8, 4.5), dpi=150)
-    bars = ax.barh(classes_rev, values_rev, color="#2b5c8f", edgecolor="#1a365d", height=0.65)
-
-    max_val = max(values_rev) if values_rev and max(values_rev) > 0 else 1
-    ax.set_xlim(0, max_val * 1.25)
-    ax.set_xlabel("Sample Count", fontsize=10, fontweight="bold")
-    ax.xaxis.grid(True, linestyle="--", alpha=0.5)
-
-    plot_title = title or (
-        f"Client {client_id} Partition - Label Distribution (N={total_samples:,})"
-        if client_id is not None
-        else f"Label Distribution (N={total_samples:,})"
-    )
-    ax.set_title(plot_title, fontsize=11, fontweight="bold", pad=12)
-
-    # Annotate bars with counts and percentages
-    for bar, c_name in zip(bars, classes_rev):
-        width = bar.get_width()
-        pct = percentages.get(c_name, 0.0)
-        ax.text(
-            width + (max_val * 0.02),
-            bar.get_y() + bar.get_height() / 2,
-            f"{int(width):,} ({pct:.1f}%)",
-            va="center",
-            ha="left",
-            fontsize=8.5,
-            color="#2d3748",
-            fontweight="normal"
-        )
-
-    plt.tight_layout()
-    plt.savefig(save_path, bbox_inches="tight")
-    plt.close(fig)
-    return os.path.abspath(save_path)
+# Backward-compatibility alias
+compute_partition_eda = analyze_partition
 
 
 def record_client_round_metric(
@@ -326,16 +215,14 @@ def create_federated_scenario(
         partition_path = os.path.join(client_dir, "partition.npz")
         np.savez_compressed(partition_path, X=X_c, y=y_c)
 
-        # Compute EDA
-        eda = compute_partition_eda(y=y_c, class_names=class_names, client_id=int(client_id))
-        eda_path = os.path.join(client_dir, "eda.json")
-        with open(eda_path, "w") as f:
-            json.dump(eda, f, indent=2)
-
-        # Generate class distribution plot
-        if generate_plots:
-            plot_path = os.path.join(client_dir, "class_distribution.png")
-            plot_class_distribution(eda=eda, save_path=plot_path)
+        # Compute and persist client EDA (eda.json & class_distribution.png) via src.eda
+        eda = export_client_eda(
+            client_dir=client_dir,
+            y=y_c,
+            class_names=class_names,
+            client_id=int(client_id),
+            generate_plot=generate_plots
+        )
 
         # Initialize clean metrics.json
         metrics_path = os.path.join(client_dir, "metrics.json")
@@ -357,8 +244,7 @@ def create_federated_scenario(
         })
 
     # Save summary across all clients in server folder
-    with open(os.path.join(server_dir, "clients_summary.json"), "w") as f:
-        json.dump(cross_client_summary, f, indent=2)
+    export_scenario_eda_summary(server_dir, cross_client_summary)
 
     logger.info(
         f"✅ Scenario '{scenario_name}' exported successfully to {scenario_dir} "
