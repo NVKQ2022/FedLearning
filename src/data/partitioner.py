@@ -279,6 +279,40 @@ def create_client_dataloaders(
     return dataloaders
 
 
+def export_scenario_structure(
+    scenario_name: str,
+    client_partitions: Dict[int, np.ndarray],
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_val: Optional[np.ndarray] = None,
+    y_val: Optional[np.ndarray] = None,
+    class_names: Optional[List[str]] = None,
+    config: Optional[Dict[str, Any]] = None,
+    scenarios_dir: str = "scenarios",
+    generate_plots: bool = True
+) -> str:
+    """
+    Exports a complete federated experimental scenario to the scenarios/ directory.
+    Creates:
+      scenarios/<scenario_name>/config.json
+      scenarios/<scenario_name>/server/meta.json, val_data.npz
+      scenarios/<scenario_name>/client_{i}/partition.npz, eda.json, class_distribution.png, metrics.json
+    """
+    from src.federated.scenario import create_federated_scenario
+    return create_federated_scenario(
+        scenario_name=scenario_name,
+        client_partitions=client_partitions,
+        X_train=X_train,
+        y_train=y_train,
+        X_val=X_val,
+        y_val=y_val,
+        class_names=class_names,
+        config=config,
+        base_dir=scenarios_dir,
+        generate_plots=generate_plots
+    )
+
+
 def save_partitions_for_grpc(
     client_partitions: Dict[int, np.ndarray],
     X: np.ndarray,
@@ -290,7 +324,7 @@ def save_partitions_for_grpc(
 ) -> str:
     """
     Serializes partitioned client arrays and server holdout validation data to disk (.npz)
-    for standalone multi-process gRPC execution.
+    for standalone multi-process gRPC execution. Supports both flat and nested scenario structures.
     """
     import json
     import os

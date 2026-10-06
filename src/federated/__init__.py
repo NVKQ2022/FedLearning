@@ -23,6 +23,15 @@ from .flower_server import (
     start_flower_server,
     build_flower_server_eval_fn,
 )
+from .scenario import (
+    compute_partition_eda,
+    plot_class_distribution,
+    record_client_round_metric,
+    create_federated_scenario,
+    load_client_partition,
+    load_server_data,
+    plot_scenario_convergence,
+)
 
 __all__ = [
     "BaseFederatedStrategy",
@@ -36,4 +45,11 @@ __all__ = [
     "FlowerIoTServerStrategy",
     "start_flower_server",
     "build_flower_server_eval_fn",
+    "compute_partition_eda",
+    "plot_class_distribution",
+    "record_client_round_metric",
+    "create_federated_scenario",
+    "load_client_partition",
+    "load_server_data",
+    "plot_scenario_convergence",
 ]

@@ -263,7 +263,9 @@ class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
             best_weights = parameters_to_ndarrays(parameters)
             ckpt_path = os.path.join(self.checkpoint_dir, f"flower_{self.strategy_name}_best_weights.npz")
             np.savez(ckpt_path, *best_weights)
-            logger.info(f"⭐ New best server model (Macro-F1: {macro_f1*100:.2f}%) saved to {ckpt_path}")
+            canonical_path = os.path.join(self.checkpoint_dir, "best_weights.npz")
+            np.savez(canonical_path, *best_weights)
+            logger.info(f"⭐ New best server model (Macro-F1: {macro_f1*100:.2f}%) saved to {canonical_path}")
 
         star = "⭐ (Best)" if is_best else ""
         logger.info(
@@ -274,11 +276,18 @@ class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
         return loss, metrics
 
     def save_round_history(self, filepath: str) -> None:
-        """Exports complete round history dictionary to JSON."""
+        """Exports complete round history dictionary to JSON and renders convergence plot."""
         os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
         with open(filepath, "w") as f:
             json.dump(self.round_history, f, indent=4)
         logger.info(f"Server round history exported to {filepath}")
+        try:
+            from src.federated.scenario import plot_scenario_convergence
+            plot_path = os.path.join(os.path.dirname(os.path.abspath(filepath)), "convergence.png")
+            plot_scenario_convergence(self.round_history, plot_path)
+            logger.info(f"Server convergence plot saved to {plot_path}")
+        except Exception as e:
+            logger.debug(f"Convergence plot rendering skipped: {e}")
 
 
 def build_flower_server_eval_fn(
@@ -350,6 +359,7 @@ def start_flower_server(
     min_available_clients: int = 2,
     evaluate_fn: Optional[Callable] = None,
     partitions_dir: Optional[str] = None,
+    scenario_dir: Optional[str] = None,
     history_save_path: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -358,10 +368,22 @@ def start_flower_server(
     if not HAS_FLWR:
         raise ImportError("Flower (flwr) is required to run start_flower_server. Run: pip install flwr")
 
-    # If partitions_dir is provided and evaluate_fn is not, build evaluate_fn from server_val.npz
+    checkpoint_dir = "checkpoints"
+    if scenario_dir and os.path.exists(scenario_dir):
+        server_dir = os.path.join(scenario_dir, "server") if os.path.exists(os.path.join(scenario_dir, "server")) else scenario_dir
+        checkpoint_dir = server_dir
+        if partitions_dir is None:
+            partitions_dir = server_dir
+        if history_save_path is None:
+            history_save_path = os.path.join(server_dir, "round_history.json")
+
+    # If partitions_dir is provided and evaluate_fn is not, build evaluate_fn from val_data.npz or server_val.npz
     if evaluate_fn is None and partitions_dir and os.path.exists(partitions_dir):
         meta_path = os.path.join(partitions_dir, "meta.json")
-        val_path = os.path.join(partitions_dir, "server_val.npz")
+        val_path = os.path.join(partitions_dir, "val_data.npz")
+        if not os.path.exists(val_path):
+            val_path = os.path.join(partitions_dir, "server_val.npz")
+
         if os.path.exists(meta_path) and os.path.exists(val_path):
             with open(meta_path) as f:
                 meta = json.load(f)
@@ -386,7 +408,8 @@ def start_flower_server(
             mu=mu,
             min_fit_clients=min_fit_clients,
             min_available_clients=min_available_clients,
-            evaluate_fn=evaluate_fn
+            evaluate_fn=evaluate_fn,
+            checkpoint_dir=checkpoint_dir
         )
 
     logger.info(f"Starting Flower gRPC Server on {server_address} for {num_rounds} rounds...")
@@ -412,6 +435,7 @@ if __name__ == "__main__":
     parser.add_argument("--mu", type=float, default=0.05, help="FedProx proximal parameter mu.")
     parser.add_argument("--min-clients", type=int, default=2, help="Minimum connected clients.")
     parser.add_argument("--partitions-dir", type=str, default=None, help="Directory containing server_val.npz and meta.json.")
+    parser.add_argument("--scenario-dir", type=str, default=None, help="Root directory of experimental scenario (e.g. scenarios/E5_fedprox_dirichlet_0.1).")
     parser.add_argument("--history-save-path", type=str, default=None, help="Filepath to export round history JSON.")
     args = parser.parse_args()
 
@@ -425,5 +449,6 @@ if __name__ == "__main__":
         min_fit_clients=args.min_clients,
         min_available_clients=args.min_clients,
         partitions_dir=args.partitions_dir,
+        scenario_dir=args.scenario_dir,
         history_save_path=args.history_save_path
     )

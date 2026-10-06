@@ -44,6 +44,7 @@ datasets/**/*.parquet
 *.bin
 *.pkl
 *.joblib
+*.npz
 checkpoints/
 
 # Jupyter Notebook Checkpoints

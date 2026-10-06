@@ -62,7 +62,8 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
         train_loader: Any,
         val_loader: Optional[Any] = None,
         trainer: Optional[Any] = None,
-        device: Union[str, Any] = "cpu"
+        device: Union[str, Any] = "cpu",
+        metrics_path: Optional[str] = None
     ):
         """
         Initializes the edge Flower IoT client.
@@ -74,6 +75,7 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
             val_loader: Optional PyTorch DataLoader for client-side local validation.
             trainer: Instance of FederatedClientTrainer. If None, instantiates default.
             device: Computing device ('cpu', 'cuda', or torch.device).
+            metrics_path: Optional path to client's metrics.json audit log.
         """
         if not HAS_TORCH:
             raise ImportError("PyTorch is required for FlowerIoTClient.")
@@ -83,6 +85,7 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.device = torch.device(device)
+        self.metrics_path = metrics_path
         self.model.to(self.device)
 
         if trainer is None:
@@ -174,6 +177,13 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
             "server_round": int(server_round)
         }
 
+        if self.metrics_path:
+            try:
+                from src.federated.scenario import record_client_round_metric
+                record_client_round_metric(self.metrics_path, metrics)
+            except Exception as e:
+                logger.warning(f"[Client {self.client_id}] Failed recording metrics to {self.metrics_path}: {e}")
+
         logger.info(
             f"[Client {self.client_id} | Round {server_round:02d}] "
             f"Trained {local_epochs} epochs | Loss: {loss:.4f} | Acc: {acc*100:5.2f}% | "
@@ -211,7 +221,8 @@ def start_flower_client(
     train_loader: Optional[Any] = None,
     val_loader: Optional[Any] = None,
     trainer: Optional[Any] = None,
-    device: str = "cpu"
+    device: str = "cpu",
+    metrics_path: Optional[str] = None
 ) -> None:
     """
     Connects and starts a standalone Flower client process communicating over gRPC.
@@ -224,6 +235,7 @@ def start_flower_client(
         val_loader: Optional validation DataLoader.
         trainer: Optional FederatedClientTrainer.
         device: Computing device.
+        metrics_path: Optional filepath to client's metrics.json.
     """
     if not HAS_FLWR:
         raise ImportError("Flower (flwr) is required to run start_flower_client. Please run: pip install flwr")
@@ -234,7 +246,8 @@ def start_flower_client(
         train_loader=train_loader,
         val_loader=val_loader,
         trainer=trainer,
-        device=device
+        device=device,
+        metrics_path=metrics_path
     )
 
     logger.info(f"Connecting Flower IoT Client {client_id} to server at {server_address}...")
@@ -256,6 +269,7 @@ if __name__ == "__main__":
     parser.add_argument("--server-address", type=str, default="127.0.0.1:8080", help="Flower server gRPC address.")
     parser.add_argument("--device", type=str, default="cpu", help="Compute device ('cpu' or 'cuda').")
     parser.add_argument("--partitions-dir", type=str, default="checkpoints/partitions", help="Directory containing client npz files.")
+    parser.add_argument("--scenario-dir", type=str, default=None, help="Root directory of experimental scenario (e.g. scenarios/E5_fedprox_dirichlet_0.1).")
     parser.add_argument("--batch-size", type=int, default=64, help="Local mini-batch size.")
     parser.add_argument("--strategy", type=str, default="fedprox", choices=["fedavg", "fedprox"], help="Strategy name.")
     parser.add_argument("--epochs", type=int, default=2, help="Local training epochs.")
@@ -268,8 +282,22 @@ if __name__ == "__main__":
 
     import os
     import json
-    meta_path = os.path.join(args.partitions_dir, "meta.json")
-    client_file = os.path.join(args.partitions_dir, f"client_{args.client_id}.npz")
+
+    metrics_path = None
+    if args.scenario_dir and os.path.exists(args.scenario_dir):
+        client_dir = os.path.join(args.scenario_dir, f"client_{args.client_id}")
+        client_file = os.path.join(client_dir, "partition.npz")
+        if not os.path.exists(client_file):
+            client_file = os.path.join(args.scenario_dir, f"client_{args.client_id}.npz")
+
+        meta_path = os.path.join(args.scenario_dir, "server", "meta.json")
+        if not os.path.exists(meta_path):
+            meta_path = os.path.join(args.scenario_dir, "meta.json")
+        metrics_path = os.path.join(client_dir, "metrics.json")
+    else:
+        meta_path = os.path.join(args.partitions_dir, "meta.json")
+        client_file = os.path.join(args.partitions_dir, f"client_{args.client_id}.npz")
+
     if not os.path.exists(client_file):
         raise FileNotFoundError(f"Client partition file not found at: {client_file}")
 
@@ -289,5 +317,6 @@ if __name__ == "__main__":
         server_address=args.server_address,
         model=model,
         train_loader=train_loader,
-        device=args.device
+        device=args.device,
+        metrics_path=metrics_path
     )
