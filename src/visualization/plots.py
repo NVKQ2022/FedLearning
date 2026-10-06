@@ -267,7 +267,7 @@ def plot_confusion_matrix(
 
 
 def plot_scenario_comparison(
-    results: Dict[str, Union[float, Dict[str, Any]]],
+    results: Optional[Dict[str, Union[float, Dict[str, Any]]]] = None,
     metric: str = "macro_f1",
     title: Optional[str] = None,
     ylabel: Optional[str] = None,
@@ -275,7 +275,8 @@ def plot_scenario_comparison(
     palette: Optional[List[str]] = None,
     figsize: Tuple[int, int] = (10, 5),
     bar_width: float = 0.45,
-    show: bool = False
+    show: bool = False,
+    **kwargs
 ) -> plt.Figure:
     """
     Renders a comparative bar chart across experimental scenarios (e.g. E1, E2, E5).
@@ -305,6 +306,9 @@ def plot_scenario_comparison(
         matplotlib.figure.Figure instance.
     """
     set_publication_style()
+
+    if results is None:
+        results = kwargs.get("scenarios", kwargs.get("comparison_dict", {}))
 
     scenario_names = []
     scores = []
@@ -561,11 +565,12 @@ def plot_federated_convergence(
 
 
 def plot_minority_recall(
-    minority_data: Union[Dict[str, float], Dict[str, Dict[str, float]]],
+    minority_data: Optional[Union[Dict[str, float], Dict[str, Dict[str, float]]]] = None,
     title: str = "Minority Attack Recall Isolation (Stealth Intrusions)",
     save_path: Optional[str] = None,
     figsize: Tuple[int, int] = (9, 5),
-    show: bool = False
+    show: bool = False,
+    **kwargs
 ) -> plt.Figure:
     """
     Renders targeted detection recall for ultra-rare, stealthy attack categories
@@ -590,6 +595,9 @@ def plot_minority_recall(
         matplotlib.figure.Figure instance.
     """
     set_publication_style()
+
+    if minority_data is None:
+        minority_data = kwargs.get("minority_recall", kwargs.get("data", {}))
 
     # Case 1: Nested scenario comparisons
     if any(isinstance(v, dict) for v in minority_data.values()):
@@ -636,12 +644,13 @@ def plot_minority_recall(
 
 
 def plot_per_class_metrics(
-    metrics_dict: Dict[str, Any],
+    metrics_dict: Optional[Dict[str, Any]] = None,
     class_names: Optional[List[str]] = None,
     title: str = "Per-Class Performance Breakdown (Precision, Recall, F1)",
     save_path: Optional[str] = None,
     figsize: Tuple[int, int] = (12, 5),
-    show: bool = False
+    show: bool = False,
+    **kwargs
 ) -> plt.Figure:
     """
     Renders grouped bar charts comparing Precision, Recall, and F1 across all evaluated attack classes.
@@ -659,6 +668,16 @@ def plot_per_class_metrics(
         matplotlib.figure.Figure instance.
     """
     set_publication_style()
+
+    if metrics_dict is None:
+        if "metrics" in kwargs:
+            metrics_dict = kwargs["metrics"]
+        else:
+            metrics_dict = {
+                "per_class_precision": kwargs.get("per_class_precision", {}),
+                "per_class_recall": kwargs.get("per_class_recall", {}),
+                "per_class_f1": kwargs.get("per_class_f1", {}),
+            }
 
     prec = metrics_dict.get("per_class_precision", {})
     rec = metrics_dict.get("per_class_recall", {})
