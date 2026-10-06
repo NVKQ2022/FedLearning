@@ -172,6 +172,21 @@ def main():
         rounds=args.rounds
     )
 
+    # 1b. Display cross-client EDA profile from server/clients_summary.json
+    summary_path = os.path.join(scenario_dir, "server", "clients_summary.json")
+    if os.path.exists(summary_path):
+        try:
+            with open(summary_path) as f:
+                c_summary = json.load(f)
+            print("\n📊 Cross-Client Partition Heterogeneity Profile (src.eda):")
+            print(f"  {'Client':<10} {'Samples':<10} {'Dominant Attack':<16} {'Share (%)':<12} {'Entropy (H_norm)':<18}")
+            print("  " + "-" * 66)
+            for c in c_summary:
+                print(f"  Client {c['client_id']:<3} {c['samples']:<10,d} {c['dominant_class']:<16} {c['dominant_pct']:<12.1f} {c['entropy']:<18.4f}")
+            print()
+        except Exception as e:
+            logger.debug(f"Failed to display client summary: {e}")
+
     client_procs: List[subprocess.Popen] = []
     server_proc = None
 

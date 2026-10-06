@@ -394,3 +394,124 @@ def plot_scenario_convergence(
     plt.savefig(save_path, bbox_inches="tight")
     plt.close(fig)
     return os.path.abspath(save_path)
+
+
+def create_centralized_scenario(
+    scenario_name: str,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_val: Optional[np.ndarray] = None,
+    y_val: Optional[np.ndarray] = None,
+    X_test: Optional[np.ndarray] = None,
+    y_test: Optional[np.ndarray] = None,
+    class_names: Optional[List[str]] = None,
+    feature_names: Optional[List[str]] = None,
+    config: Optional[Dict[str, Any]] = None,
+    base_dir: str = "scenarios",
+    generate_plots: bool = True
+) -> str:
+    """
+    Constructs a centralized baseline scenario directory layout (e.g. 'scenarios/E1_centralized').
+
+    Creates:
+    - scenarios/<scenario_name>/config.json
+    - scenarios/<scenario_name>/meta.json
+    - scenarios/<scenario_name>/val_data.npz, test_data.npz
+    - scenarios/<scenario_name>/eda.json, dataset_eda.json
+    - scenarios/<scenario_name>/class_distribution.png
+    - scenarios/<scenario_name>/feature_skewness.png
+
+    Args:
+        scenario_name: Identifier (e.g. 'E1_centralized').
+        X_train: Preprocessed training features.
+        y_train: Training labels.
+        X_val: Optional validation features.
+        y_val: Optional validation labels.
+        X_test: Optional test features.
+        y_test: Optional test labels.
+        class_names: List of class names.
+        feature_names: List of feature names.
+        config: Configuration dictionary.
+        base_dir: Base scenarios directory (default 'scenarios').
+        generate_plots: Whether to save EDA visualizations.
+
+    Returns:
+        Path to scenario directory.
+    """
+    from src.eda import (
+        analyze_partition,
+        analyze_dataset,
+        analyze_features,
+        plot_class_distribution,
+        plot_feature_skewness,
+        export_dataset_audit,
+    )
+
+    scenario_dir = os.path.join(base_dir, scenario_name)
+    os.makedirs(scenario_dir, exist_ok=True)
+
+    input_dim = int(X_train.shape[1])
+    unique_classes = sorted(np.unique(y_train).tolist())
+    if class_names is None or len(class_names) != len(unique_classes):
+        class_names = [f"Class_{i}" for i in range(len(unique_classes))]
+
+    # 1. Metadata
+    meta = {
+        "scenario_name": scenario_name,
+        "mode": "centralized",
+        "input_dim": input_dim,
+        "num_classes": len(class_names),
+        "class_names": class_names,
+        "total_train_samples": int(len(y_train)),
+        "total_val_samples": int(len(y_val)) if y_val is not None else 0,
+        "total_test_samples": int(len(y_test)) if y_test is not None else 0,
+    }
+    with open(os.path.join(scenario_dir, "meta.json"), "w") as f:
+        json.dump(meta, f, indent=2)
+
+    # 2. Config
+    scen_config = config.copy() if config else {}
+    scen_config.setdefault("scenario_name", scenario_name)
+    scen_config.setdefault("mode", "centralized")
+    with open(os.path.join(scenario_dir, "config.json"), "w") as f:
+        json.dump(scen_config, f, indent=2)
+
+    # 3. Validation and Test splits
+    if X_val is not None and y_val is not None:
+        np.savez_compressed(
+            os.path.join(scenario_dir, "val_data.npz"),
+            X=np.ascontiguousarray(X_val, dtype=np.float32),
+            y=np.ascontiguousarray(y_val, dtype=np.int64)
+        )
+    if X_test is not None and y_test is not None:
+        np.savez_compressed(
+            os.path.join(scenario_dir, "test_data.npz"),
+            X=np.ascontiguousarray(X_test, dtype=np.float32),
+            y=np.ascontiguousarray(y_test, dtype=np.int64)
+        )
+
+    # 4. EDA profiling via src.eda
+    eda = analyze_partition(y_train, class_names=class_names)
+    with open(os.path.join(scenario_dir, "eda.json"), "w") as f:
+        json.dump(eda, f, indent=2)
+
+    dataset_audit = analyze_dataset(X_train, y_train, class_names=class_names, feature_names=feature_names)
+    export_dataset_audit(scenario_dir, dataset_audit)
+
+    # 5. Visualizations
+    if generate_plots:
+        plot_class_distribution(
+            eda=eda,
+            save_path=os.path.join(scenario_dir, "class_distribution.png"),
+            title=f"Centralized Training Set - Label Distribution (N={len(y_train):,})"
+        )
+        stats_df = analyze_features(X_train, feature_names=feature_names)
+        plot_feature_skewness(
+            stats_df=stats_df,
+            top_k=15,
+            save_path=os.path.join(scenario_dir, "feature_skewness.png")
+        )
+
+    logger.info(f"✅ Centralized scenario '{scenario_name}' exported successfully to {scenario_dir}.")
+    return scenario_dir
+

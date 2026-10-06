@@ -321,6 +321,21 @@ def load_and_preprocess_ciciot2023(
     if save_preprocessor_path:
         preprocessor.save(save_preprocessor_path)
 
+    # 7b. Perform EDA profiling and training data quality audit via src.eda
+    eda_profile = None
+    quality_report = None
+    try:
+        from src.eda import analyze_partition, diagnose_data_quality
+        eda_profile = analyze_partition(y_train, class_names=preprocessor.class_names_)
+        quality_report = diagnose_data_quality(X_train, feature_names=preprocessor.feature_columns)
+        logger.info(
+            f"EDA Profile: {eda_profile['total_samples']:,} train samples | "
+            f"Dominant: {eda_profile['dominant_class']} ({eda_profile['dominant_class_pct']:.1f}%) | "
+            f"Entropy: {eda_profile['normalized_entropy']:.4f} | Training Safe: {quality_report['is_training_safe']}"
+        )
+    except Exception as e:
+        logger.debug(f"EDA profiling skipped during preprocessing: {e}")
+
     results: Dict[str, Any] = {
         "X_train": X_train,
         "y_train": y_train,
@@ -333,7 +348,9 @@ def load_and_preprocess_ciciot2023(
         "feature_names": preprocessor.feature_columns,
         "input_dim": len(preprocessor.feature_columns),
         "num_classes": preprocessor.num_classes_,
-        "preprocessor": preprocessor
+        "preprocessor": preprocessor,
+        "eda": eda_profile,
+        "quality_report": quality_report
     }
 
     # 8. Construct PyTorch DataLoaders if PyTorch is available
