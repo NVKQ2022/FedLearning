@@ -19,6 +19,20 @@
 
 ---
 
+## 🚀 Interactive Notebooks (Google Colab)
+
+Run full experiments directly in your browser with zero local setup:
+
+| Notebook | Focus & Methodology | Colab Quick Link |
+| :--- | :--- | :--- |
+| **Flower Distributed FL (gRPC)** | Standalone Flower server & $K=5$ edge clients via multi-process gRPC over TCP/IP sockets | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVKQ2022/FedLearning/blob/main/notebooks/flower_federated_pipeline.ipynb) |
+| **Federated Simulation Pipeline** | End-to-end PyTorch FL loop benchmarking IID (FedAvg) vs. Dirichlet Non-IID $\alpha=0.1$ (FedProx $\mu=0.05$) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVKQ2022/FedLearning/blob/main/notebooks/federated_training_pipeline.ipynb) |
+| **Centralized Baseline** | Centralized Tabular IoT MLP with Weighted Cross-Entropy & Minority Attack Recall profiling | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVKQ2022/FedLearning/blob/main/notebooks/centralized_training_pipeline.ipynb) |
+| **Comprehensive EDA** | Statistical diagnosis, heavy-tail skewness, and Dirichlet client heterogeneity visualization | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVKQ2022/FedLearning/blob/main/notebooks/comprehensive_eda.ipynb) |
+| **Multi-Scenario Benchmark Suite** | Automated all-in-one runner comparing Centralized, FedAvg (IID), and FedProx (Non-IID) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVKQ2022/FedLearning/blob/main/notebooks/colab_experiment_runner.ipynb) |
+
+---
+
 ## 🎯 Motivation & Problem Statement
 
 Internet of Things (IoT) ecosystems are expanding rapidly, presenting massive attack surfaces susceptible to multi-vector cyber threats (DDoS, DoS, Reconnaissance, Spoofing, Mirai, Brute Force, Web attacks). Traditional Centralized Intrusion Detection Systems (IDS) require aggregating massive, highly sensitive edge network flows to a central cloud server, raising severe privacy concerns, high bandwidth strain, and single-point-of-failure vulnerabilities.
@@ -199,7 +213,7 @@ pip install -r requirements.txt
 
 ### 2. Dependencies (`requirements.txt`)
 * `torch>=2.0.0`
-* `flwr[simulation]>=1.7.0`
+* `flwr>=1.7.0`
 * `scikit-learn>=1.3.0`
 * `pandas>=2.0.0`
 * `numpy>=1.24.0`
