@@ -12,6 +12,7 @@ Responsibilities:
 4. Returns updated weights, sample count, and training diagnostics back to the server.
 5. Runs either in Flower simulation mode or as an independent OS process over localhost/network.
 """
+from __future__ import annotations
 
 import argparse
 import copy

@@ -187,57 +187,20 @@ def main():
         except Exception as e:
             logger.debug(f"Failed to display client summary: {e}")
 
-    client_procs: List[subprocess.Popen] = []
-    server_proc = None
+    from src.federated.grpc_runner import run_flower_grpc
 
-    try:
-        # 2. Launch Flower Central Server
-        server_cmd = [
-            sys.executable, "-m", "src.federated.flower_server",
-            "--server-address", f"0.0.0.0:{args.port}",
-            "--rounds", str(args.rounds),
-            "--strategy", args.strategy,
-            "--mu", str(args.mu),
-            "--min-clients", str(args.num_clients),
-            "--scenario-dir", scenario_dir
-        ]
-        logger.info(f"Starting Server process: {' '.join(server_cmd)}")
-        server_proc = subprocess.Popen(server_cmd)
-
-        # 3. Wait for server socket initialization
-        time.sleep(2.0)
-
-        # 4. Launch K Client processes
-        for client_id in range(args.num_clients):
-            client_cmd = [
-                sys.executable, "-m", "src.federated.flower_client",
-                "--client-id", str(client_id),
-                "--server-address", server_address,
-                "--strategy", args.strategy,
-                "--mu", str(args.mu),
-                "--scenario-dir", scenario_dir,
-                "--device", "cpu"
-            ]
-            logger.info(f"Starting Client {client_id} process...")
-            p = subprocess.Popen(client_cmd)
-            client_procs.append(p)
-            time.sleep(0.3)
-
-        logger.info(f"All {args.num_clients} edge clients connected over gRPC. Training in progress...")
-
-        # 5. Wait for server to finish all communication rounds
-        server_return_code = server_proc.wait()
-        logger.info(f"Server process completed with exit code: {server_return_code}")
-
-    except KeyboardInterrupt:
-        logger.warning("\nInterrupted by user. Terminating all processes...")
-    finally:
-        # Clean up any lingering client processes
-        for p in client_procs:
-            if p.poll() is None:
-                p.terminate()
-        if server_proc and server_proc.poll() is None:
-            server_proc.terminate()
+    # 2. Run Flower Server and Edge Clients via real gRPC sockets
+    round_history = run_flower_grpc(
+        scenario_name=scenario_name,
+        num_clients=args.num_clients,
+        rounds=args.rounds,
+        strategy=args.strategy,
+        mu=args.mu,
+        port=args.port,
+        scenarios_dir=args.scenarios_dir,
+        device="cpu",
+        stream_logs=True
+    )
 
     print("=" * 80)
     print("🎉 Flower gRPC Federated Learning completed successfully!")

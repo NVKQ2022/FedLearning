@@ -15,6 +15,7 @@ Responsibilities:
    - Round execution wall-clock time and client parameter drift.
 5. Operates in standalone gRPC process mode or programmatic simulation runner.
 """
+from __future__ import annotations
 
 import argparse
 import json
@@ -60,6 +61,12 @@ except ImportError:
     Parameters = Any
     NDArrays = Any
     Scalar = Any
+    FitIns = Any
+    FitRes = Any
+    EvaluateIns = Any
+    EvaluateRes = Any
+    Metrics = Any
+    ClientProxy = Any
 
 logger = logging.getLogger(__name__)
 
