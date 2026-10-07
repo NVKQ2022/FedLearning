@@ -13,6 +13,12 @@ from .config import (
     OptimizationConfig,
     FederatedConfig,
     FederatedParametersConfig,
+    StrategyConfig,
+    FedAvgConfig,
+    FedProxConfig,
+    FedMedianConfig,
+    FedTrimmedMeanConfig,
+    CustomStrategyConfig,
 )
 
 __all__ = [
@@ -31,4 +37,10 @@ __all__ = [
     "OptimizationConfig",
     "FederatedConfig",
     "FederatedParametersConfig",
+    "StrategyConfig",
+    "FedAvgConfig",
+    "FedProxConfig",
+    "FedMedianConfig",
+    "FedTrimmedMeanConfig",
+    "CustomStrategyConfig",
 ]

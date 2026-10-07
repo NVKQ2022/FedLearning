@@ -1,5 +1,7 @@
 """
-Unit tests for the modular ExperimentConfig / Experiment configuration system.
+Unit tests for the modular ExperimentConfig / Experiment configuration system,
+including multi-algorithm FederatedConfig support (FedAvg, FedProx, FedMedian,
+FedTrimmedMean, and future custom algorithms).
 """
 
 import os
@@ -19,6 +21,12 @@ from src.utils.config import (
     OptimizationConfig,
     FederatedConfig,
     FederatedParametersConfig,
+    StrategyConfig,
+    FedAvgConfig,
+    FedProxConfig,
+    FedMedianConfig,
+    FedTrimmedMeanConfig,
+    CustomStrategyConfig,
 )
 
 
@@ -177,3 +185,129 @@ def test_file_save_and_display():
         with open(json_path, "r") as f:
             content = f.read()
             assert "save_display_test" in content
+
+
+# ==============================================================================
+# Multi-Algorithm FederatedConfig Tests
+# ==============================================================================
+
+def test_federated_config_fedavg_defaults():
+    fed = FederatedConfig()
+    assert fed.federated_strategy == "fedavg"
+    assert fed.strategy == "fedavg"
+    assert fed.is_fedavg is True
+    assert fed.is_fedprox is False
+    assert fed.is_proximal is False
+    assert fed.mu == 0.0
+
+    # Factory method
+    fed2 = FederatedConfig.fedavg(num_clients=7, num_rounds=12)
+    assert fed2.federated_strategy == "fedavg"
+    assert fed2.num_clients == 7
+    assert fed2.num_rounds == 12
+    assert fed2.mu == 0.0
+
+
+def test_federated_config_fedprox():
+    # Direct kwargs
+    fed_prox = FederatedConfig(federated_strategy="fedprox", mu=0.05)
+    assert fed_prox.federated_strategy == "fedprox"
+    assert fed_prox.is_fedprox is True
+    assert fed_prox.is_proximal is True
+    assert fed_prox.mu == 0.05
+
+    # Factory method
+    fed_prox2 = FederatedConfig.fedprox(mu=0.08, num_clients=10)
+    assert fed_prox2.federated_strategy == "fedprox"
+    assert fed_prox2.mu == 0.08
+    assert fed_prox2.num_clients == 10
+    assert fed_prox2.is_proximal is True
+
+
+def test_federated_config_strategy_subconfigs():
+    # Passing FedProxConfig
+    fed_sub = FederatedConfig(strategy=FedProxConfig(mu=0.03))
+    assert fed_sub.federated_strategy == "fedprox"
+    assert fed_sub.mu == 0.03
+    assert fed_sub.is_proximal is True
+
+    # Passing FedMedianConfig
+    fed_med = FederatedConfig(strategy=FedMedianConfig())
+    assert fed_med.federated_strategy == "fedmedian"
+    assert fed_med.is_fedavg is False
+
+    # Passing FedTrimmedMeanConfig
+    fed_trim = FederatedConfig(strategy=FedTrimmedMeanConfig(trim_fraction=0.15))
+    assert fed_trim.federated_strategy == "fedtrimmedmean"
+    assert fed_trim.trim_fraction == 0.15
+
+    # Factory constructors
+    fed_med2 = FederatedConfig.fedmedian(num_clients=6)
+    assert fed_med2.federated_strategy == "fedmedian"
+    assert fed_med2.num_clients == 6
+
+    fed_trim2 = FederatedConfig.fedtrimmedmean(trim_fraction=0.2, num_clients=8)
+    assert fed_trim2.federated_strategy == "fedtrimmedmean"
+    assert fed_trim2.trim_fraction == 0.2
+    assert fed_trim2.num_clients == 8
+
+
+def test_federated_config_future_algorithm():
+    # Arbitrary / future FL algorithm (e.g. SCAFFOLD, FedAdam)
+    fed_custom = FederatedConfig.custom(
+        strategy="scaffold",
+        num_clients=5,
+        server_lr=0.01,
+        client_control_variates=True,
+    )
+    assert fed_custom.federated_strategy == "scaffold"
+    assert fed_custom.num_clients == 5
+    # Dynamic attribute lookup
+    assert fed_custom.server_lr == 0.01
+    assert fed_custom.client_control_variates is True
+    assert "server_lr" in fed_custom.strategy_params
+
+    # Serialization
+    d = fed_custom.to_dict()
+    assert d["federated_strategy"] == "scaffold"
+    assert d["strategy_params"]["server_lr"] == 0.01
+
+    # CustomStrategyConfig object
+    fed_custom2 = FederatedConfig(
+        strategy=CustomStrategyConfig("fedadam", extra_params={"server_learning_rate": 0.05})
+    )
+    assert fed_custom2.federated_strategy == "fedadam"
+    assert fed_custom2.server_learning_rate == 0.05
+
+
+def test_federated_config_build_strategy():
+    strat_avg = FederatedConfig.fedavg().build_strategy()
+    assert strat_avg.name == "FedAvg"
+
+    strat_prox = FederatedConfig.fedprox(mu=0.07).build_strategy()
+    assert strat_prox.name == "FedProx"
+    assert strat_prox.mu == 0.07
+
+    strat_med = FederatedConfig.fedmedian().build_strategy()
+    assert strat_med.name == "FedMedian"
+
+    strat_trim = FederatedConfig.fedtrimmedmean(trim_fraction=0.12).build_strategy()
+    assert strat_trim.name == "FedTrimmedMean"
+    assert strat_trim.trim_fraction == 0.12
+
+
+def test_experiment_with_federated_strategy_object():
+    cfg = Experiment(
+        experiment_name="test_fedprox_obj",
+        federated=FedProxConfig(mu=0.06),
+    )
+    assert cfg.federated.federated_strategy == "fedprox"
+    assert cfg.federated.mu == 0.06
+    assert cfg.federated_strategy == "fedprox"
+    assert cfg.mu == 0.06
+    assert cfg.is_proximal is True
+
+    # Mutating through flat delegation
+    cfg.mu = 0.1
+    assert cfg.federated.mu == 0.1
+    assert cfg.mu == 0.1

@@ -7,6 +7,8 @@ Provides a modular, type-hinted configuration architecture organized into 5 doma
 3. Loss Function (LossConfig / LossFunctionConfig)
 4. Optimization & Training (OptimizerConfig / OptimizationConfig)
 5. Federated Parameters (FederatedConfig / FederatedParametersConfig)
+   - Extensible FL algorithms: FedAvg (default), FedProx (mu), FedMedian, FedTrimmedMean,
+     and arbitrary future algorithms (e.g., SCAFFOLD, FedAdam).
 
 Aggregated by the unified Experiment (ExperimentConfig) container with full backward-compatible
 attribute delegation for both modular and flat access patterns.
@@ -111,19 +113,261 @@ class OptimizerConfig:
         return asdict(self)
 
 
+# ==============================================================================
+# Federated Learning Strategy Configurations
+# ==============================================================================
+
 @dataclass
-class FederatedConfig:
-    """Federated Parameters configuration."""
-    num_clients: int = 5
-    num_rounds: int = 8
-    local_epochs: int = 2
-    mu: float = 0.0                          # FedProx proximal coefficient (0.0 for FedAvg, 0.05 for FedProx)
-    dirichlet_alpha: float = 0.5             # Dirichlet heterogeneity parameter (0.1 severe, 0.5 moderate)
-    federated_strategy: str = "fedavg"       # 'fedavg', 'fedprox', 'fedmedian', 'fedtrimmedmean'
-    partition_type: str = "iid"              # 'iid' or 'dirichlet'
+class StrategyConfig:
+    """Base configuration for federated aggregation algorithms."""
+    name: str = "fedavg"
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+
+
+@dataclass
+class FedAvgConfig(StrategyConfig):
+    """Configuration for standard Federated Averaging (McMahan et al., 2017)."""
+    name: str = "fedavg"
+
+
+@dataclass
+class FedProxConfig(StrategyConfig):
+    """Configuration for Federated Proximal Optimization (Li et al., 2020)."""
+    name: str = "fedprox"
+    mu: float = 0.05                         # Proximal regularization coefficient (default: 0.05)
+
+
+@dataclass
+class FedMedianConfig(StrategyConfig):
+    """Configuration for Coordinate-wise Median FL (Byzantine-robust)."""
+    name: str = "fedmedian"
+
+
+@dataclass
+class FedTrimmedMeanConfig(StrategyConfig):
+    """Configuration for Coordinate-wise Trimmed Mean FL (adversarial-robust)."""
+    name: str = "fedtrimmedmean"
+    trim_fraction: float = 0.1               # Fraction of extreme client updates trimmed
+
+
+@dataclass
+class CustomStrategyConfig(StrategyConfig):
+    """Configuration for arbitrary or future federated optimization algorithms."""
+    name: str = "custom"
+    extra_params: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        d = {"name": self.name}
+        d.update(self.extra_params)
+        return d
+
+
+class FederatedConfig:
+    """
+    Federated Parameters configuration container.
+
+    Designed for extensible multi-algorithm support:
+    - Native support for FedAvg (McMahan et al., 2017) as the default strategy.
+    - Native support for FedProx (Li et al., 2020) proximal regularization (mu).
+    - Byzantine-robust strategies (FedMedian, FedTrimmedMean).
+    - Extensible parameter routing for future FL algorithms (SCAFFOLD, FedAdam, etc.).
+
+    Can be instantiated via:
+    1. Direct kwargs: `FederatedConfig(federated_strategy="fedavg")` or `FederatedConfig(federated_strategy="fedprox", mu=0.05)`
+    2. Strategy object: `FederatedConfig(strategy=FedProxConfig(mu=0.05))`
+    3. Factory constructors: `FederatedConfig.fedavg()`, `FederatedConfig.fedprox(mu=0.05)`, `FederatedConfig.custom("scaffold", ...)`
+    """
+    def __init__(
+        self,
+        num_clients: int = 5,
+        num_rounds: int = 8,
+        local_epochs: int = 2,
+        mu: float = 0.0,
+        dirichlet_alpha: float = 0.5,
+        federated_strategy: str = "fedavg",
+        partition_type: str = "iid",
+        trim_fraction: float = 0.1,
+        fraction_fit: float = 1.0,
+        min_fit_clients: int = 2,
+        min_available_clients: int = 2,
+        strategy: Optional[Union[str, StrategyConfig]] = None,
+        strategy_params: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ):
+        self.num_clients = num_clients
+        self.num_rounds = num_rounds
+        self.local_epochs = local_epochs
+        self.dirichlet_alpha = dirichlet_alpha
+        self.partition_type = partition_type
+        self.fraction_fit = fraction_fit
+        self.min_fit_clients = min_fit_clients
+        self.min_available_clients = min_available_clients
+        self.trim_fraction = trim_fraction
+        self.strategy_params: Dict[str, Any] = dict(strategy_params) if strategy_params else {}
+
+        # Resolve strategy name and strategy-specific parameters
+        resolved_strategy = strategy if strategy is not None else federated_strategy
+
+        if isinstance(resolved_strategy, StrategyConfig):
+            self.federated_strategy = resolved_strategy.name.lower()
+            if hasattr(resolved_strategy, "mu"):
+                self.mu = getattr(resolved_strategy, "mu")
+            else:
+                self.mu = mu
+            if hasattr(resolved_strategy, "trim_fraction"):
+                self.trim_fraction = getattr(resolved_strategy, "trim_fraction")
+            if hasattr(resolved_strategy, "extra_params"):
+                self.strategy_params.update(getattr(resolved_strategy, "extra_params"))
+        elif isinstance(resolved_strategy, str):
+            self.federated_strategy = resolved_strategy.lower()
+            self.mu = mu
+        else:
+            self.federated_strategy = "fedavg"
+            self.mu = mu
+
+        # Auto-detect FedProx if mu > 0 is specified without explicit strategy override
+        if self.mu > 0.0 and self.federated_strategy == "fedavg" and strategy is None and "federated_strategy" not in kwargs:
+            self.federated_strategy = "fedprox"
+        elif self.federated_strategy in ("fedprox", "prox") and self.mu == 0.0:
+            self.mu = 0.05
+
+        # Store any additional kwargs in strategy_params for future algorithms
+        for k, v in kwargs.items():
+            self.strategy_params[k] = v
+
+    @property
+    def strategy(self) -> str:
+        """Alias for federated_strategy."""
+        return self.federated_strategy
+
+    @strategy.setter
+    def strategy(self, val: Union[str, StrategyConfig]) -> None:
+        if isinstance(val, StrategyConfig):
+            self.federated_strategy = val.name.lower()
+            if hasattr(val, "mu"):
+                self.mu = getattr(val, "mu")
+            if hasattr(val, "trim_fraction"):
+                self.trim_fraction = getattr(val, "trim_fraction")
+            if hasattr(val, "extra_params"):
+                self.strategy_params.update(getattr(val, "extra_params"))
+        elif isinstance(val, str):
+            self.federated_strategy = val.lower()
+
+    @property
+    def is_proximal(self) -> bool:
+        """True if proximal regularization constraint is active (FedProx with mu > 0)."""
+        return self.federated_strategy in ("fedprox", "prox") and self.mu > 0.0
+
+    @property
+    def is_fedavg(self) -> bool:
+        """True if strategy is standard FedAvg."""
+        return self.federated_strategy in ("fedavg", "avg")
+
+    @property
+    def is_fedprox(self) -> bool:
+        """True if strategy is FedProx."""
+        return self.federated_strategy in ("fedprox", "prox")
+
+    def get_strategy_kwargs(self) -> Dict[str, Any]:
+        """Extracts kwargs specific to the selected aggregation strategy."""
+        strat = self.federated_strategy.lower()
+        kwargs: Dict[str, Any] = {
+            "fraction_fit": self.fraction_fit,
+            "min_fit_clients": self.min_fit_clients,
+            "min_available_clients": self.min_available_clients,
+        }
+        if strat in ("fedprox", "prox"):
+            kwargs["mu"] = self.mu
+        elif strat in ("fedtrimmedmean", "trimmedmean"):
+            kwargs["trim_fraction"] = self.trim_fraction
+        kwargs.update(self.strategy_params)
+        return kwargs
+
+    def build_strategy(self, **override_kwargs: Any) -> Any:
+        """
+        Instantiates and returns the corresponding server strategy instance
+        from src.federated.strategies.
+        """
+        from src.federated.strategies import build_strategy as _build_strategy
+        kwargs = self.get_strategy_kwargs()
+        kwargs.update(override_kwargs)
+        return _build_strategy(strategy_name=self.federated_strategy, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        if "strategy_params" in self.__dict__ and name in self.strategy_params:
+            return self.strategy_params[name]
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name in (
+            "num_clients", "num_rounds", "local_epochs", "mu", "dirichlet_alpha",
+            "federated_strategy", "partition_type", "trim_fraction",
+            "fraction_fit", "min_fit_clients", "min_available_clients",
+            "strategy_params"
+        ):
+            super().__setattr__(name, value)
+            return
+        if hasattr(type(self), name) and isinstance(getattr(type(self), name), property):
+            super().__setattr__(name, value)
+            return
+        if "strategy_params" in self.__dict__ and name in self.strategy_params:
+            self.strategy_params[name] = value
+            return
+        super().__setattr__(name, value)
+
+    def to_dict(self) -> Dict[str, Any]:
+        d: Dict[str, Any] = {
+            "num_clients": self.num_clients,
+            "num_rounds": self.num_rounds,
+            "local_epochs": self.local_epochs,
+            "mu": self.mu,
+            "dirichlet_alpha": self.dirichlet_alpha,
+            "federated_strategy": self.federated_strategy,
+            "partition_type": self.partition_type,
+            "trim_fraction": self.trim_fraction,
+            "fraction_fit": self.fraction_fit,
+            "min_fit_clients": self.min_fit_clients,
+            "min_available_clients": self.min_available_clients,
+        }
+        if self.strategy_params:
+            d["strategy_params"] = dict(self.strategy_params)
+        return d
+
+    # Factory methods for clean, expressive scenario instantiation:
+    @classmethod
+    def fedavg(cls, **kwargs: Any) -> "FederatedConfig":
+        """Factory constructor for FedAvg (McMahan et al., 2017)."""
+        kwargs.setdefault("federated_strategy", "fedavg")
+        kwargs.setdefault("mu", 0.0)
+        return cls(**kwargs)
+
+    @classmethod
+    def fedprox(cls, mu: float = 0.05, **kwargs: Any) -> "FederatedConfig":
+        """Factory constructor for FedProx (Li et al., 2020)."""
+        kwargs["federated_strategy"] = "fedprox"
+        kwargs["mu"] = mu
+        return cls(**kwargs)
+
+    @classmethod
+    def fedmedian(cls, **kwargs: Any) -> "FederatedConfig":
+        """Factory constructor for Byzantine-robust FedMedian aggregation."""
+        kwargs["federated_strategy"] = "fedmedian"
+        return cls(**kwargs)
+
+    @classmethod
+    def fedtrimmedmean(cls, trim_fraction: float = 0.1, **kwargs: Any) -> "FederatedConfig":
+        """Factory constructor for adversarial-robust FedTrimmedMean aggregation."""
+        kwargs["federated_strategy"] = "fedtrimmedmean"
+        kwargs["trim_fraction"] = trim_fraction
+        return cls(**kwargs)
+
+    @classmethod
+    def custom(cls, strategy: str, **kwargs: Any) -> "FederatedConfig":
+        """Factory constructor for arbitrary or future FL algorithms (e.g. SCAFFOLD, FedAdam)."""
+        kwargs["federated_strategy"] = strategy
+        return cls(**kwargs)
 
 
 # Aliases for sub-config classes
@@ -172,13 +416,13 @@ class ExperimentConfig:
         model: Optional[Union[ModelConfig, Dict[str, Any]]] = None,
         loss: Optional[Union[LossConfig, Dict[str, Any]]] = None,
         optimizer: Optional[Union[OptimizerConfig, Dict[str, Any]]] = None,
-        federated: Optional[Union[FederatedConfig, Dict[str, Any]]] = None,
+        federated: Optional[Union[FederatedConfig, StrategyConfig, str, Dict[str, Any]]] = None,
         # Section name aliases
         dataset_preprocessing: Optional[Union[DataConfig, Dict[str, Any]]] = None,
         architecture: Optional[Union[ModelConfig, Dict[str, Any]]] = None,
         loss_function: Optional[Union[LossConfig, Dict[str, Any]]] = None,
         optimization: Optional[Union[OptimizerConfig, Dict[str, Any]]] = None,
-        federated_parameters: Optional[Union[FederatedConfig, Dict[str, Any]]] = None,
+        federated_parameters: Optional[Union[FederatedConfig, StrategyConfig, str, Dict[str, Any]]] = None,
         **kwargs: Any,
     ):
         self.experiment_name = experiment_name
@@ -235,6 +479,8 @@ class ExperimentConfig:
             resolved_fed = FederatedConfig(**raw_fed)
         elif isinstance(raw_fed, FederatedConfig):
             resolved_fed = copy.deepcopy(raw_fed)
+        elif isinstance(raw_fed, (StrategyConfig, str)):
+            resolved_fed = FederatedConfig(strategy=raw_fed)
         else:
             resolved_fed = FederatedConfig()
         super().__setattr__("federated", resolved_fed)
@@ -320,7 +566,12 @@ class ExperimentConfig:
             elif k in ("optimizer", "optimization"):
                 nested_kwargs["optimizer"] = v if isinstance(v, OptimizerConfig) else OptimizerConfig(**v)
             elif k in ("federated", "federated_parameters"):
-                nested_kwargs["federated"] = v if isinstance(v, FederatedConfig) else FederatedConfig(**v)
+                if isinstance(v, FederatedConfig):
+                    nested_kwargs["federated"] = v
+                elif isinstance(v, dict):
+                    nested_kwargs["federated"] = FederatedConfig(**v)
+                else:
+                    nested_kwargs["federated"] = FederatedConfig(strategy=v)
             else:
                 flat_kwargs[k] = v
 
@@ -355,6 +606,23 @@ class ExperimentConfig:
         print("=" * 70)
         print(f"⚙️ HYPERPARAMETER CONFIGURATION: {self.experiment_name.upper()}")
         print("=" * 70)
+
+        fed_params = [
+            ("Federated Strategy", self.federated.federated_strategy.upper()),
+            ("Partition Type", self.federated.partition_type.upper()),
+            ("Number of Clients", self.federated.num_clients),
+            ("Communication Rounds", self.federated.num_rounds),
+            ("Local Client Epochs", self.federated.local_epochs),
+        ]
+        if self.federated.partition_type == "dirichlet":
+            fed_params.append(("Dirichlet Alpha (α)", self.federated.dirichlet_alpha))
+        if self.federated.is_proximal or self.federated.federated_strategy in ("fedprox", "prox"):
+            fed_params.append(("FedProx Mu (μ)", self.federated.mu))
+        if self.federated.federated_strategy in ("fedtrimmedmean", "trimmedmean"):
+            fed_params.append(("Trim Fraction", self.federated.trim_fraction))
+        for k, v in self.federated.strategy_params.items():
+            fed_params.append((f"Extra ({k})", v))
+
         groups = {
             "System & Reproducibility (Experiment)": [
                 ("Random Seed", self.seed),
@@ -388,15 +656,7 @@ class ExperimentConfig:
                 ("Save Top-K Checkpoints", f"Top {self.optimizer.save_top_k} models"),
                 ("Max Gradient Norm", self.optimizer.max_grad_norm),
             ],
-            "Federated Parameters (FederatedConfig)": [
-                ("Federated Strategy", self.federated.federated_strategy.upper()),
-                ("Partition Type", self.federated.partition_type.upper()),
-                ("Number of Clients", self.federated.num_clients),
-                ("Communication Rounds", self.federated.num_rounds),
-                ("Local Client Epochs", self.federated.local_epochs),
-                ("FedProx Mu (μ)", self.federated.mu),
-                ("Dirichlet Alpha (α)", self.federated.dirichlet_alpha),
-            ],
+            "Federated Parameters (FederatedConfig)": fed_params,
         }
 
         for group_name, params in groups.items():
