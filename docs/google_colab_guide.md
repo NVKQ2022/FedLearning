@@ -131,6 +131,7 @@ from src.utils.config import (
     LossConfig,
     OptimizerConfig,
     FederatedConfig,
+    FedAvg,
 )
 from src.utils.seed import set_seed
 
@@ -164,10 +165,10 @@ CONFIG = Experiment(
         verbose=True,
     ),
     federated=FederatedConfig(
-        num_clients=5,
+        algorithm=FedAvg(),             # Embedded FL algorithm: FedAvg() or FedProx(mu=0.05)
+        num_clients=5,                  # Common FL parameters
         num_rounds=8,
         local_epochs=2,
-        federated_strategy="fedavg",
     ),
 )
 

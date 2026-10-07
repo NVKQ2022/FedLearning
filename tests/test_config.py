@@ -1,7 +1,7 @@
 """
 Unit tests for the modular ExperimentConfig / Experiment configuration system,
-including multi-algorithm FederatedConfig support (FedAvg, FedProx, FedMedian,
-FedTrimmedMean, and future custom algorithms).
+verifying that FederatedConfig encapsulates common FL attributes while embedding
+the Federated Algorithm (FedAvg, FedProx, FedMedian, FedTrimmedMean, CustomAlgorithm).
 """
 
 import os
@@ -21,12 +21,17 @@ from src.utils.config import (
     OptimizationConfig,
     FederatedConfig,
     FederatedParametersConfig,
-    StrategyConfig,
+    FedAlgorithm,
+    FederatedAlgorithm,
+    FedAvg,
     FedAvgConfig,
+    FedProx,
     FedProxConfig,
+    FedMedian,
     FedMedianConfig,
+    FedTrimmedMean,
     FedTrimmedMeanConfig,
-    CustomStrategyConfig,
+    CustomAlgorithm,
 )
 
 
@@ -43,6 +48,10 @@ def test_default_initialization():
     assert isinstance(cfg.optimizer, OptimizerConfig)
     assert isinstance(cfg.federated, FederatedConfig)
 
+    # Embedded algorithm
+    assert isinstance(cfg.federated.algorithm, FedAvg)
+    assert cfg.federated.algorithm.name == "fedavg"
+
     # Aliases
     assert cfg.dataset_preprocessing is cfg.data
     assert cfg.architecture is cfg.model
@@ -56,7 +65,7 @@ def test_modular_initialization_with_instances():
     model_cfg = ModelConfig(hidden_dims=(256, 128), dropout_rate=0.3)
     loss_cfg = LossConfig(loss_type="cross_entropy", focal_gamma=1.5)
     opt_cfg = OptimizerConfig(learning_rate=0.005, epochs=20)
-    fed_cfg = FederatedConfig(num_clients=10, federated_strategy="fedavg")
+    fed_cfg = FederatedConfig(algorithm=FedAvg(), num_clients=10)
 
     cfg = Experiment(
         experiment_name="test_modular",
@@ -76,7 +85,7 @@ def test_modular_initialization_with_instances():
     assert cfg.optimizer.learning_rate == 0.005
     assert cfg.optimizer.epochs == 20
     assert cfg.federated.num_clients == 10
-    assert cfg.federated.federated_strategy == "fedavg"
+    assert isinstance(cfg.federated.algorithm, FedAvg)
 
     # Flat delegation access
     assert cfg.batch_size == 64
@@ -87,6 +96,7 @@ def test_modular_initialization_with_instances():
     assert cfg.learning_rate == 0.005
     assert cfg.epochs == 20
     assert cfg.num_clients == 10
+    assert cfg.federated_strategy == "fedavg"
 
 
 def test_alias_parameter_initialization():
@@ -95,7 +105,7 @@ def test_alias_parameter_initialization():
         architecture=ArchitectureRegularizationConfig(hidden_dims=[64, 32]),
         loss_function=LossFunctionConfig(use_class_weights=False),
         optimization=OptimizationConfig(lr=0.01),
-        federated_parameters=FederatedParametersConfig(mu=0.05),
+        federated_parameters=FederatedParametersConfig(algorithm=FedProx(mu=0.05)),
     )
 
     assert cfg.batch_size == 32
@@ -104,7 +114,9 @@ def test_alias_parameter_initialization():
     assert cfg.loss.class_weight_strategy == "none"
     assert cfg.optimizer.learning_rate == 0.01
     assert cfg.optimizer.lr == 0.01
+    assert isinstance(cfg.federated.algorithm, FedProx)
     assert cfg.federated.mu == 0.05
+    assert cfg.mu == 0.05
 
 
 def test_flat_backward_compatibility_init():
@@ -151,24 +163,33 @@ def test_dict_serialization_and_deserialization():
         experiment_name="serialize_test",
         data=DataConfig(batch_size=64),
         optimizer=OptimizerConfig(learning_rate=0.003),
+        federated=FederatedConfig(algorithm=FedProx(mu=0.08), num_clients=6),
     )
 
     nested_dict = cfg.to_dict()
     assert "data" in nested_dict
     assert nested_dict["data"]["batch_size"] == 64
     assert nested_dict["optimizer"]["learning_rate"] == 0.003
+    assert nested_dict["federated"]["algorithm"]["name"] == "fedprox"
+    assert nested_dict["federated"]["algorithm"]["mu"] == 0.08
+    assert nested_dict["federated"]["num_clients"] == 6
 
     restored = ExperimentConfig.from_dict(nested_dict)
     assert restored.batch_size == 64
     assert restored.optimizer.learning_rate == 0.003
+    assert isinstance(restored.federated.algorithm, FedProx)
+    assert restored.federated.mu == 0.08
+    assert restored.federated.num_clients == 6
 
     flat_dict = cfg.to_flat_dict()
     assert flat_dict["batch_size"] == 64
     assert flat_dict["learning_rate"] == 0.003
+    assert flat_dict["num_clients"] == 6
 
     restored_flat = ExperimentConfig.from_dict(flat_dict)
     assert restored_flat.batch_size == 64
     assert restored_flat.optimizer.learning_rate == 0.003
+    assert restored_flat.num_clients == 6
 
 
 def test_file_save_and_display():
@@ -188,126 +209,126 @@ def test_file_save_and_display():
 
 
 # ==============================================================================
-# Multi-Algorithm FederatedConfig Tests
+# Embedded Algorithm & FederatedConfig Architecture Tests
 # ==============================================================================
 
-def test_federated_config_fedavg_defaults():
-    fed = FederatedConfig()
-    assert fed.federated_strategy == "fedavg"
-    assert fed.strategy == "fedavg"
+def test_federated_config_embedded_algorithm_fedavg():
+    # Common attributes on FederatedConfig, algorithm inside
+    fed = FederatedConfig(
+        algorithm=FedAvg(),
+        num_clients=5,
+        num_rounds=10,
+        local_epochs=2,
+        partition_type="iid",
+    )
+    assert isinstance(fed.algorithm, FedAvg)
+    assert fed.algorithm.name == "fedavg"
+    # Common attributes preserved at config level
+    assert fed.num_clients == 5
+    assert fed.num_rounds == 10
+    assert fed.local_epochs == 2
+    assert fed.partition_type == "iid"
+    # Convenience properties
     assert fed.is_fedavg is True
     assert fed.is_fedprox is False
     assert fed.is_proximal is False
     assert fed.mu == 0.0
 
-    # Factory method
-    fed2 = FederatedConfig.fedavg(num_clients=7, num_rounds=12)
-    assert fed2.federated_strategy == "fedavg"
-    assert fed2.num_clients == 7
-    assert fed2.num_rounds == 12
-    assert fed2.mu == 0.0
+
+def test_federated_config_embedded_algorithm_fedprox():
+    # Common attributes on FederatedConfig, algorithm FedProx(mu) inside
+    fed = FederatedConfig(
+        algorithm=FedProx(mu=0.05),
+        num_clients=7,
+        num_rounds=12,
+        partition_type="dirichlet",
+        dirichlet_alpha=0.1,
+    )
+    assert isinstance(fed.algorithm, FedProx)
+    assert fed.algorithm.mu == 0.05
+    # Common attributes preserved at config level
+    assert fed.num_clients == 7
+    assert fed.num_rounds == 12
+    assert fed.partition_type == "dirichlet"
+    assert fed.dirichlet_alpha == 0.1
+    # Proximal properties
+    assert fed.is_fedprox is True
+    assert fed.is_proximal is True
+    assert fed.mu == 0.05
 
 
-def test_federated_config_fedprox():
-    # Direct kwargs
-    fed_prox = FederatedConfig(federated_strategy="fedprox", mu=0.05)
-    assert fed_prox.federated_strategy == "fedprox"
-    assert fed_prox.is_fedprox is True
-    assert fed_prox.is_proximal is True
-    assert fed_prox.mu == 0.05
+def test_federated_config_robust_and_custom_algorithms():
+    # FedMedian
+    fed_med = FederatedConfig(algorithm=FedMedian(), num_clients=5)
+    assert isinstance(fed_med.algorithm, FedMedian)
+    assert fed_med.algorithm.name == "fedmedian"
+    assert fed_med.num_clients == 5
 
-    # Factory method
-    fed_prox2 = FederatedConfig.fedprox(mu=0.08, num_clients=10)
-    assert fed_prox2.federated_strategy == "fedprox"
-    assert fed_prox2.mu == 0.08
-    assert fed_prox2.num_clients == 10
-    assert fed_prox2.is_proximal is True
-
-
-def test_federated_config_strategy_subconfigs():
-    # Passing FedProxConfig
-    fed_sub = FederatedConfig(strategy=FedProxConfig(mu=0.03))
-    assert fed_sub.federated_strategy == "fedprox"
-    assert fed_sub.mu == 0.03
-    assert fed_sub.is_proximal is True
-
-    # Passing FedMedianConfig
-    fed_med = FederatedConfig(strategy=FedMedianConfig())
-    assert fed_med.federated_strategy == "fedmedian"
-    assert fed_med.is_fedavg is False
-
-    # Passing FedTrimmedMeanConfig
-    fed_trim = FederatedConfig(strategy=FedTrimmedMeanConfig(trim_fraction=0.15))
-    assert fed_trim.federated_strategy == "fedtrimmedmean"
+    # FedTrimmedMean
+    fed_trim = FederatedConfig(algorithm=FedTrimmedMean(trim_fraction=0.15), num_clients=5)
+    assert isinstance(fed_trim.algorithm, FedTrimmedMean)
+    assert fed_trim.algorithm.trim_fraction == 0.15
     assert fed_trim.trim_fraction == 0.15
 
-    # Factory constructors
-    fed_med2 = FederatedConfig.fedmedian(num_clients=6)
-    assert fed_med2.federated_strategy == "fedmedian"
-    assert fed_med2.num_clients == 6
-
-    fed_trim2 = FederatedConfig.fedtrimmedmean(trim_fraction=0.2, num_clients=8)
-    assert fed_trim2.federated_strategy == "fedtrimmedmean"
-    assert fed_trim2.trim_fraction == 0.2
-    assert fed_trim2.num_clients == 8
-
-
-def test_federated_config_future_algorithm():
-    # Arbitrary / future FL algorithm (e.g. SCAFFOLD, FedAdam)
-    fed_custom = FederatedConfig.custom(
-        strategy="scaffold",
-        num_clients=5,
-        server_lr=0.01,
-        client_control_variates=True,
+    # CustomAlgorithm (e.g., future SCAFFOLD, FedAdam)
+    fed_custom = FederatedConfig(
+        algorithm=CustomAlgorithm(name="scaffold", params={"server_lr": 0.01}),
+        num_clients=6,
     )
-    assert fed_custom.federated_strategy == "scaffold"
-    assert fed_custom.num_clients == 5
-    # Dynamic attribute lookup
+    assert isinstance(fed_custom.algorithm, CustomAlgorithm)
+    assert fed_custom.algorithm.name == "scaffold"
     assert fed_custom.server_lr == 0.01
-    assert fed_custom.client_control_variates is True
-    assert "server_lr" in fed_custom.strategy_params
+    assert fed_custom.num_clients == 6
 
-    # Serialization
-    d = fed_custom.to_dict()
-    assert d["federated_strategy"] == "scaffold"
-    assert d["strategy_params"]["server_lr"] == 0.01
 
-    # CustomStrategyConfig object
-    fed_custom2 = FederatedConfig(
-        strategy=CustomStrategyConfig("fedadam", extra_params={"server_learning_rate": 0.05})
-    )
-    assert fed_custom2.federated_strategy == "fedadam"
-    assert fed_custom2.server_learning_rate == 0.05
+def test_federated_config_factory_constructors():
+    # FedAvg factory
+    f_avg = FederatedConfig.fedavg(num_clients=8, num_rounds=15)
+    assert isinstance(f_avg.algorithm, FedAvg)
+    assert f_avg.num_clients == 8
+    assert f_avg.num_rounds == 15
+
+    # FedProx factory
+    f_prox = FederatedConfig.fedprox(mu=0.04, num_clients=9)
+    assert isinstance(f_prox.algorithm, FedProx)
+    assert f_prox.algorithm.mu == 0.04
+    assert f_prox.num_clients == 9
+
+    # Custom factory
+    f_cust = FederatedConfig.custom(name="fedadam", num_clients=4, server_lr=0.02)
+    assert isinstance(f_cust.algorithm, CustomAlgorithm)
+    assert f_cust.num_clients == 4
+    assert f_cust.server_lr == 0.02
 
 
 def test_federated_config_build_strategy():
-    strat_avg = FederatedConfig.fedavg().build_strategy()
+    strat_avg = FederatedConfig(algorithm=FedAvg()).build_strategy()
     assert strat_avg.name == "FedAvg"
 
-    strat_prox = FederatedConfig.fedprox(mu=0.07).build_strategy()
+    strat_prox = FederatedConfig(algorithm=FedProx(mu=0.07)).build_strategy()
     assert strat_prox.name == "FedProx"
     assert strat_prox.mu == 0.07
 
-    strat_med = FederatedConfig.fedmedian().build_strategy()
+    strat_med = FederatedConfig(algorithm=FedMedian()).build_strategy()
     assert strat_med.name == "FedMedian"
 
-    strat_trim = FederatedConfig.fedtrimmedmean(trim_fraction=0.12).build_strategy()
+    strat_trim = FederatedConfig(algorithm=FedTrimmedMean(trim_fraction=0.2)).build_strategy()
     assert strat_trim.name == "FedTrimmedMean"
-    assert strat_trim.trim_fraction == 0.12
+    assert strat_trim.trim_fraction == 0.2
 
 
-def test_experiment_with_federated_strategy_object():
+def test_experiment_with_federated_algorithm():
     cfg = Experiment(
-        experiment_name="test_fedprox_obj",
-        federated=FedProxConfig(mu=0.06),
+        experiment_name="test_fedprox_embedded",
+        federated=FederatedConfig(
+            algorithm=FedProx(mu=0.06),
+            num_clients=5,
+            num_rounds=10,
+        ),
     )
-    assert cfg.federated.federated_strategy == "fedprox"
-    assert cfg.federated.mu == 0.06
-    assert cfg.federated_strategy == "fedprox"
-    assert cfg.mu == 0.06
+    assert isinstance(cfg.federated.algorithm, FedProx)
+    assert cfg.federated.algorithm.mu == 0.06
+    assert cfg.num_clients == 5
+    assert cfg.num_rounds == 10
     assert cfg.is_proximal is True
-
-    # Mutating through flat delegation
-    cfg.mu = 0.1
-    assert cfg.federated.mu == 0.1
-    assert cfg.mu == 0.1
+    assert cfg.mu == 0.06
