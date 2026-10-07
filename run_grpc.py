@@ -3,7 +3,7 @@ Automated Multi-Process gRPC Launcher for Flower Federated Learning (FL-IoT-IDS)
 
 Executes the Flower Server and Edge Clients as independent OS processes communicating
 via real gRPC network sockets over TCP/IP (port 8080).
-- ZERO Ray dependency / Zero Ray OOM issues
+- Decoupled multi-process architecture with socket-based client-server isolation
 - Realistic edge IoT deployment (identical to Raspberry Pi / edge gateway deployment)
 - Isolated client partitions, EDAs, and metrics organized under scenarios/<scenario_name>/
 """
@@ -26,11 +26,11 @@ def check_or_prepare_scenario(
     scenario_name: str,
     num_clients: int = 5,
     sample_size: Optional[int] = 50000,
-    partition_type: str = "dirichlet",
+    partition_type: str = "iid",
     alpha: float = 0.5,
     seed: int = 42,
-    strategy: str = "fedprox",
-    mu: float = 0.05,
+    strategy: str = "fedavg",
+    mu: float = 0.0,
     rounds: int = 10
 ) -> str:
     """
@@ -126,13 +126,13 @@ def main():
     parser = argparse.ArgumentParser(description="Multi-Process Flower gRPC Orchestrator.")
     parser.add_argument("--rounds", type=int, default=10, help="Communication rounds.")
     parser.add_argument("--num-clients", type=int, default=5, help="Number of simulated edge clients.")
-    parser.add_argument("--strategy", type=str, default="fedprox", choices=["fedavg", "fedprox"], help="Strategy.")
-    parser.add_argument("--mu", type=float, default=0.05, help="FedProx proximal parameter mu.")
+    parser.add_argument("--strategy", type=str, default="fedavg", choices=["fedavg", "fedprox"], help="Strategy.")
+    parser.add_argument("--mu", type=float, default=0.0, help="FedProx proximal parameter mu (0.0 for FedAvg).")
     parser.add_argument("--port", type=int, default=8080, help="gRPC server port.")
     parser.add_argument("--sample-size", type=int, default=50000, help="Dataset subsample size (None for full).")
-    parser.add_argument("--partition-type", type=str, default="dirichlet", choices=["dirichlet", "iid"])
+    parser.add_argument("--partition-type", type=str, default="iid", choices=["dirichlet", "iid"])
     parser.add_argument("--alpha", type=float, default=0.5, help="Dirichlet heterogeneity parameter.")
-    parser.add_argument("--scenario-name", type=str, default=None, help="Name of scenario folder (e.g. E5_fedprox_dirichlet_0.1).")
+    parser.add_argument("--scenario-name", type=str, default=None, help="Name of scenario folder (e.g. E2_fedavg_iid).")
     parser.add_argument("--scenarios-dir", type=str, default="scenarios", help="Base directory containing scenarios.")
     args = parser.parse_args()
 
@@ -156,7 +156,7 @@ def main():
     print(f"Clients:         {args.num_clients}")
     print(f"Rounds:          {args.rounds}")
     print(f"Strategy:        {args.strategy.upper()} (mu={args.mu})")
-    print("Zero Ray Engine: Pure TCP/IP gRPC sockets (no Ray overhead/OOM watchdog)")
+    print("Architecture:    Multi-process edge deployment over TCP/IP gRPC sockets")
     print("=" * 80)
 
     # 1. Ensure scenario structure (server data, client partitions, EDAs, and plots) exists

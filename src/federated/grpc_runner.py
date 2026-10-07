@@ -3,7 +3,7 @@ Flower Multi-Process gRPC Execution Runner for FL-IoT-IDS.
 
 Coordinates Flower Central Server and Edge Client processes communicating over real
 gRPC network sockets over TCP/IP (default port 8080).
-- Pure distributed execution (Zero Ray dependency, Zero simulation overhead)
+- Pure distributed execution via standard gRPC network sockets
 - Standalone OS processes for Server and Clients (realistic edge IoT deployment)
 - Reads from and persists directly into scenarios/<scenario_name>/
 """
@@ -39,8 +39,8 @@ def run_flower_grpc(
     scenario_name: str,
     num_clients: int = 5,
     rounds: int = 10,
-    strategy: str = "fedprox",
-    mu: float = 0.05,
+    strategy: str = "fedavg",
+    mu: float = 0.0,
     port: int = 8080,
     scenarios_dir: str = "scenarios",
     device: str = "cpu",
@@ -54,8 +54,8 @@ def run_flower_grpc(
         scenario_name: Name of the scenario folder under scenarios_dir.
         num_clients: Number of edge clients K to launch.
         rounds: Number of federated communication rounds.
-        strategy: 'fedprox' or 'fedavg'.
-        mu: FedProx proximal coefficient (mu=0.0 for FedAvg).
+        strategy: 'fedavg' or 'fedprox'.
+        mu: FedProx proximal coefficient (0.0 for FedAvg, 0.05 for FedProx).
         port: Preferred gRPC TCP port (default: 8080).
         scenarios_dir: Root directory containing scenario partitions.
         device: Compute device for clients ('cpu' or 'cuda').
@@ -84,7 +84,7 @@ def run_flower_grpc(
     print(f"Clients:         {num_clients}")
     print(f"Rounds:          {rounds}")
     print(f"Strategy:        {strategy.upper()} (mu={mu})")
-    print("Transport:       Pure TCP/IP gRPC sockets (Zero Ray / Zero flwr.simulation)")
+    print("Transport:       TCP/IP gRPC sockets (port 8080)")
     print("=" * 80)
 
     server_proc: Optional[subprocess.Popen] = None

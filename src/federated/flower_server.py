@@ -105,8 +105,8 @@ class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
     """
     def __init__(
         self,
-        strategy_name: str = "fedprox",
-        mu: float = 0.05,
+        strategy_name: str = "fedavg",
+        mu: float = 0.0,
         fraction_fit: float = 1.0,
         min_fit_clients: int = 2,
         min_available_clients: int = 2,
@@ -360,8 +360,8 @@ def start_flower_server(
     server_address: str = "0.0.0.0:8080",
     num_rounds: int = 10,
     strategy: Optional[Any] = None,
-    strategy_name: str = "fedprox",
-    mu: float = 0.05,
+    strategy_name: str = "fedavg",
+    mu: float = 0.0,
     min_fit_clients: int = 2,
     min_available_clients: int = 2,
     evaluate_fn: Optional[Callable] = None,
@@ -438,8 +438,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Start the Flower IoT Server Process.")
     parser.add_argument("--server-address", type=str, default="0.0.0.0:8080", help="gRPC bind address.")
     parser.add_argument("--rounds", type=int, default=10, help="Number of communication rounds.")
-    parser.add_argument("--strategy", type=str, default="fedprox", choices=["fedavg", "fedprox"], help="FL Strategy.")
-    parser.add_argument("--mu", type=float, default=0.05, help="FedProx proximal parameter mu.")
+    parser.add_argument("--strategy", type=str, default="fedavg", choices=["fedavg", "fedprox"], help="FL Strategy.")
+    parser.add_argument("--mu", type=float, default=0.0, help="FedProx proximal parameter mu (0.0 for FedAvg).")
     parser.add_argument("--min-clients", type=int, default=2, help="Minimum connected clients.")
     parser.add_argument("--partitions-dir", type=str, default=None, help="Directory containing server_val.npz and meta.json.")
     parser.add_argument("--scenario-dir", type=str, default=None, help="Root directory of experimental scenario (e.g. scenarios/E5_fedprox_dirichlet_0.1).")

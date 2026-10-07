@@ -78,10 +78,10 @@ class ExperimentConfig:
     num_clients: int = 5
     num_rounds: int = 8
     local_epochs: int = 2
-    mu: float = 0.05                         # FedProx proximal coefficient (0.0 for FedAvg)
-    dirichlet_alpha: float = 0.1             # Dirichlet heterogeneity parameter (0.1 severe, 0.5 moderate)
-    federated_strategy: str = "fedprox"      # 'fedavg', 'fedprox', 'fedmedian', 'fedtrimmedmean'
-    partition_type: str = "dirichlet"        # 'iid' or 'dirichlet'
+    mu: float = 0.0                          # FedProx proximal coefficient (0.0 for FedAvg, 0.05 for FedProx)
+    dirichlet_alpha: float = 0.5             # Dirichlet heterogeneity parameter (0.1 severe, 0.5 moderate)
+    federated_strategy: str = "fedavg"       # 'fedavg', 'fedprox', 'fedmedian', 'fedtrimmedmean'
+    partition_type: str = "iid"              # 'iid' or 'dirichlet'
 
     def __post_init__(self):
         """Validates and synchronizes parameter aliases."""
