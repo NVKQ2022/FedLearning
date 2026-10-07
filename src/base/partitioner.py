@@ -10,13 +10,18 @@ Adheres to:
 - skills/dataset-analysis-and-strategy/SKILL.md (Step 5: Distributed & Federated Partitioning)
 - skills/methodology-audit/SKILL.md (Pillar 4: Statistical Heterogeneity & Partition Soundness)
 """
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 import logging
 from typing import Dict, List, Optional, Any
 
 import numpy as np
-import pandas as pd
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 logger = logging.getLogger(__name__)
 
@@ -39,14 +44,62 @@ class BasePartitioner(ABC):
         self.num_clients = num_clients
         self.seed = seed
 
-    @abstractmethod
-    def partition(self, y: np.ndarray, **kwargs: Any) -> Dict[int, np.ndarray]:
+    @staticmethod
+    def _resolve_labels(*args: Any, **kwargs: Any) -> np.ndarray:
         """
-        Partitions sample indices of dataset labels y across K clients.
+        Flexibly extracts and validates 1D label array from positional or keyword arguments.
+
+        Supports:
+        - partition(y)
+        - partition(X, y)
+        - partition(X=X, y=y)
+        - partition(y=y)
+        - partition(labels=labels)
+        """
+        X = kwargs.get("X", None)
+        y = kwargs.get("y", kwargs.get("labels", None))
+
+        if len(args) >= 2:
+            X = args[0]
+            y = args[1]
+        elif len(args) == 1:
+            if y is None:
+                y = args[0]
+            else:
+                X = args[0]
+
+        if y is None:
+            raise ValueError(
+                "Class labels must be provided to partition(). "
+                "Supported usages: partition(y), partition(X, y), or partition(X=X, y=y)"
+            )
+
+        if pd is not None and isinstance(y, pd.Series):
+            y_arr = y.to_numpy()
+        elif not isinstance(y, np.ndarray):
+            y_arr = np.asarray(y)
+        else:
+            y_arr = y
+
+        if y_arr.ndim > 1:
+            y_arr = y_arr.squeeze()
+
+        if X is not None and hasattr(X, "__len__"):
+            if len(X) != len(y_arr):
+                raise ValueError(
+                    f"Sample count mismatch: X has {len(X)} samples but y has {len(y_arr)} samples."
+                )
+
+        return y_arr
+
+    @abstractmethod
+    def partition(self, *args: Any, **kwargs: Any) -> Dict[int, np.ndarray]:
+        """
+        Partitions sample indices across K clients.
 
         Args:
-            y: 1D array of class labels for the training set.
-            **kwargs: Partitioner-specific parameters (e.g. alpha for Dirichlet).
+            *args: Either (y,) or (X, y).
+            **kwargs: Named parameters such as 'X', 'y', 'labels', or algorithm hyperparameters.
 
         Returns:
             Dictionary mapping client_id (0 to K-1) to an array of indices.
@@ -105,13 +158,24 @@ class BasePartitioner(ABC):
 
     def get_client_distribution(
         self,
-        y: np.ndarray,
-        partition_dict: Dict[int, np.ndarray],
+        arg1: Union[np.ndarray, Dict[int, np.ndarray]],
+        arg2: Union[np.ndarray, Dict[int, np.ndarray]],
         class_names: Optional[List[str]] = None
     ) -> pd.DataFrame:
         """
         Generates a summary DataFrame of sample counts per class per client.
+        Accepts either get_client_distribution(y, partition_dict) or get_client_distribution(partition_dict, y).
         """
+        if isinstance(arg1, dict):
+            partition_dict, y = arg1, arg2
+        else:
+            y, partition_dict = arg1, arg2
+
+        if pd is not None and isinstance(y, pd.Series):
+            y = y.to_numpy()
+        elif not isinstance(y, np.ndarray):
+            y = np.asarray(y)
+
         unique_classes = np.unique(y)
         records = []
 
@@ -122,17 +186,18 @@ class BasePartitioner(ABC):
             counts["Client ID"] = client_id
             records.append(counts)
 
-        df = pd.DataFrame(records).set_index("Client ID")
-        if class_names is not None and len(class_names) == len(unique_classes):
-            rename_map = {c: class_names[i] for i, c in enumerate(unique_classes)}
-            df = df.rename(columns=rename_map)
-
-        return df
+        if pd is not None:
+            df = pd.DataFrame(records).set_index("Client ID")
+            if class_names is not None and len(class_names) == len(unique_classes):
+                rename_map = {c: class_names[i] for i, c in enumerate(unique_classes)}
+                df = df.rename(columns=rename_map)
+            return df
+        return pd.DataFrame(records) if pd is not None else records  # type: ignore
 
     def compute_heterogeneity_score(
         self,
-        y: np.ndarray,
-        partition_dict: Dict[int, np.ndarray]
+        arg1: Union[np.ndarray, Dict[int, np.ndarray]],
+        arg2: Union[np.ndarray, Dict[int, np.ndarray]]
     ) -> Dict[str, float]:
         """
         Quantifies statistical heterogeneity using Mean Total Variation (TV) distance:
@@ -142,8 +207,17 @@ class BasePartitioner(ABC):
         - 0.0: Perfect IID distribution.
         - 1.0: Extreme Non-IID (complete class separation).
         """
+        if isinstance(arg1, dict):
+            partition_dict, y = arg1, arg2
+        else:
+            y, partition_dict = arg1, arg2
+
+        if pd is not None and isinstance(y, pd.Series):
+            y = y.to_numpy()
+        elif not isinstance(y, np.ndarray):
+            y = np.asarray(y)
+
         unique_classes = np.unique(y)
-        num_classes = len(unique_classes)
         global_dist = np.array([np.sum(y == c) for c in unique_classes], dtype=np.float64) / len(y)
 
         tv_distances: List[float] = []

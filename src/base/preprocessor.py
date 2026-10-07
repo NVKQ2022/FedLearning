@@ -9,6 +9,7 @@ Adheres to:
 - skills/dataset-analysis-and-strategy/SKILL.md (Step 3: Tabular Preprocessing Pipeline)
 - skills/methodology-audit/SKILL.md (Pillar 1: Data Leakage Prevention)
 """
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 import os
@@ -17,7 +18,11 @@ import logging
 from typing import List, Optional, Tuple, Any
 
 import numpy as np
-import pandas as pd
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 logger = logging.getLogger(__name__)
 

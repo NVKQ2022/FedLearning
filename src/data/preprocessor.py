@@ -10,6 +10,7 @@ Adheres to:
 - skills/dataset-analysis-and-strategy/SKILL.md
 - skills/methodology-audit/SKILL.md (Pillar 1: Data Leakage Prevention)
 """
+from __future__ import annotations
 
 import os
 import pickle

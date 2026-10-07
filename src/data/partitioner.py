@@ -9,12 +9,19 @@ Adheres to:
 - skills/dataset-analysis-and-strategy/SKILL.md (Step 5: Distributed & Federated Partitioning)
 - skills/methodology-audit/SKILL.md (Pillar 4: Statistical Heterogeneity & Partition Soundness)
 """
+from __future__ import annotations
 
 import logging
 from typing import Dict, List, Optional, Tuple, Union, Any
 
 import numpy as np
-import pandas as pd
+
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    pd = None
+    HAS_PANDAS = False
 
 try:
     import torch
@@ -35,8 +42,10 @@ class StratifiedIIDPartitioner(BasePartitioner):
     Uniform Stratified IID Partitioner.
     Distributes samples such that each client observes an identical or near-identical
     class distribution.
+    Supports partition(y), partition(X, y), and partition(X=X, y=y).
     """
-    def partition(self, y: np.ndarray, **kwargs: Any) -> Dict[int, np.ndarray]:
+    def partition(self, *args: Any, **kwargs: Any) -> Dict[int, np.ndarray]:
+        y = self._resolve_labels(*args, **kwargs)
         logger.info(f"Generating Stratified IID partition for {self.num_clients} clients (seed={self.seed})...")
         rng = np.random.default_rng(self.seed)
         unique_classes = np.unique(y)
@@ -69,6 +78,8 @@ class DirichletNonIIDPartitioner(BasePartitioner):
     - alpha = 1.0: Mild statistical heterogeneity.
     - alpha = 0.5: Moderate statistical heterogeneity.
     - alpha = 0.1: Severe statistical heterogeneity (extreme label skew).
+
+    Supports partition(y), partition(X, y), and partition(X=X, y=y).
     """
     def __init__(
         self,
@@ -83,14 +94,19 @@ class DirichletNonIIDPartitioner(BasePartitioner):
         self.min_samples_per_client = min_samples_per_client
         self.max_retries = max_retries
 
-    def partition(self, y: np.ndarray, **kwargs: Any) -> Dict[int, np.ndarray]:
+    def partition(self, *args: Any, **kwargs: Any) -> Dict[int, np.ndarray]:
+        y = self._resolve_labels(*args, **kwargs)
+        alpha = float(kwargs.get("alpha", self.alpha))
+        min_samples = int(kwargs.get("min_samples_per_client", self.min_samples_per_client))
+        max_retries = int(kwargs.get("max_retries", self.max_retries))
+
         logger.info(
-            f"Generating Dirichlet Non-IID partition (alpha={self.alpha}, K={self.num_clients}, min_samples={self.min_samples_per_client})..."
+            f"Generating Dirichlet Non-IID partition (alpha={alpha}, K={self.num_clients}, min_samples={min_samples})..."
         )
         unique_classes = np.unique(y)
         total_samples = len(y)
 
-        for attempt in range(self.max_retries):
+        for attempt in range(max_retries):
             current_seed = self.seed + attempt
             rng = np.random.default_rng(current_seed)
             client_indices: Dict[int, List[int]] = {i: [] for i in range(self.num_clients)}
@@ -101,7 +117,7 @@ class DirichletNonIIDPartitioner(BasePartitioner):
                 n_class = len(class_idx)
 
                 # Sample class-wise client proportions from Dirichlet distribution
-                proportions = rng.dirichlet(np.repeat(self.alpha, self.num_clients))
+                proportions = rng.dirichlet(np.repeat(alpha, self.num_clients))
                 
                 # Convert continuous proportions to discrete sample counts
                 counts = (proportions * n_class).astype(int)
@@ -124,7 +140,7 @@ class DirichletNonIIDPartitioner(BasePartitioner):
 
             # Verify that all clients meet the minimum sample requirement
             min_size = min(len(indices) for indices in client_indices.values())
-            if min_size >= self.min_samples_per_client:
+            if min_size >= min_samples:
                 logger.info(
                     f"Valid Dirichlet partition found on attempt {attempt + 1}. Minimum client size: {min_size:,}"
                 )
@@ -136,13 +152,13 @@ class DirichletNonIIDPartitioner(BasePartitioner):
                 return result
             else:
                 logger.debug(
-                    f"Attempt {attempt + 1} produced client with {min_size} samples (< {self.min_samples_per_client}). Retrying..."
+                    f"Attempt {attempt + 1} produced client with {min_size} samples (< {min_samples}). Retrying..."
                 )
 
         raise RuntimeError(
-            f"Failed to generate a valid Dirichlet partition after {self.max_retries} retries. "
-            f"Consider lowering min_samples_per_client (currently {self.min_samples_per_client}) "
-            f"or increasing alpha (currently {self.alpha})."
+            f"Failed to generate a valid Dirichlet partition after {max_retries} retries. "
+            f"Consider lowering min_samples_per_client (currently {min_samples}) "
+            f"or increasing alpha (currently {alpha})."
         )
 
 
@@ -151,28 +167,48 @@ DirichletPartitioner = DirichletNonIIDPartitioner
 
 
 def partition_iid(
-    y: np.ndarray,
-    num_clients: int,
-    seed: int = 42
+    *args: Any,
+    num_clients: Optional[int] = None,
+    seed: int = 42,
+    **kwargs: Any
 ) -> Dict[int, np.ndarray]:
     """
     Uniform Stratified IID Partitioning (convenience functional interface).
+    Supports partition_iid(y, num_clients=...), partition_iid(X, y, num_clients=...), etc.
     """
+    args_list = list(args)
+    if num_clients is None:
+        if args_list and isinstance(args_list[-1], (int, np.integer)):
+            num_clients = int(args_list.pop())
+        else:
+            raise ValueError("num_clients must be provided to partition_iid")
+
     partitioner = StratifiedIIDPartitioner(num_clients=num_clients, seed=seed)
-    return partitioner.partition(y)
+    return partitioner.partition(*args_list, **kwargs)
 
 
 def partition_dirichlet(
-    y: np.ndarray,
-    num_clients: int,
+    *args: Any,
+    num_clients: Optional[int] = None,
     alpha: float = 0.5,
     min_samples_per_client: int = 100,
     seed: int = 42,
-    max_retries: int = 50
+    max_retries: int = 50,
+    **kwargs: Any
 ) -> Dict[int, np.ndarray]:
     """
     Dirichlet Non-IID Partitioning (convenience functional interface).
+    Supports partition_dirichlet(y, num_clients=...), partition_dirichlet(X, y, num_clients=...), etc.
     """
+    args_list = list(args)
+    if num_clients is None:
+        if args_list and isinstance(args_list[-1], (int, np.integer)):
+            num_clients = int(args_list.pop())
+        elif len(args_list) >= 2 and isinstance(args_list[1], (int, np.integer)):
+            num_clients = int(args_list.pop(1))
+        else:
+            raise ValueError("num_clients must be provided to partition_dirichlet")
+
     partitioner = DirichletNonIIDPartitioner(
         num_clients=num_clients,
         alpha=alpha,
@@ -180,7 +216,7 @@ def partition_dirichlet(
         seed=seed,
         max_retries=max_retries
     )
-    return partitioner.partition(y)
+    return partitioner.partition(*args_list, **kwargs)
 
 
 def summarize_client_partitions(
