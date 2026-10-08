@@ -255,3 +255,68 @@ def test_create_federated_scenario_client_val_split():
 
         X_all, y_all, _ = load_client_partition(scenario_dir, 0, split="all")
         assert len(X_all) == 100
+
+
+def test_create_federated_scenario_server_test_split():
+    """Verify create_federated_scenario serializes and loads server holdout test data (30% upcoming data)."""
+    import tempfile
+    import os
+    import numpy as np
+    from src.federated.scenario import (
+        create_federated_scenario,
+        load_server_data,
+        load_server_test_data
+    )
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        num_train = 70
+        num_val = 15
+        num_test = 30
+        input_dim = 8
+        num_classes = 3
+
+        X_train = np.random.randn(num_train, input_dim).astype(np.float32)
+        y_train = np.random.randint(0, num_classes, size=num_train).astype(np.int64)
+
+        X_val = np.random.randn(num_val, input_dim).astype(np.float32)
+        y_val = np.random.randint(0, num_classes, size=num_val).astype(np.int64)
+
+        X_test = np.random.randn(num_test, input_dim).astype(np.float32)
+        y_test = np.random.randint(0, num_classes, size=num_test).astype(np.int64)
+
+        client_partitions = {0: np.arange(0, 35), 1: np.arange(35, 70)}
+
+        scenario_dir = create_federated_scenario(
+            scenario_name="test_server_test_scenario",
+            client_partitions=client_partitions,
+            X_train=X_train,
+            y_train=y_train,
+            X_val=X_val,
+            y_val=y_val,
+            X_test=X_test,
+            y_test=y_test,
+            class_names=[f"C{i}" for i in range(num_classes)],
+            base_dir=tmp_dir,
+            generate_plots=False,
+            client_val_ratio=0.2
+        )
+
+        server_dir = os.path.join(scenario_dir, "server")
+        assert os.path.exists(os.path.join(server_dir, "test_data.npz"))
+        assert os.path.exists(os.path.join(server_dir, "global_test.npz"))
+
+        # Verify load_server_data with split="val"
+        X_v, y_v, meta = load_server_data(scenario_dir, split="val")
+        assert len(X_v) == num_val
+        assert meta["total_test_samples"] == num_test
+
+        # Verify load_server_data with split="test"
+        X_t, y_t, meta_t = load_server_data(scenario_dir, split="test")
+        assert len(X_t) == num_test
+        assert len(y_t) == num_test
+
+        # Verify load_server_test_data helper
+        X_t2, y_t2, _ = load_server_test_data(scenario_dir)
+        assert len(X_t2) == num_test
+        np.testing.assert_array_equal(X_t, X_t2)
+        np.testing.assert_array_equal(y_t, y_t2)

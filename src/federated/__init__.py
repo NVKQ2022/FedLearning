@@ -31,6 +31,7 @@ from .scenario import (
     create_centralized_scenario,
     load_client_partition,
     load_server_data,
+    load_server_test_data,
     plot_scenario_convergence,
 )
 from .grpc_runner import run_flower_grpc
@@ -55,5 +56,6 @@ __all__ = [
     "create_centralized_scenario",
     "load_client_partition",
     "load_server_data",
+    "load_server_test_data",
     "plot_scenario_convergence",
 ]

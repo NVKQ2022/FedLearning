@@ -128,6 +128,8 @@ def create_federated_scenario(
     y_train: Optional[np.ndarray] = None,
     X_val: Optional[np.ndarray] = None,
     y_val: Optional[np.ndarray] = None,
+    X_test: Optional[np.ndarray] = None,
+    y_test: Optional[np.ndarray] = None,
     class_names: Optional[List[str]] = None,
     config: Optional[Union[Dict[str, Any], Any]] = None,
     base_dir: str = "scenarios",
@@ -139,7 +141,7 @@ def create_federated_scenario(
 
     Creates:
     - scenarios/<scenario_name>/config.json
-    - scenarios/<scenario_name>/server/meta.json, val_data.npz
+    - scenarios/<scenario_name>/server/meta.json, val_data.npz, test_data.npz
     - scenarios/<scenario_name>/client_{i}/partition.npz, val_partition.npz, eda.json, class_distribution.png, metrics.json
 
     Args:
@@ -149,6 +151,8 @@ def create_federated_scenario(
         y_train: Preprocessed global training labels array.
         X_val: Optional server holdout validation features array.
         y_val: Optional server holdout validation labels array.
+        X_test: Optional server holdout test features array (30% upcoming data).
+        y_test: Optional server holdout test labels array (30% upcoming data).
         class_names: List of class names. If None, inferred as Class_0..C.
         config: Optional scenario configuration parameters dictionary or ExperimentConfig instance.
         base_dir: Base directory for all scenarios (default: 'scenarios').
@@ -195,6 +199,7 @@ def create_federated_scenario(
         "num_clients": num_clients,
         "total_train_samples": int(len(y_train)),
         "total_val_samples": int(len(y_val)) if y_val is not None else 0,
+        "total_test_samples": int(len(y_test)) if y_test is not None else 0,
         "client_val_ratio": float(client_val_ratio)
     }
     with open(os.path.join(server_dir, "meta.json"), "w") as f:
@@ -213,6 +218,20 @@ def create_federated_scenario(
             os.path.join(server_dir, "server_val.npz"),
             X=np.ascontiguousarray(X_val, dtype=np.float32),
             y=np.ascontiguousarray(y_val, dtype=np.int64)
+        )
+
+    # 2b. Serialize server holdout test data (30% upcoming unseen data)
+    if X_test is not None and y_test is not None:
+        test_path = os.path.join(server_dir, "test_data.npz")
+        np.savez_compressed(
+            test_path,
+            X=np.ascontiguousarray(X_test, dtype=np.float32),
+            y=np.ascontiguousarray(y_test, dtype=np.int64)
+        )
+        np.savez_compressed(
+            os.path.join(server_dir, "global_test.npz"),
+            X=np.ascontiguousarray(X_test, dtype=np.float32),
+            y=np.ascontiguousarray(y_test, dtype=np.int64)
         )
 
     # 3. Save scenario config.json
@@ -404,16 +423,18 @@ def load_client_partition(
 
 
 def load_server_data(
-    scenario_dir: str
+    scenario_dir: str,
+    split: str = "val"
 ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Dict[str, Any]]:
     """
-    Loads central server validation data (X_val, y_val) and scenario metadata.
+    Loads central server evaluation data (val or test) and scenario metadata.
 
     Args:
         scenario_dir: Scenario root directory.
+        split: 'val' (holdout validation set) or 'test' (global holdout test set / upcoming data).
 
     Returns:
-        Tuple of (X_val, y_val, meta).
+        Tuple of (X, y, meta).
     """
     server_dir = os.path.join(scenario_dir, "server")
     if not os.path.exists(server_dir):
@@ -425,15 +446,34 @@ def load_server_data(
         with open(meta_file, "r") as f:
             meta = json.load(f)
 
-    val_file = os.path.join(server_dir, "val_data.npz")
-    if not os.path.exists(val_file):
-        val_file = os.path.join(server_dir, "server_val.npz")
+    split_lower = str(split).lower().strip()
+    if split_lower == "test":
+        target_files = ["test_data.npz", "global_test.npz", "server_test.npz"]
+    else:
+        target_files = ["val_data.npz", "server_val.npz"]
 
-    if os.path.exists(val_file):
-        data = np.load(val_file)
-        return data["X"], data["y"], meta
+    for fname in target_files:
+        fpath = os.path.join(server_dir, fname)
+        if os.path.exists(fpath):
+            data = np.load(fpath)
+            return data["X"], data["y"], meta
 
     return None, None, meta
+
+
+def load_server_test_data(
+    scenario_dir: str
+) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Dict[str, Any]]:
+    """
+    Loads central server global test data (30% upcoming data) and scenario metadata.
+
+    Args:
+        scenario_dir: Scenario root directory.
+
+    Returns:
+        Tuple of (X_test, y_test, meta).
+    """
+    return load_server_data(scenario_dir, split="test")
 
 
 def plot_scenario_convergence(
