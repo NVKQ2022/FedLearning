@@ -108,7 +108,7 @@ class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
         strategy_name: str = "fedavg",
         mu: float = 0.0,
         fraction_fit: float = 1.0,
-        fraction_evaluate: float = 1.0,
+        fraction_evaluate: float = 0.0,
         min_fit_clients: int = 2,
         min_evaluate_clients: int = 2,
         min_available_clients: int = 2,
@@ -252,6 +252,59 @@ class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
             f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc*100:5.2f}% | "
             f"Drift: {drift_l2:.4f} | Comm: {cumulative_comm_mb:.2f} MB | Time: {round_duration:.2f}s"
         )
+
+        # 4. Extract per-client local validation (Personalization) if reported in FitRes
+        client_eval_map: Dict[Union[int, str], Dict[str, Any]] = {}
+        for proxy, fit_res in results:
+            cid = fit_res.metrics.get("client_id", proxy.cid)
+            try:
+                cid_key = int(cid)
+            except (ValueError, TypeError):
+                cid_key = str(cid)
+            val_acc = fit_res.metrics.get("val_accuracy")
+            val_loss = fit_res.metrics.get("val_loss")
+            val_samples = fit_res.metrics.get("val_samples", 0)
+            if val_acc is not None and val_samples > 0:
+                client_eval_map[cid_key] = {
+                    "accuracy": float(val_acc),
+                    "loss": float(val_loss) if val_loss is not None else 0.0,
+                    "samples": int(val_samples)
+                }
+
+        if client_eval_map:
+            sorted_clients = sorted(client_eval_map.items(), key=lambda x: str(x[0]))
+            rnd_label = f"ROUND {server_round:02d}"
+            print(f"\n┌────────────────────────────────────────────────────────────────────────┐")
+            print(f"│ 📊 {rnd_label:^66} │")
+            print(f"│ 👤 CLIENT LOCAL VALIDATION (PERSONALIZATION) COMPARISON TABLE          │")
+            print(f"├──────────┬──────────────┬──────────────┬───────────────────────────────┤")
+            print(f"│ Client   │ Accuracy (%) │ Loss         │ Val Samples                   │")
+            print(f"├──────────┼──────────────┼──────────────┼───────────────────────────────┤")
+            for cid, m in sorted_clients:
+                c_label = f"Client {cid}" if isinstance(cid, int) else f"Client {str(cid)[:5]}"
+                print(f"│ {c_label:<8} │ {m['accuracy']*100:10.2f}%  │ {m['loss']:12.4f} │ {m['samples']:29,d} │")
+            print(f"├──────────┴──────────────┴──────────────┴───────────────────────────────┤")
+            acc_values = [m['accuracy'] for _, m in sorted_clients]
+            mean_acc = float(np.mean(acc_values)) if acc_values else 0.0
+            min_acc = float(np.min(acc_values)) if acc_values else 0.0
+            max_acc = float(np.max(acc_values)) if acc_values else 0.0
+            spread = max_acc - min_acc
+            print(f"│ Mean Acc: {mean_acc*100:5.2f}% | Min: {min_acc*100:5.2f}% | Max: {max_acc*100:5.2f}% | Spread: {spread*100:5.2f}% │")
+            print(f"└────────────────────────────────────────────────────────────────────────┘\n")
+
+            if "client_eval" not in self.round_history:
+                self.round_history["client_eval"] = {}
+            self.round_history["client_eval"][str(server_round)] = {
+                str(cid): m for cid, m in client_eval_map.items()
+            }
+
+            if "client_accuracies" not in self.round_history:
+                self.round_history["client_accuracies"] = {}
+            for cid, m in client_eval_map.items():
+                ckey = f"client_{cid}"
+                if ckey not in self.round_history["client_accuracies"]:
+                    self.round_history["client_accuracies"][ckey] = []
+                self.round_history["client_accuracies"][ckey].append(m["accuracy"])
 
         return aggregated_parameters, aggregated_metrics
 
@@ -459,7 +512,7 @@ def start_flower_server(
     strategy_name: str = "fedavg",
     mu: float = 0.0,
     fraction_fit: float = 1.0,
-    fraction_evaluate: float = 1.0,
+    fraction_evaluate: float = 0.0,
     min_fit_clients: int = 2,
     min_evaluate_clients: int = 2,
     min_available_clients: int = 2,
@@ -546,7 +599,7 @@ if __name__ == "__main__":
     parser.add_argument("--rounds", type=int, default=10, help="Number of communication rounds.")
     parser.add_argument("--strategy", type=str, default="fedavg", choices=["fedavg", "fedprox"], help="FL Strategy.")
     parser.add_argument("--mu", type=float, default=0.0, help="FedProx proximal parameter mu (0.0 for FedAvg).")
-    parser.add_argument("--fraction-evaluate", type=float, default=1.0, help="Fraction of clients evaluated each round.")
+    parser.add_argument("--fraction-evaluate", type=float, default=0.0, help="Fraction of clients evaluated each round (default: 0.0, local evaluation runs during fit).")
     parser.add_argument("--min-clients", type=int, default=2, help="Minimum connected clients.")
     parser.add_argument("--local-epochs", type=int, default=2, help="Number of local epochs per round.")
     parser.add_argument("--partitions-dir", type=str, default=None, help="Directory containing server_val.npz and meta.json.")

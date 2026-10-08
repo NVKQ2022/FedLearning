@@ -264,7 +264,7 @@ class FederatedConfig:
         partition_type: str = "iid",
         dirichlet_alpha: float = 0.5,
         fraction_fit: float = 1.0,
-        fraction_evaluate: float = 1.0,
+        fraction_evaluate: float = 0.0,
         client_val_ratio: float = 0.2,
         min_fit_clients: int = 2,
         min_available_clients: int = 2,

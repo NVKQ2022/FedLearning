@@ -153,7 +153,7 @@ def run_flower_grpc(
     strategy = str(strategy or "fedavg").lower()
     mu = float(mu) if mu is not None else (0.05 if "prox" in strategy else 0.0)
     local_epochs = int(local_epochs) if local_epochs is not None else 2
-    fraction_evaluate = float(fraction_evaluate) if fraction_evaluate is not None else 1.0
+    fraction_evaluate = float(fraction_evaluate) if fraction_evaluate is not None else 0.0
     batch_size = int(batch_size) if batch_size is not None else 64
     learning_rate = float(learning_rate) if learning_rate is not None else 1e-3
     device = str(device or "cpu")

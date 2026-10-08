@@ -169,11 +169,21 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
             for w_loc, w_init in zip(updated_weights, initial_weights)
         )))
 
+        # 4b. Evaluate local personalization on client's private validation split
+        val_loss, val_acc = 0.0, 0.0
+        val_samples = 0
+        if self.val_loader is not None and len(self.val_loader.dataset) > 0:
+            val_loss, val_acc = self.trainer.evaluate(self.val_loader)
+            val_samples = len(self.val_loader.dataset)
+
         num_samples = len(self.train_loader.dataset)
 
         metrics: Dict[str, Scalar] = {
             "loss": float(loss),
             "accuracy": float(acc),
+            "val_loss": float(val_loss),
+            "val_accuracy": float(val_acc),
+            "val_samples": int(val_samples),
             "drift_l2": float(drift_norm),
             "train_time_sec": float(train_duration),
             "client_id": int(self.client_id),
@@ -187,9 +197,10 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
             except Exception as e:
                 logger.warning(f"[Client {self.client_id}] Failed recording metrics to {self.metrics_path}: {e}")
 
+        val_log = f" | Val Acc: {val_acc*100:5.2f}%" if val_samples > 0 else ""
         logger.info(
             f"[Client {self.client_id} | Round {server_round:02d}] "
-            f"Trained {local_epochs} epochs | Loss: {loss:.4f} | Acc: {acc*100:5.2f}% | "
+            f"Trained {local_epochs} epochs | Loss: {loss:.4f} | Acc: {acc*100:5.2f}%{val_log} | "
             f"Drift: {drift_norm:.4f} | Time: {train_duration:.2f}s"
         )
 
