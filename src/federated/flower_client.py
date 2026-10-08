@@ -64,7 +64,8 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
         val_loader: Optional[Any] = None,
         trainer: Optional[Any] = None,
         device: Union[str, Any] = "cpu",
-        metrics_path: Optional[str] = None
+        metrics_path: Optional[str] = None,
+        lr: float = 1e-3
     ):
         """
         Initializes the edge Flower IoT client.
@@ -77,6 +78,7 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
             trainer: Instance of FederatedClientTrainer. If None, instantiates default.
             device: Computing device ('cpu', 'cuda', or torch.device).
             metrics_path: Optional path to client's metrics.json audit log.
+            lr: Local client learning rate.
         """
         if not HAS_TORCH:
             raise ImportError("PyTorch is required for FlowerIoTClient.")
@@ -94,7 +96,7 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
             from src.losses.focal_loss import build_loss_function
             from src.training.federated_trainer import FederatedClientTrainer
 
-            optimizer = build_optimizer(self.model, "adamw", lr=1e-3, weight_decay=1e-4)
+            optimizer = build_optimizer(self.model, "adamw", lr=lr, weight_decay=1e-4)
             criterion = build_loss_function("focal_loss", gamma=2.0, device=self.device)
             self.trainer = FederatedClientTrainer(
                 model=self.model,
@@ -223,7 +225,8 @@ def start_flower_client(
     val_loader: Optional[Any] = None,
     trainer: Optional[Any] = None,
     device: str = "cpu",
-    metrics_path: Optional[str] = None
+    metrics_path: Optional[str] = None,
+    lr: float = 1e-3
 ) -> None:
     """
     Connects and starts a standalone Flower client process communicating over gRPC.
@@ -237,6 +240,7 @@ def start_flower_client(
         trainer: Optional FederatedClientTrainer.
         device: Computing device.
         metrics_path: Optional filepath to client's metrics.json.
+        lr: Local client learning rate.
     """
     if not HAS_FLWR:
         raise ImportError("Flower (flwr) is required to run start_flower_client. Please run: pip install flwr")
@@ -248,7 +252,8 @@ def start_flower_client(
         val_loader=val_loader,
         trainer=trainer,
         device=device,
-        metrics_path=metrics_path
+        metrics_path=metrics_path,
+        lr=lr
     )
 
     logger.info(f"Connecting Flower IoT Client {client_id} to server at {server_address}...")
@@ -319,5 +324,6 @@ if __name__ == "__main__":
         model=model,
         train_loader=train_loader,
         device=args.device,
-        metrics_path=metrics_path
+        metrics_path=metrics_path,
+        lr=args.lr
     )

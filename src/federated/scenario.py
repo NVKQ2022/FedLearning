@@ -121,14 +121,14 @@ def record_client_round_metric(
 
 
 def create_federated_scenario(
-    scenario_name: str,
-    client_partitions: Dict[int, np.ndarray],
-    X_train: np.ndarray,
-    y_train: np.ndarray,
+    scenario_name: Optional[str] = None,
+    client_partitions: Optional[Dict[int, np.ndarray]] = None,
+    X_train: Optional[np.ndarray] = None,
+    y_train: Optional[np.ndarray] = None,
     X_val: Optional[np.ndarray] = None,
     y_val: Optional[np.ndarray] = None,
     class_names: Optional[List[str]] = None,
-    config: Optional[Dict[str, Any]] = None,
+    config: Optional[Union[Dict[str, Any], Any]] = None,
     base_dir: str = "scenarios",
     generate_plots: bool = True
 ) -> str:
@@ -141,20 +141,33 @@ def create_federated_scenario(
     - scenarios/<scenario_name>/client_{i}/partition.npz, eda.json, class_distribution.png, metrics.json
 
     Args:
-        scenario_name: Directory identifier (e.g. 'E5_fedprox_dirichlet_0.1').
+        scenario_name: Directory identifier (e.g. 'E5_fedprox_dirichlet_0.1'). If None, inferred from config.
         client_partitions: Dict mapping client_id to indices in X_train/y_train.
         X_train: Preprocessed global training feature array.
         y_train: Preprocessed global training labels array.
         X_val: Optional server holdout validation features array.
         y_val: Optional server holdout validation labels array.
         class_names: List of class names. If None, inferred as Class_0..C.
-        config: Optional scenario configuration parameters dictionary.
+        config: Optional scenario configuration parameters dictionary or ExperimentConfig instance.
         base_dir: Base directory for all scenarios (default: 'scenarios').
         generate_plots: Whether to render class_distribution.png for each client.
 
     Returns:
         Path to the initialized scenario directory.
     """
+    if scenario_name is None:
+        if config is not None and hasattr(config, "experiment_name"):
+            scenario_name = config.experiment_name
+        elif isinstance(config, dict) and "experiment_name" in config:
+            scenario_name = config["experiment_name"]
+        elif isinstance(config, dict) and "scenario_name" in config:
+            scenario_name = config["scenario_name"]
+        else:
+            scenario_name = "federated_scenario"
+
+    if client_partitions is None or X_train is None or y_train is None:
+        raise ValueError("client_partitions, X_train, and y_train are required arguments.")
+
     scenario_dir = os.path.join(base_dir, scenario_name)
     server_dir = os.path.join(scenario_dir, "server")
     os.makedirs(server_dir, exist_ok=True)
@@ -194,7 +207,13 @@ def create_federated_scenario(
         )
 
     # 3. Save scenario config.json
-    scenario_config = config.copy() if config else {}
+    if hasattr(config, "to_dict"):
+        scenario_config = config.to_dict()
+    elif isinstance(config, dict):
+        scenario_config = config.copy()
+    else:
+        scenario_config = {}
+
     scenario_config.setdefault("scenario_name", scenario_name)
     scenario_config.setdefault("num_clients", num_clients)
     scenario_config.setdefault("input_dim", input_dim)

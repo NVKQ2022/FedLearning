@@ -807,6 +807,102 @@ class ExperimentConfig:
                 print(f"   • {name:<26}: {val}")
         print("=" * 70)
 
+    @classmethod
+    def for_scenario(
+        cls,
+        scenario: str,
+        num_clients: Optional[int] = None,
+        num_rounds: Optional[int] = None,
+        seed: int = 42,
+        **kwargs: Any
+    ) -> "ExperimentConfig":
+        """
+        Factory helper to instantiate predefined scenarios from the thesis proposal:
+        - 'E1': Centralized MLP baseline
+        - 'E2': IID FL with FedAvg
+        - 'E3': Dirichlet Non-IID (alpha=1.0) with FedAvg
+        - 'E4': Dirichlet Non-IID (alpha=0.5) with FedAvg
+        - 'E5': Dirichlet Non-IID (alpha=0.1) with FedProx (mu=0.05)
+        - 'E6': Scalability with K in {5, 7, 10} clients
+        """
+        sc = scenario.upper().strip()
+        K = num_clients or 5
+        T = num_rounds or 10
+
+        if sc == "E1":
+            return cls(experiment_name="centralized_e1_baseline", seed=seed, **kwargs)
+        elif sc == "E2":
+            return cls(
+                experiment_name="flower_e2_fedavg_iid",
+                seed=seed,
+                federated=FederatedConfig(
+                    algorithm=FedAvg(),
+                    num_clients=K,
+                    num_rounds=T,
+                    local_epochs=2,
+                    partition_type="iid",
+                ),
+                **kwargs
+            )
+        elif sc == "E3":
+            return cls(
+                experiment_name="flower_e3_fedavg_dirichlet10",
+                seed=seed,
+                federated=FederatedConfig(
+                    algorithm=FedAvg(),
+                    num_clients=K,
+                    num_rounds=T,
+                    local_epochs=2,
+                    partition_type="dirichlet",
+                    dirichlet_alpha=1.0,
+                ),
+                **kwargs
+            )
+        elif sc == "E4":
+            return cls(
+                experiment_name="flower_e4_fedavg_dirichlet05",
+                seed=seed,
+                federated=FederatedConfig(
+                    algorithm=FedAvg(),
+                    num_clients=K,
+                    num_rounds=T,
+                    local_epochs=2,
+                    partition_type="dirichlet",
+                    dirichlet_alpha=0.5,
+                ),
+                **kwargs
+            )
+        elif sc == "E5":
+            mu_val = kwargs.pop("mu", 0.05)
+            return cls(
+                experiment_name="flower_e5_fedprox_dirichlet01",
+                seed=seed,
+                federated=FederatedConfig(
+                    algorithm=FedProx(mu=mu_val),
+                    num_clients=K,
+                    num_rounds=T,
+                    local_epochs=2,
+                    partition_type="dirichlet",
+                    dirichlet_alpha=0.1,
+                ),
+                **kwargs
+            )
+        elif sc == "E6":
+            return cls(
+                experiment_name=f"flower_e6_scalability_{K}clients",
+                seed=seed,
+                federated=FederatedConfig(
+                    algorithm=FedAvg(),
+                    num_clients=K,
+                    num_rounds=T,
+                    local_epochs=2,
+                    partition_type="iid",
+                ),
+                **kwargs
+            )
+        else:
+            raise ValueError(f"Unknown scenario identifier: '{scenario}'. Supported: E1, E2, E3, E4, E5, E6.")
+
 
 # Primary alias: Experiment = ExperimentConfig
 Experiment = ExperimentConfig

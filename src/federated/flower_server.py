@@ -364,6 +364,7 @@ def start_flower_server(
     mu: float = 0.0,
     min_fit_clients: int = 2,
     min_available_clients: int = 2,
+    local_epochs: int = 2,
     evaluate_fn: Optional[Callable] = None,
     partitions_dir: Optional[str] = None,
     scenario_dir: Optional[str] = None,
@@ -415,6 +416,7 @@ def start_flower_server(
             mu=mu,
             min_fit_clients=min_fit_clients,
             min_available_clients=min_available_clients,
+            local_epochs=local_epochs,
             evaluate_fn=evaluate_fn,
             checkpoint_dir=checkpoint_dir
         )
@@ -441,6 +443,7 @@ if __name__ == "__main__":
     parser.add_argument("--strategy", type=str, default="fedavg", choices=["fedavg", "fedprox"], help="FL Strategy.")
     parser.add_argument("--mu", type=float, default=0.0, help="FedProx proximal parameter mu (0.0 for FedAvg).")
     parser.add_argument("--min-clients", type=int, default=2, help="Minimum connected clients.")
+    parser.add_argument("--local-epochs", type=int, default=2, help="Number of local epochs per round.")
     parser.add_argument("--partitions-dir", type=str, default=None, help="Directory containing server_val.npz and meta.json.")
     parser.add_argument("--scenario-dir", type=str, default=None, help="Root directory of experimental scenario (e.g. scenarios/E5_fedprox_dirichlet_0.1).")
     parser.add_argument("--history-save-path", type=str, default=None, help="Filepath to export round history JSON.")
@@ -455,6 +458,7 @@ if __name__ == "__main__":
         mu=args.mu,
         min_fit_clients=args.min_clients,
         min_available_clients=args.min_clients,
+        local_epochs=args.local_epochs,
         partitions_dir=args.partitions_dir,
         scenario_dir=args.scenario_dir,
         history_save_path=args.history_save_path
