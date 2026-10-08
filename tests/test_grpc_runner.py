@@ -25,6 +25,47 @@ def test_is_port_in_use_and_find_available_port():
         sock.close()
 
 
+def test_run_flower_grpc_with_federated_config_directly():
+    """Verify run_flower_grpc works using only FederatedConfig without entire ExperimentConfig."""
+    fed_cfg = FederatedConfig(
+        algorithm=FedProx(mu=0.05),
+        num_clients=3,
+        num_rounds=5,
+        local_epochs=4,
+        scenario_name="test_direct_fed_scenario",
+    )
+
+    with patch("os.path.exists", return_value=True), \
+         patch("subprocess.Popen") as mock_popen, \
+         patch("src.federated.grpc_runner.find_available_port", return_value=8080), \
+         patch("builtins.open", MagicMock()), \
+         patch("json.load", return_value={"val_macro_f1": [0.88]}):
+
+        mock_proc = MagicMock()
+        mock_proc.poll.return_value = 0
+        mock_proc.returncode = 0
+        mock_proc.stdout = None
+        mock_popen.return_value = mock_proc
+
+        # Pass federated_config directly with scenario_name
+        result = run_flower_grpc(
+            scenario_name="test_direct_fed_scenario",
+            federated_config=fed_cfg,
+            stream_logs=False
+        )
+
+        assert mock_popen.call_count == 4  # 1 server + 3 clients
+        server_call = mock_popen.call_args_list[0][0][0]
+        assert "--rounds" in server_call
+        assert server_call[server_call.index("--rounds") + 1] == "5"
+        assert "--strategy" in server_call
+        assert server_call[server_call.index("--strategy") + 1] == "fedprox"
+        assert "--mu" in server_call
+        assert server_call[server_call.index("--mu") + 1] == "0.05"
+        assert "--local-epochs" in server_call
+        assert server_call[server_call.index("--local-epochs") + 1] == "4"
+
+
 def test_run_flower_grpc_with_experiment_config():
     """Verify run_flower_grpc correctly extracts all parameters from Experiment config."""
     cfg = Experiment(

@@ -250,7 +250,7 @@ class FederatedConfig:
     _COMMON_FIELDS = {
         "num_clients", "num_rounds", "local_epochs", "partition_type",
         "dirichlet_alpha", "fraction_fit", "min_fit_clients", "min_available_clients",
-        "algorithm", "algo", "strategy"
+        "algorithm", "algo", "strategy", "scenario_name"
     }
 
     def __init__(
@@ -265,6 +265,7 @@ class FederatedConfig:
         fraction_fit: float = 1.0,
         min_fit_clients: int = 2,
         min_available_clients: int = 2,
+        scenario_name: Optional[str] = None,
         # Backward-compatible parameter aliases
         strategy: Optional[Union[FedAlgorithm, str]] = None,
         federated_strategy: Optional[str] = None,
@@ -272,6 +273,7 @@ class FederatedConfig:
         trim_fraction: Optional[float] = None,
         **kwargs: Any,
     ):
+        self.scenario_name = scenario_name
         self.num_clients = num_clients
         self.num_rounds = num_rounds
         self.local_epochs = local_epochs
@@ -410,7 +412,7 @@ class FederatedConfig:
         if name in (
             "num_clients", "num_rounds", "local_epochs", "partition_type",
             "dirichlet_alpha", "fraction_fit", "min_fit_clients", "min_available_clients",
-            "algorithm"
+            "algorithm", "scenario_name"
         ):
             super().__setattr__(name, value)
             return
@@ -431,6 +433,7 @@ class FederatedConfig:
     def to_dict(self) -> Dict[str, Any]:
         """Converts configuration to a dictionary preserving both nested algorithm and flat fields."""
         d: Dict[str, Any] = {
+            "scenario_name": self.scenario_name,
             "algorithm": self.algorithm.to_dict(),
             "federated_strategy": self.algorithm.name,
             "num_clients": self.num_clients,
@@ -618,6 +621,8 @@ class ExperimentConfig:
             resolved_fed = FederatedConfig(algorithm=raw_fed)
         else:
             resolved_fed = FederatedConfig()
+        if getattr(resolved_fed, "scenario_name", None) is None:
+            resolved_fed.scenario_name = self.experiment_name
         super().__setattr__("federated", resolved_fed)
         super().__setattr__("federated_parameters", resolved_fed)
 

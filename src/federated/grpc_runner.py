@@ -36,132 +36,113 @@ def find_available_port(start_port: int = 8080, max_attempts: int = 20) -> int:
 
 
 def run_flower_grpc(
-    scenario_name_or_config: Optional[Union[str, Any]] = None,
+    scenario_name: Optional[str] = None,
+    federated_config: Optional[Union[Any, Any]] = None,
     num_clients: Optional[int] = None,
     rounds: Optional[int] = None,
     strategy: Optional[str] = None,
     mu: Optional[float] = None,
     local_epochs: Optional[int] = None,
-    batch_size: Optional[int] = None,
-    learning_rate: Optional[float] = None,
+    batch_size: int = 64,
+    learning_rate: float = 1e-3,
     port: int = 8080,
     scenarios_dir: str = "scenarios",
-    device: Optional[str] = None,
+    device: str = "cpu",
     stream_logs: bool = True,
     auto_find_port: bool = True,
+    # Backward compatibility aliases
+    scenario_name_or_config: Optional[Union[str, Any]] = None,
     config: Optional[Any] = None,
-    scenario_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Executes a complete multi-process Flower gRPC training session.
-
-    Accepts either an Experiment / FederatedConfig instance directly (via `config=CONFIG`
-    or as first argument `run_flower_grpc(CONFIG)`), or individual parameters for
-    backward compatibility.
+    Executes a complete multi-process Flower gRPC training session using FederatedConfig.
 
     Args:
-        scenario_name_or_config: Scenario folder name or Experiment / FederatedConfig instance.
-        num_clients: Number of edge clients K to launch (overrides config if provided).
-        rounds: Number of federated communication rounds (overrides config if provided).
-        strategy: 'fedavg' or 'fedprox' (overrides config if provided).
-        mu: FedProx proximal coefficient (0.0 for FedAvg, 0.05 for FedProx).
-        local_epochs: Local training epochs per client per round (overrides config if provided).
-        batch_size: Client local mini-batch size (overrides config if provided).
-        learning_rate: Client local learning rate (overrides config if provided).
+        scenario_name: Folder name of the scenario under scenarios_dir (e.g. CONFIG.experiment_name).
+        federated_config: FederatedConfig instance containing algorithm, rounds, local epochs, etc.
+                          (e.g. CONFIG.federated).
+        num_clients: Number of edge clients K to launch (overrides federated_config if provided).
+        rounds: Number of federated communication rounds (overrides federated_config if provided).
+        strategy: 'fedavg' or 'fedprox' (overrides federated_config if provided).
+        mu: FedProx proximal coefficient (overrides federated_config if provided).
+        local_epochs: Local training epochs per client per round (overrides federated_config if provided).
+        batch_size: Client local mini-batch size (default: 64).
+        learning_rate: Client local learning rate (default: 1e-3).
         port: Preferred gRPC TCP port (default: 8080).
         scenarios_dir: Root directory containing scenario partitions (default: 'scenarios').
         device: Compute device for clients ('cpu' or 'cuda').
         stream_logs: Whether to stream server output live to stdout.
         auto_find_port: If True, automatically find next free port if preferred is busy.
-        config: Optional Experiment or FederatedConfig instance.
-        scenario_name: Optional explicit scenario folder name.
+        scenario_name_or_config: Backward-compatible positional argument.
+        config: Backward-compatible alias for federated_config or Experiment.
 
     Returns:
         Dictionary containing round_history from the server.
     """
-    # 1. Resolve config object if passed positionally or via keyword
-    resolved_config = config
-    if resolved_config is None and scenario_name_or_config is not None:
-        if not isinstance(scenario_name_or_config, str):
-            resolved_config = scenario_name_or_config
-        else:
-            scenario_name = scenario_name or scenario_name_or_config
+    target_fed = federated_config
 
-    # 2. Extract hyperparameters from config
-    if resolved_config is not None:
+    # Support legacy positional scenario_name_or_config
+    if scenario_name is None and scenario_name_or_config is not None:
+        if isinstance(scenario_name_or_config, str):
+            scenario_name = scenario_name_or_config
+        else:
+            if hasattr(scenario_name_or_config, "federated"):
+                target_fed = scenario_name_or_config.federated
+                scenario_name = getattr(scenario_name_or_config, "experiment_name", None)
+            else:
+                target_fed = scenario_name_or_config
+
+    # If first positional argument is an object (FederatedConfig or Experiment) rather than a string
+    if scenario_name is not None and not isinstance(scenario_name, str):
+        if hasattr(scenario_name, "federated"):
+            target_fed = scenario_name.federated
+            scenario_name = getattr(scenario_name, "experiment_name", None)
+        else:
+            target_fed = scenario_name
+            scenario_name = getattr(target_fed, "scenario_name", None)
+
+    # Support config keyword alias
+    if target_fed is None and config is not None:
+        if hasattr(config, "federated"):
+            target_fed = config.federated
+            if scenario_name is None:
+                scenario_name = getattr(config, "experiment_name", None)
+        else:
+            target_fed = config
+            if scenario_name is None:
+                scenario_name = getattr(target_fed, "scenario_name", None)
+
+    # If target_fed is an Experiment, extract federated sub-config
+    if target_fed is not None and hasattr(target_fed, "federated"):
         if scenario_name is None:
-            if hasattr(resolved_config, "experiment_name"):
-                scenario_name = resolved_config.experiment_name
-            elif isinstance(resolved_config, dict):
-                scenario_name = resolved_config.get("experiment_name", resolved_config.get("scenario_name"))
-        if num_clients is None:
-            if hasattr(resolved_config, "num_clients"):
-                num_clients = resolved_config.num_clients
-            elif hasattr(resolved_config, "federated") and hasattr(resolved_config.federated, "num_clients"):
-                num_clients = resolved_config.federated.num_clients
-            elif isinstance(resolved_config, dict):
-                num_clients = resolved_config.get("num_clients", resolved_config.get("federated", {}).get("num_clients"))
-        if rounds is None:
-            if hasattr(resolved_config, "num_rounds"):
-                rounds = resolved_config.num_rounds
-            elif hasattr(resolved_config, "federated") and hasattr(resolved_config.federated, "num_rounds"):
-                rounds = resolved_config.federated.num_rounds
-            elif isinstance(resolved_config, dict):
-                rounds = resolved_config.get("num_rounds", resolved_config.get("federated", {}).get("num_rounds"))
+            scenario_name = getattr(target_fed, "experiment_name", None)
+        target_fed = target_fed.federated
+
+    # Extract all parameters directly from FederatedConfig
+    if target_fed is not None:
+        if scenario_name is None and hasattr(target_fed, "scenario_name"):
+            scenario_name = target_fed.scenario_name
+        if num_clients is None and hasattr(target_fed, "num_clients"):
+            num_clients = target_fed.num_clients
+        if rounds is None and hasattr(target_fed, "num_rounds"):
+            rounds = target_fed.num_rounds
         if strategy is None:
-            if hasattr(resolved_config, "federated_strategy"):
-                strategy = resolved_config.federated_strategy
-            elif hasattr(resolved_config, "strategy"):
-                strategy = resolved_config.strategy
-            elif hasattr(resolved_config, "federated") and hasattr(resolved_config.federated, "algorithm"):
-                strategy = resolved_config.federated.algorithm.name
-            elif isinstance(resolved_config, dict):
-                strategy = resolved_config.get(
-                    "federated_strategy",
-                    resolved_config.get("strategy", resolved_config.get("federated", {}).get("federated_strategy"))
-                )
+            if hasattr(target_fed, "federated_strategy"):
+                strategy = target_fed.federated_strategy
+            elif hasattr(target_fed, "strategy"):
+                strategy = target_fed.strategy
+            elif hasattr(target_fed, "algorithm"):
+                strategy = target_fed.algorithm.name
         if mu is None:
-            strat_name = str(strategy or "").lower()
+            strat_name = str(strategy or getattr(target_fed, "strategy", "")).lower()
             if "prox" in strat_name:
-                if hasattr(resolved_config, "mu"):
-                    mu = float(resolved_config.mu)
-                elif hasattr(resolved_config, "federated") and hasattr(resolved_config.federated, "mu"):
-                    mu = float(resolved_config.federated.mu)
-                elif isinstance(resolved_config, dict):
-                    mu = float(resolved_config.get("mu", resolved_config.get("federated", {}).get("mu", 0.05)))
-                else:
-                    mu = 0.05
+                mu = float(getattr(target_fed, "mu", 0.05))
             else:
                 mu = 0.0
-        if local_epochs is None:
-            if hasattr(resolved_config, "local_epochs"):
-                local_epochs = resolved_config.local_epochs
-            elif hasattr(resolved_config, "federated") and hasattr(resolved_config.federated, "local_epochs"):
-                local_epochs = resolved_config.federated.local_epochs
-            elif isinstance(resolved_config, dict):
-                local_epochs = resolved_config.get("local_epochs", resolved_config.get("federated", {}).get("local_epochs"))
-        if batch_size is None:
-            if hasattr(resolved_config, "batch_size"):
-                batch_size = resolved_config.batch_size
-            elif hasattr(resolved_config, "data") and hasattr(resolved_config.data, "batch_size"):
-                batch_size = resolved_config.data.batch_size
-            elif isinstance(resolved_config, dict):
-                batch_size = resolved_config.get("batch_size", resolved_config.get("data", {}).get("batch_size"))
-        if learning_rate is None:
-            if hasattr(resolved_config, "learning_rate"):
-                learning_rate = resolved_config.learning_rate
-            elif hasattr(resolved_config, "optimizer") and hasattr(resolved_config.optimizer, "learning_rate"):
-                learning_rate = resolved_config.optimizer.learning_rate
-            elif isinstance(resolved_config, dict):
-                learning_rate = resolved_config.get("learning_rate", resolved_config.get("optimizer", {}).get("learning_rate"))
-        if device is None:
-            cfg_device = getattr(resolved_config, "device", None)
-            if isinstance(resolved_config, dict):
-                cfg_device = resolved_config.get("device", None)
-            if cfg_device and str(cfg_device).lower() not in ("auto", "none"):
-                device = str(cfg_device)
+        if local_epochs is None and hasattr(target_fed, "local_epochs"):
+            local_epochs = target_fed.local_epochs
 
-    # 3. Apply canonical defaults for any unresolved fields
+    # Canonical defaults
     scenario_name = scenario_name or "federated_experiment"
     num_clients = int(num_clients) if num_clients is not None else 5
     rounds = int(rounds) if rounds is not None else 10
