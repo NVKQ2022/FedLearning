@@ -152,3 +152,106 @@ def test_experiment_for_scenario_helper():
     assert e5.federated_strategy == "fedprox"
     assert e5.dirichlet_alpha == 0.1
     assert e5.mu == 0.05
+
+
+def test_run_flower_grpc_with_fraction_evaluate():
+    """Verify run_flower_grpc propagates fraction_evaluate to flower_server."""
+    fed_cfg = FederatedConfig(
+        algorithm=FedAvg(),
+        num_clients=2,
+        num_rounds=3,
+        fraction_evaluate=0.75,
+        scenario_name="test_fraction_eval_scenario"
+    )
+
+    with patch("os.path.exists", return_value=True), \
+         patch("subprocess.Popen") as mock_popen, \
+         patch("src.federated.grpc_runner.find_available_port", return_value=8082), \
+         patch("builtins.open", MagicMock()), \
+         patch("json.load", return_value={"val_macro_f1": [0.80]}):
+
+        mock_proc = MagicMock()
+        mock_proc.poll.return_value = 0
+        mock_proc.returncode = 0
+        mock_proc.stdout = None
+        mock_popen.return_value = mock_proc
+
+        run_flower_grpc(
+            scenario_name="test_fraction_eval_scenario",
+            federated_config=fed_cfg,
+            stream_logs=False
+        )
+
+        server_call = mock_popen.call_args_list[0][0][0]
+        assert "--fraction-evaluate" in server_call
+        assert server_call[server_call.index("--fraction-evaluate") + 1] == "0.75"
+
+
+def test_create_federated_scenario_client_val_split():
+    """Verify create_federated_scenario splits client partition into 80% train and 20% val."""
+    import tempfile
+    import os
+    import numpy as np
+    from src.federated.scenario import create_federated_scenario, load_client_partition
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        num_samples = 200
+        input_dim = 10
+        num_classes = 4
+
+        X = np.random.randn(num_samples, input_dim).astype(np.float32)
+        y = np.random.randint(0, num_classes, size=num_samples).astype(np.int64)
+
+        # 2 clients each with 100 samples
+        client_partitions = {
+            0: np.arange(0, 100),
+            1: np.arange(100, 200)
+        }
+
+        scenario_dir = create_federated_scenario(
+            scenario_name="test_scenario_split",
+            client_partitions=client_partitions,
+            X_train=X,
+            y_train=y,
+            class_names=[f"C{i}" for i in range(num_classes)],
+            base_dir=tmp_dir,
+            generate_plots=False,
+            client_val_ratio=0.2
+        )
+
+        # Check client 0
+        c0_dir = os.path.join(scenario_dir, "client_0")
+        assert os.path.exists(os.path.join(c0_dir, "partition.npz"))
+        assert os.path.exists(os.path.join(c0_dir, "val_partition.npz"))
+
+        c0_data = np.load(os.path.join(c0_dir, "partition.npz"))
+        assert "X_train" in c0_data
+        assert "y_train" in c0_data
+        assert "X_val" in c0_data
+        assert "y_val" in c0_data
+        assert "X" in c0_data
+        assert "y" in c0_data
+
+        # 80% train = 80 samples, 20% val = 20 samples
+        assert len(c0_data["X_train"]) == 80
+        assert len(c0_data["y_train"]) == 80
+        assert len(c0_data["X_val"]) == 20
+        assert len(c0_data["y_val"]) == 20
+        # Backward compatibility aliases
+        assert len(c0_data["X"]) == 80
+        assert len(c0_data["y"]) == 80
+
+        val_data = np.load(os.path.join(c0_dir, "val_partition.npz"))
+        assert len(val_data["X_val"]) == 20
+        assert len(val_data["y_val"]) == 20
+
+        # Test load_client_partition
+        X_tr, y_tr, meta = load_client_partition(scenario_dir, 0, split="train")
+        assert len(X_tr) == 80
+        assert meta["client_val_ratio"] == 0.2
+
+        X_va, y_va, _ = load_client_partition(scenario_dir, 0, split="val")
+        assert len(X_va) == 20
+
+        X_all, y_all, _ = load_client_partition(scenario_dir, 0, split="all")
+        assert len(X_all) == 100

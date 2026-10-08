@@ -249,7 +249,8 @@ class FederatedConfig:
     """
     _COMMON_FIELDS = {
         "num_clients", "num_rounds", "local_epochs", "partition_type",
-        "dirichlet_alpha", "fraction_fit", "min_fit_clients", "min_available_clients",
+        "dirichlet_alpha", "fraction_fit", "fraction_evaluate", "client_val_ratio",
+        "min_fit_clients", "min_available_clients",
         "algorithm", "algo", "strategy", "scenario_name"
     }
 
@@ -263,6 +264,8 @@ class FederatedConfig:
         partition_type: str = "iid",
         dirichlet_alpha: float = 0.5,
         fraction_fit: float = 1.0,
+        fraction_evaluate: float = 1.0,
+        client_val_ratio: float = 0.2,
         min_fit_clients: int = 2,
         min_available_clients: int = 2,
         scenario_name: Optional[str] = None,
@@ -280,6 +283,8 @@ class FederatedConfig:
         self.partition_type = partition_type
         self.dirichlet_alpha = dirichlet_alpha
         self.fraction_fit = fraction_fit
+        self.fraction_evaluate = fraction_evaluate
+        self.client_val_ratio = client_val_ratio
         self.min_fit_clients = min_fit_clients
         self.min_available_clients = min_available_clients
 
@@ -378,6 +383,7 @@ class FederatedConfig:
         """Extracts kwargs specific to the selected algorithm for server instantiation."""
         kwargs: Dict[str, Any] = {
             "fraction_fit": self.fraction_fit,
+            "fraction_evaluate": self.fraction_evaluate,
             "min_fit_clients": self.min_fit_clients,
             "min_available_clients": self.min_available_clients,
         }
@@ -411,7 +417,8 @@ class FederatedConfig:
     def __setattr__(self, name: str, value: Any) -> None:
         if name in (
             "num_clients", "num_rounds", "local_epochs", "partition_type",
-            "dirichlet_alpha", "fraction_fit", "min_fit_clients", "min_available_clients",
+            "dirichlet_alpha", "fraction_fit", "fraction_evaluate", "client_val_ratio",
+            "min_fit_clients", "min_available_clients",
             "algorithm", "scenario_name"
         ):
             super().__setattr__(name, value)
@@ -442,6 +449,8 @@ class FederatedConfig:
             "partition_type": self.partition_type,
             "dirichlet_alpha": self.dirichlet_alpha,
             "fraction_fit": self.fraction_fit,
+            "fraction_evaluate": self.fraction_evaluate,
+            "client_val_ratio": self.client_val_ratio,
             "min_fit_clients": self.min_fit_clients,
             "min_available_clients": self.min_available_clients,
             "mu": self.mu,

@@ -108,12 +108,15 @@ class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
         strategy_name: str = "fedavg",
         mu: float = 0.0,
         fraction_fit: float = 1.0,
+        fraction_evaluate: float = 1.0,
         min_fit_clients: int = 2,
+        min_evaluate_clients: int = 2,
         min_available_clients: int = 2,
         local_epochs: int = 2,
         model_size_bytes: float = 55584.0,  # ~54.28 KB for TabularIoTMLPModel
         evaluate_fn: Optional[Callable[[int, NDArrays, Dict[str, Scalar]], Optional[Tuple[float, Dict[str, Scalar]]]]] = None,
         on_fit_config_fn: Optional[Callable[[int], Dict[str, Scalar]]] = None,
+        on_evaluate_config_fn: Optional[Callable[[int], Dict[str, Scalar]]] = None,
         checkpoint_dir: str = "checkpoints"
     ):
         """
@@ -123,12 +126,15 @@ class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
             strategy_name: 'fedavg' or 'fedprox'.
             mu: FedProx proximal coefficient (mu=0.0 reduces to FedAvg).
             fraction_fit: Proportion of available clients sampled per round.
+            fraction_evaluate: Proportion of available clients sampled for decentralized evaluation.
             min_fit_clients: Minimum clients participating per round.
+            min_evaluate_clients: Minimum clients evaluated per round.
             min_available_clients: Minimum clients connected before starting round.
             local_epochs: Number of local training epochs on each edge client.
             model_size_bytes: Size of one model parameter vector in bytes.
             evaluate_fn: Server-side centralized evaluation callback.
-            on_fit_config_fn: Function generating round config dictionary sent to clients.
+            on_fit_config_fn: Function generating round config dictionary sent to clients for training.
+            on_evaluate_config_fn: Function generating round config dictionary sent to clients for evaluation.
             checkpoint_dir: Directory where best model weights are preserved.
         """
         self.strategy_name = strategy_name.lower()
@@ -139,7 +145,7 @@ class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
         os.makedirs(self.checkpoint_dir, exist_ok=True)
 
         # Track thesis metrics across communication rounds
-        self.round_history: Dict[str, List[Any]] = {
+        self.round_history: Dict[str, Any] = {
             "round": [],
             "train_loss": [],
             "train_acc": [],
@@ -148,7 +154,9 @@ class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
             "val_macro_f1": [],
             "round_duration_sec": [],
             "comm_cost_mb": [],
-            "drift_l2": []
+            "drift_l2": [],
+            "client_eval": {},
+            "client_accuracies": {}
         }
         self.best_macro_f1 = -1.0
         self.best_round = 0
@@ -162,15 +170,22 @@ class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
                 "mu": self.mu
             }
 
+        def default_on_evaluate_config(server_round: int) -> Dict[str, Scalar]:
+            return {
+                "server_round": server_round
+            }
+
         super().__init__(
             fraction_fit=fraction_fit,
-            fraction_evaluate=0.0,  # Focus on centralized evaluation per thesis design
+            fraction_evaluate=fraction_evaluate,
             min_fit_clients=min_fit_clients,
-            min_evaluate_clients=0,
+            min_evaluate_clients=min_evaluate_clients,
             min_available_clients=min_available_clients,
             evaluate_fn=evaluate_fn,
             on_fit_config_fn=on_fit_config_fn or default_on_fit_config,
-            fit_metrics_aggregation_fn=aggregate_weighted_metrics
+            on_evaluate_config_fn=on_evaluate_config_fn or default_on_evaluate_config,
+            fit_metrics_aggregation_fn=aggregate_weighted_metrics,
+            evaluate_metrics_aggregation_fn=aggregate_weighted_metrics
         )
 
         logger.info(
@@ -282,6 +297,87 @@ class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
 
         return loss, metrics
 
+    def aggregate_evaluate(
+        self,
+        server_round: int,
+        results: List[Tuple[ClientProxy, EvaluateRes]],
+        failures: List[Union[Tuple[ClientProxy, EvaluateRes], BaseException]]
+    ) -> Tuple[Optional[float], Dict[str, Scalar]]:
+        """
+        Aggregates decentralized evaluation results from edge clients.
+        Computes sample-weighted loss/accuracy, prints a comparison table across clients,
+        and records per-client evaluation metrics into round_history.
+        """
+        if failures:
+            logger.warning(f"[Server Round {server_round:02d}] ⚠️ {len(failures)} client(s) failed during evaluation.")
+
+        if not results:
+            return None, {}
+
+        # 1. Standard sample-weighted loss and metrics aggregation
+        agg_loss, agg_metrics = super().aggregate_evaluate(server_round, results, failures)
+
+        # 2. Extract per-client evaluation metrics
+        client_metrics: Dict[Union[int, str], Dict[str, Any]] = {}
+        for proxy, eval_res in results:
+            cid = eval_res.metrics.get("client_id", proxy.cid)
+            try:
+                cid_key = int(cid)
+            except (ValueError, TypeError):
+                cid_key = str(cid)
+            c_acc = float(eval_res.metrics.get("accuracy", 0.0))
+            c_loss = float(eval_res.loss if eval_res.loss is not None else eval_res.metrics.get("loss", 0.0))
+            client_metrics[cid_key] = {
+                "accuracy": c_acc,
+                "loss": c_loss,
+                "samples": int(eval_res.num_examples)
+            }
+
+        sorted_clients = sorted(client_metrics.items(), key=lambda x: str(x[0]))
+
+        # 3. Print Clean Comparison Table
+        rnd_label = f"ROUND {server_round:02d}" if server_round > 0 else "ROUND 0 (Initial Model)"
+        print(f"\n┌────────────────────────────────────────────────────────────────────────┐")
+        print(f"│ 📊 {rnd_label:^66} │")
+        print(f"│ 🌐 DECENTRALIZED CLIENT LOCAL VALIDATION COMPARISON TABLE              │")
+        print(f"├──────────┬──────────────┬──────────────┬───────────────────────────────┤")
+        print(f"│ Client   │ Accuracy (%) │ Loss         │ Val Samples                   │")
+        print(f"├──────────┼──────────────┼──────────────┼───────────────────────────────┤")
+        for cid, m in sorted_clients:
+            c_label = f"Client {cid}" if isinstance(cid, int) else f"Client {str(cid)[:5]}"
+            print(f"│ {c_label:<8} │ {m['accuracy']*100:10.2f}%  │ {m['loss']:12.4f} │ {m['samples']:29,d} │")
+        print(f"├──────────┴──────────────┴──────────────┴───────────────────────────────┤")
+        acc_values = [m['accuracy'] for _, m in sorted_clients]
+        mean_acc = float(np.mean(acc_values)) if acc_values else 0.0
+        min_acc = float(np.min(acc_values)) if acc_values else 0.0
+        max_acc = float(np.max(acc_values)) if acc_values else 0.0
+        spread = max_acc - min_acc
+        print(f"│ Mean Acc: {mean_acc*100:5.2f}% | Min: {min_acc*100:5.2f}% | Max: {max_acc*100:5.2f}% | Spread: {spread*100:5.2f}% │")
+        print(f"└────────────────────────────────────────────────────────────────────────┘\n")
+
+        # 4. Record per-round and per-client trajectories
+        if "client_eval" not in self.round_history:
+            self.round_history["client_eval"] = {}
+        self.round_history["client_eval"][str(server_round)] = {
+            str(cid): m for cid, m in client_metrics.items()
+        }
+
+        if "client_accuracies" not in self.round_history:
+            self.round_history["client_accuracies"] = {}
+        for cid, m in client_metrics.items():
+            ckey = f"client_{cid}"
+            if ckey not in self.round_history["client_accuracies"]:
+                self.round_history["client_accuracies"][ckey] = []
+            self.round_history["client_accuracies"][ckey].append(m["accuracy"])
+
+        logger.info(
+            f"[Server Round {server_round:02d} Decentralized Eval] "
+            f"Mean Acc: {mean_acc*100:5.2f}% | " +
+            " | ".join([f"C{cid}: {m['accuracy']*100:.1f}%" for cid, m in sorted_clients])
+        )
+
+        return agg_loss, agg_metrics
+
     def save_round_history(self, filepath: str) -> None:
         """Exports complete round history dictionary to JSON and renders convergence plot."""
         os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
@@ -362,9 +458,13 @@ def start_flower_server(
     strategy: Optional[Any] = None,
     strategy_name: str = "fedavg",
     mu: float = 0.0,
+    fraction_fit: float = 1.0,
+    fraction_evaluate: float = 1.0,
     min_fit_clients: int = 2,
+    min_evaluate_clients: int = 2,
     min_available_clients: int = 2,
     local_epochs: int = 2,
+    model_size_bytes: float = 55584.0,
     evaluate_fn: Optional[Callable] = None,
     partitions_dir: Optional[str] = None,
     scenario_dir: Optional[str] = None,
@@ -414,9 +514,13 @@ def start_flower_server(
         strategy = FlowerIoTServerStrategy(
             strategy_name=strategy_name,
             mu=mu,
+            fraction_fit=fraction_fit,
+            fraction_evaluate=fraction_evaluate,
             min_fit_clients=min_fit_clients,
+            min_evaluate_clients=min_evaluate_clients,
             min_available_clients=min_available_clients,
             local_epochs=local_epochs,
+            model_size_bytes=model_size_bytes,
             evaluate_fn=evaluate_fn,
             checkpoint_dir=checkpoint_dir
         )
@@ -442,6 +546,7 @@ if __name__ == "__main__":
     parser.add_argument("--rounds", type=int, default=10, help="Number of communication rounds.")
     parser.add_argument("--strategy", type=str, default="fedavg", choices=["fedavg", "fedprox"], help="FL Strategy.")
     parser.add_argument("--mu", type=float, default=0.0, help="FedProx proximal parameter mu (0.0 for FedAvg).")
+    parser.add_argument("--fraction-evaluate", type=float, default=1.0, help="Fraction of clients evaluated each round.")
     parser.add_argument("--min-clients", type=int, default=2, help="Minimum connected clients.")
     parser.add_argument("--local-epochs", type=int, default=2, help="Number of local epochs per round.")
     parser.add_argument("--partitions-dir", type=str, default=None, help="Directory containing server_val.npz and meta.json.")
@@ -456,7 +561,9 @@ if __name__ == "__main__":
         num_rounds=args.rounds,
         strategy_name=args.strategy,
         mu=args.mu,
+        fraction_evaluate=args.fraction_evaluate,
         min_fit_clients=args.min_clients,
+        min_evaluate_clients=args.min_clients,
         min_available_clients=args.min_clients,
         local_epochs=args.local_epochs,
         partitions_dir=args.partitions_dir,

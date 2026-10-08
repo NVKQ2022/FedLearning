@@ -209,10 +209,31 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
         loss, acc = self.trainer.evaluate(target_loader)
         num_samples = len(target_loader.dataset)
 
+        server_round = int(config.get("server_round", 0)) if config else 0
+
         metrics: Dict[str, Scalar] = {
             "accuracy": float(acc),
-            "client_id": int(self.client_id)
+            "loss": float(loss),
+            "client_id": int(self.client_id),
+            "server_round": int(server_round)
         }
+
+        if self.metrics_path and server_round > 0:
+            try:
+                from src.federated.scenario import record_client_round_metric
+                record_client_round_metric(self.metrics_path, {
+                    "server_round": int(server_round),
+                    "val_loss": float(loss),
+                    "val_accuracy": float(acc),
+                    "val_samples": int(num_samples)
+                })
+            except Exception as e:
+                logger.debug(f"[Client {self.client_id}] Failed recording val metrics: {e}")
+
+        logger.info(
+            f"[Client {self.client_id} | Round {server_round:02d} Local Eval] "
+            f"Val Loss: {loss:.4f} | Val Acc: {acc*100:5.2f}% ({num_samples:,} samples)"
+        )
 
         return float(loss), num_samples, metrics
 
@@ -315,14 +336,40 @@ if __name__ == "__main__":
     from torch.utils.data import TensorDataset, DataLoader
 
     model = TabularIoTMLPModel(input_dim=meta["input_dim"], num_classes=meta["num_classes"])
-    train_ds = TensorDataset(torch.from_numpy(client_npz["X"]), torch.from_numpy(client_npz["y"]))
+
+    # Load 80% train split
+    X_train_data = client_npz["X_train"] if "X_train" in client_npz else client_npz["X"]
+    y_train_data = client_npz["y_train"] if "y_train" in client_npz else client_npz["y"]
+    train_ds = TensorDataset(torch.from_numpy(X_train_data), torch.from_numpy(y_train_data))
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
+
+    # Load 20% validation split if available
+    val_loader = None
+    X_val_data = None
+    y_val_data = None
+    if "X_val" in client_npz and "y_val" in client_npz and len(client_npz["y_val"]) > 0:
+        X_val_data = client_npz["X_val"]
+        y_val_data = client_npz["y_val"]
+    else:
+        val_file = os.path.join(os.path.dirname(client_file), "val_partition.npz")
+        if os.path.exists(val_file):
+            val_npz = np.load(val_file)
+            X_val_data = val_npz["X_val"] if "X_val" in val_npz else val_npz["X"]
+            y_val_data = val_npz["y_val"] if "y_val" in val_npz else val_npz["y"]
+
+    if X_val_data is not None and y_val_data is not None and len(y_val_data) > 0:
+        val_ds = TensorDataset(torch.from_numpy(X_val_data), torch.from_numpy(y_val_data))
+        val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False)
+        print(f"Flower Client CLI: Client ID {args.client_id} loaded {len(train_ds):,} train (80%) and {len(val_ds):,} val (20%) samples.")
+    else:
+        print(f"Flower Client CLI: Client ID {args.client_id} loaded {len(train_ds):,} train samples.")
 
     start_flower_client(
         client_id=args.client_id,
         server_address=args.server_address,
         model=model,
         train_loader=train_loader,
+        val_loader=val_loader,
         device=args.device,
         metrics_path=metrics_path,
         lr=args.lr

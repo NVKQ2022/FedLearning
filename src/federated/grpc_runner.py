@@ -50,6 +50,7 @@ def run_flower_grpc(
     device: str = "cpu",
     stream_logs: bool = True,
     auto_find_port: bool = True,
+    fraction_evaluate: Optional[float] = None,
     # Backward compatibility aliases
     scenario_name_or_config: Optional[Union[str, Any]] = None,
     config: Optional[Any] = None,
@@ -73,6 +74,7 @@ def run_flower_grpc(
         device: Compute device for clients ('cpu' or 'cuda').
         stream_logs: Whether to stream server output live to stdout.
         auto_find_port: If True, automatically find next free port if preferred is busy.
+        fraction_evaluate: Fraction of clients to evaluate each round (default: 1.0).
         scenario_name_or_config: Backward-compatible positional argument.
         config: Backward-compatible alias for federated_config or Experiment.
 
@@ -141,6 +143,8 @@ def run_flower_grpc(
                 mu = 0.0
         if local_epochs is None and hasattr(target_fed, "local_epochs"):
             local_epochs = target_fed.local_epochs
+        if fraction_evaluate is None and hasattr(target_fed, "fraction_evaluate"):
+            fraction_evaluate = target_fed.fraction_evaluate
 
     # Canonical defaults
     scenario_name = scenario_name or "federated_experiment"
@@ -149,6 +153,7 @@ def run_flower_grpc(
     strategy = str(strategy or "fedavg").lower()
     mu = float(mu) if mu is not None else (0.05 if "prox" in strategy else 0.0)
     local_epochs = int(local_epochs) if local_epochs is not None else 2
+    fraction_evaluate = float(fraction_evaluate) if fraction_evaluate is not None else 1.0
     batch_size = int(batch_size) if batch_size is not None else 64
     learning_rate = float(learning_rate) if learning_rate is not None else 1e-3
     device = str(device or "cpu")
@@ -172,6 +177,7 @@ def run_flower_grpc(
     print(f"Clients (K):     {num_clients}")
     print(f"Rounds (T):      {rounds}")
     print(f"Local Epochs:    {local_epochs}")
+    print(f"Decentralized Eval: {fraction_evaluate * 100:.0f}% of clients")
     print(f"Batch Size:      {batch_size}")
     print(f"Learning Rate:   {learning_rate}")
     print(f"Strategy:        {strategy.upper()} (mu={mu})")
@@ -191,6 +197,7 @@ def run_flower_grpc(
             "--mu", str(mu),
             "--local-epochs", str(local_epochs),
             "--min-clients", str(num_clients),
+            "--fraction-evaluate", str(fraction_evaluate),
             "--scenario-dir", scenario_dir
         ]
         logger.info(f"Starting Server process on port {target_port}...")
