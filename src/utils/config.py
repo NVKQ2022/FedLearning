@@ -397,16 +397,6 @@ class FederatedConfig:
             kwargs.update(self.algorithm.params)
         return kwargs
 
-    def build_strategy(self, **override_kwargs: Any) -> Any:
-        """
-        Instantiates and returns the concrete server strategy instance
-        from src.federated.strategies.
-        """
-        from src.federated.strategies import build_strategy as _build_strategy
-        kwargs = self.get_strategy_kwargs()
-        kwargs.update(override_kwargs)
-        return _build_strategy(strategy_name=self.algorithm.name, **kwargs)
-
     def __getattr__(self, name: str) -> Any:
         algo = self.__dict__.get("algorithm")
         if algo is not None:
