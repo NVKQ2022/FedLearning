@@ -134,7 +134,8 @@ def create_federated_scenario(
     config: Optional[Union[Dict[str, Any], Any]] = None,
     base_dir: str = "scenarios",
     generate_plots: bool = True,
-    client_val_ratio: float = 0.2
+    client_val_ratio: float = 0.2,
+    client_test_ratio: float = 0.0
 ) -> str:
     """
     Constructs the complete federated scenario directory tree.
@@ -180,6 +181,11 @@ def create_federated_scenario(
     elif isinstance(config, dict) and "client_val_ratio" in config:
         client_val_ratio = config["client_val_ratio"]
 
+    if hasattr(config, "client_test_ratio"):
+        client_test_ratio = getattr(config, "client_test_ratio")
+    elif isinstance(config, dict) and "client_test_ratio" in config:
+        client_test_ratio = config["client_test_ratio"]
+
     scenario_dir = os.path.join(base_dir, scenario_name)
     server_dir = os.path.join(scenario_dir, "server")
     os.makedirs(server_dir, exist_ok=True)
@@ -200,7 +206,8 @@ def create_federated_scenario(
         "total_train_samples": int(len(y_train)),
         "total_val_samples": int(len(y_val)) if y_val is not None else 0,
         "total_test_samples": int(len(y_test)) if y_test is not None else 0,
-        "client_val_ratio": float(client_val_ratio)
+        "client_val_ratio": float(client_val_ratio),
+        "client_test_ratio": float(client_test_ratio)
     }
     with open(os.path.join(server_dir, "meta.json"), "w") as f:
         json.dump(meta, f, indent=2)
@@ -247,6 +254,7 @@ def create_federated_scenario(
     scenario_config.setdefault("input_dim", input_dim)
     scenario_config.setdefault("num_classes", len(class_names))
     scenario_config.setdefault("client_val_ratio", client_val_ratio)
+    scenario_config.setdefault("client_test_ratio", client_test_ratio)
     with open(os.path.join(scenario_dir, "config.json"), "w") as f:
         json.dump(scenario_config, f, indent=2)
 
@@ -259,42 +267,83 @@ def create_federated_scenario(
         X_c = np.ascontiguousarray(X_train[indices], dtype=np.float32)
         y_c = np.ascontiguousarray(y_train[indices], dtype=np.int64)
 
-        # Split private partition into local train (1 - client_val_ratio) and local val (client_val_ratio)
-        if client_val_ratio > 0.0 and len(y_c) > 1:
+        # Split private partition into local train, val, and test
+        total_holdout = client_val_ratio + client_test_ratio
+        if total_holdout > 0.0 and len(y_c) > 1:
             seed_client = int(scenario_config.get("seed", 42)) + int(client_id)
             try:
                 unique_labels, label_counts = np.unique(y_c, return_counts=True)
                 if np.min(label_counts) >= 2 and len(unique_labels) > 1:
-                    X_tr, X_va, y_tr, y_va = train_test_split(
+                    X_tr, X_temp, y_tr, y_temp = train_test_split(
                         X_c, y_c,
-                        test_size=client_val_ratio,
+                        test_size=total_holdout,
                         random_state=seed_client,
                         stratify=y_c
                     )
                 else:
-                    X_tr, X_va, y_tr, y_va = train_test_split(
+                    X_tr, X_temp, y_tr, y_temp = train_test_split(
                         X_c, y_c,
-                        test_size=client_val_ratio,
+                        test_size=total_holdout,
                         random_state=seed_client,
                         shuffle=True
                     )
             except Exception:
-                X_tr, X_va, y_tr, y_va = train_test_split(
+                X_tr, X_temp, y_tr, y_temp = train_test_split(
                     X_c, y_c,
-                    test_size=client_val_ratio,
+                    test_size=total_holdout,
                     random_state=seed_client,
                     shuffle=True
                 )
+
+            # Now split X_temp into validation and test
+            if client_val_ratio > 0.0 and client_test_ratio > 0.0 and len(y_temp) > 1:
+                test_frac_of_holdout = client_test_ratio / total_holdout
+                try:
+                    unique_labels_temp, label_counts_temp = np.unique(y_temp, return_counts=True)
+                    if np.min(label_counts_temp) >= 2 and len(unique_labels_temp) > 1:
+                        X_va, X_te, y_va, y_te = train_test_split(
+                            X_temp, y_temp,
+                            test_size=test_frac_of_holdout,
+                            random_state=seed_client,
+                            stratify=y_temp
+                        )
+                    else:
+                        X_va, X_te, y_va, y_te = train_test_split(
+                            X_temp, y_temp,
+                            test_size=test_frac_of_holdout,
+                            random_state=seed_client,
+                            shuffle=True
+                        )
+                except Exception:
+                    X_va, X_te, y_va, y_te = train_test_split(
+                        X_temp, y_temp,
+                        test_size=test_frac_of_holdout,
+                        random_state=seed_client,
+                        shuffle=True
+                    )
+            elif client_test_ratio > 0.0:
+                X_va = np.empty((0, X_c.shape[1]), dtype=np.float32)
+                y_va = np.empty((0,), dtype=np.int64)
+                X_te, y_te = X_temp, y_temp
+            else:
+                X_va, y_va = X_temp, y_temp
+                X_te = np.empty((0, X_c.shape[1]), dtype=np.float32)
+                y_te = np.empty((0,), dtype=np.int64)
+
             X_tr = np.ascontiguousarray(X_tr, dtype=np.float32)
             y_tr = np.ascontiguousarray(y_tr, dtype=np.int64)
             X_va = np.ascontiguousarray(X_va, dtype=np.float32)
             y_va = np.ascontiguousarray(y_va, dtype=np.int64)
+            X_te = np.ascontiguousarray(X_te, dtype=np.float32)
+            y_te = np.ascontiguousarray(y_te, dtype=np.int64)
         else:
             X_tr, y_tr = X_c, y_c
             X_va = np.empty((0, X_c.shape[1]), dtype=np.float32)
             y_va = np.empty((0,), dtype=np.int64)
+            X_te = np.empty((0, X_c.shape[1]), dtype=np.float32)
+            y_te = np.empty((0,), dtype=np.int64)
 
-        # Save private partition (contains both train and val splits, with X,y pointing to train)
+        # Save private partition (contains train, val, and test splits, with X,y pointing to train)
         partition_path = os.path.join(client_dir, "partition.npz")
         np.savez_compressed(
             partition_path,
@@ -303,7 +352,9 @@ def create_federated_scenario(
             X_train=X_tr,
             y_train=y_tr,
             X_val=X_va,
-            y_val=y_va
+            y_val=y_va,
+            X_test=X_te,
+            y_test=y_te
         )
 
         # Also save dedicated val_partition.npz for standalone evaluation
@@ -314,6 +365,16 @@ def create_federated_scenario(
             y=y_va,
             X_val=X_va,
             y_val=y_va
+        )
+
+        # Also save dedicated test_partition.npz for standalone evaluation
+        test_partition_path = os.path.join(client_dir, "test_partition.npz")
+        np.savez_compressed(
+            test_partition_path,
+            X=X_te,
+            y=y_te,
+            X_test=X_te,
+            y_test=y_te
         )
 
         # Compute and persist client EDA (eda.json & class_distribution.png) via src.eda
@@ -332,6 +393,7 @@ def create_federated_scenario(
             "total_samples": int(len(y_c)),
             "train_samples": int(len(y_tr)),
             "val_samples": int(len(y_va)),
+            "test_samples": int(len(y_te)),
             "rounds": [],
             "summary": {}
         }
@@ -343,6 +405,7 @@ def create_federated_scenario(
             "samples": int(len(y_c)),
             "train_samples": int(len(y_tr)),
             "val_samples": int(len(y_va)),
+            "test_samples": int(len(y_te)),
             "dominant_class": eda["dominant_class"],
             "dominant_pct": eda.get("dominant_class_pct", eda.get("dominant_pct", 0.0)),
             "entropy": eda["normalized_entropy"]
@@ -351,9 +414,10 @@ def create_federated_scenario(
     # Save summary across all clients in server folder
     export_scenario_eda_summary(server_dir, cross_client_summary)
 
+    train_ratio = 1.0 - (client_val_ratio + client_test_ratio)
     logger.info(
         f"✅ Scenario '{scenario_name}' exported successfully to {scenario_dir} "
-        f"({num_clients} clients, {len(y_train):,} total train samples, 80/20 local train/val split)."
+        f"({num_clients} clients, {len(y_train):,} total train samples, {train_ratio:.2f}/{client_val_ratio:.2f}/{client_test_ratio:.2f} train/val/test split)."
     )
     return scenario_dir
 
@@ -397,6 +461,17 @@ def load_client_partition(
                 y = val_data["y_val"] if "y_val" in val_data else val_data["y"]
             else:
                 X, y = data["X"], data["y"]
+    elif split_lower == "test":
+        if "X_test" in data and len(data["y_test"]) > 0:
+            X, y = data["X_test"], data["y_test"]
+        else:
+            test_file = os.path.join(client_dir, "test_partition.npz")
+            if os.path.exists(test_file):
+                test_data = np.load(test_file)
+                X = test_data["X_test"] if "X_test" in test_data else test_data["X"]
+                y = test_data["y_test"] if "y_test" in test_data else test_data["y"]
+            else:
+                X, y = np.empty((0, data["X"].shape[1]), dtype=np.float32), np.empty((0,), dtype=np.int64)
     elif split_lower == "all":
         if "X_val" in data and len(data["y_val"]) > 0:
             X_tr = data["X_train"] if "X_train" in data else data["X"]

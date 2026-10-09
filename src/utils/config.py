@@ -249,7 +249,7 @@ class FederatedConfig:
     """
     _COMMON_FIELDS = {
         "num_clients", "num_rounds", "local_epochs", "partition_type",
-        "dirichlet_alpha", "fraction_fit", "fraction_evaluate", "client_val_ratio",
+        "dirichlet_alpha", "fraction_fit", "fraction_evaluate", "client_val_ratio", "client_test_ratio",
         "min_fit_clients", "min_available_clients",
         "algorithm", "algo", "strategy", "scenario_name"
     }
@@ -266,6 +266,7 @@ class FederatedConfig:
         fraction_fit: float = 1.0,
         fraction_evaluate: float = 0.0,
         client_val_ratio: float = 0.2,
+        client_test_ratio: float = 0.0,
         min_fit_clients: int = 2,
         min_available_clients: int = 2,
         scenario_name: Optional[str] = None,
@@ -285,6 +286,7 @@ class FederatedConfig:
         self.fraction_fit = fraction_fit
         self.fraction_evaluate = fraction_evaluate
         self.client_val_ratio = client_val_ratio
+        self.client_test_ratio = client_test_ratio
         self.min_fit_clients = min_fit_clients
         self.min_available_clients = min_available_clients
 
@@ -417,7 +419,7 @@ class FederatedConfig:
     def __setattr__(self, name: str, value: Any) -> None:
         if name in (
             "num_clients", "num_rounds", "local_epochs", "partition_type",
-            "dirichlet_alpha", "fraction_fit", "fraction_evaluate", "client_val_ratio",
+            "dirichlet_alpha", "fraction_fit", "fraction_evaluate", "client_val_ratio", "client_test_ratio",
             "min_fit_clients", "min_available_clients",
             "algorithm", "scenario_name"
         ):
@@ -451,6 +453,7 @@ class FederatedConfig:
             "fraction_fit": self.fraction_fit,
             "fraction_evaluate": self.fraction_evaluate,
             "client_val_ratio": self.client_val_ratio,
+            "client_test_ratio": self.client_test_ratio,
             "min_fit_clients": self.min_fit_clients,
             "min_available_clients": self.min_available_clients,
             "mu": self.mu,
