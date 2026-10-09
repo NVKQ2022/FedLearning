@@ -288,7 +288,7 @@ def create_client_dataloaders(
             batch_size=batch_size,
             shuffle=shuffle,
             num_workers=num_workers,
-            pin_memory=False
+            pin_memory=True
         )
         dataloaders[client_id] = loader
 

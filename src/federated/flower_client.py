@@ -357,11 +357,14 @@ if __name__ == "__main__":
 
     model = TabularIoTMLPModel(input_dim=meta["input_dim"], num_classes=meta["num_classes"])
 
+    if args.device == "cuda" and torch.cuda.is_available():
+        torch.backends.cudnn.benchmark = True
+
     # Load 80% train split
     X_train_data = client_npz["X_train"] if "X_train" in client_npz else client_npz["X"]
     y_train_data = client_npz["y_train"] if "y_train" in client_npz else client_npz["y"]
     train_ds = TensorDataset(torch.from_numpy(X_train_data), torch.from_numpy(y_train_data))
-    train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
+    train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, pin_memory=True)
 
     # Load 20% validation split if available
     val_loader = None
@@ -379,7 +382,7 @@ if __name__ == "__main__":
 
     if X_val_data is not None and y_val_data is not None and len(y_val_data) > 0:
         val_ds = TensorDataset(torch.from_numpy(X_val_data), torch.from_numpy(y_val_data))
-        val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False)
+        val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, pin_memory=True)
     else:
         val_ds = None
 
@@ -399,7 +402,7 @@ if __name__ == "__main__":
 
     if X_test_data is not None and y_test_data is not None and len(y_test_data) > 0:
         test_ds = TensorDataset(torch.from_numpy(X_test_data), torch.from_numpy(y_test_data))
-        test_loader = DataLoader(test_ds, batch_size=args.batch_size, shuffle=False)
+        test_loader = DataLoader(test_ds, batch_size=args.batch_size, shuffle=False, pin_memory=True)
     else:
         test_ds = None
 
