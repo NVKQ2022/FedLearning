@@ -247,6 +247,56 @@ class TrackingStrategyWrapper(fl.server.strategy.Strategy if HAS_FLWR else objec
         except Exception as e:
             logger.error(f"Failed to save round history to {filepath}: {e}")
 
+def build_flower_server_eval_fn(
+    model: Any,
+    val_loader: Any,
+    class_names: List[str],
+    device: Union[str, Any]
+) -> Callable:
+    """
+    Returns a Flower evaluate_fn for centralized (Global Test) evaluation.
+    This function is called by Flower after every aggregation round on the Server side.
+    """
+    def evaluate(server_round: int, parameters: fl.common.NDArrays, config: Dict[str, fl.common.Scalar]) -> Optional[Tuple[float, Dict[str, fl.common.Scalar]]]:
+        if not HAS_TORCH:
+            return None
+        
+        # Update server's global model with aggregated parameters
+        model.set_weights(parameters)
+        model.to(device)
+        model.eval()
+
+        from sklearn.metrics import accuracy_score, f1_score
+        import torch.nn as nn
+
+        criterion = nn.CrossEntropyLoss()
+        total_loss = 0.0
+        all_preds = []
+        all_labels = []
+
+        with torch.no_grad():
+            for X_batch, y_batch in val_loader:
+                X_batch, y_batch = X_batch.to(device), y_batch.to(device)
+                outputs = model(X_batch)
+                loss = criterion(outputs, y_batch)
+                total_loss += loss.item() * len(y_batch)
+                
+                preds = torch.argmax(outputs, dim=1)
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(y_batch.cpu().numpy())
+
+        avg_loss = total_loss / len(val_loader.dataset)
+        acc = accuracy_score(all_labels, all_preds)
+        macro_f1 = f1_score(all_labels, all_preds, average='macro', zero_division=0)
+
+        metrics = {
+            "accuracy": float(acc),
+            "macro_f1": float(macro_f1),
+        }
+        return float(avg_loss), metrics
+
+    return evaluate
+
 def start_flower_server(
     server_address: str = "0.0.0.0:8080",
     num_rounds: int = 10,

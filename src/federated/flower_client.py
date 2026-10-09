@@ -62,6 +62,7 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
         model: Any,
         train_loader: Any,
         val_loader: Optional[Any] = None,
+        test_loader: Optional[Any] = None,
         trainer: Optional[Any] = None,
         device: Union[str, Any] = "cpu",
         metrics_path: Optional[str] = None,
@@ -87,6 +88,7 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
+        self.test_loader = test_loader
         self.device = torch.device(device)
         self.metrics_path = metrics_path
         self.model.to(self.device)
