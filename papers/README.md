@@ -16,3 +16,8 @@ Thư mục này chứa các bài báo khoa học nền tảng làm cơ sở lý 
 - **Tác giả:** Caldas et al., 2018 (arXiv:1812.01097)
 - **Vai trò:** Chuẩn mực cho việc benchmarking (đánh giá và so sánh) các thuật toán Federated Learning.
 - **Trích dẫn chính:** Định hình phương pháp chuẩn để chia (split) dữ liệu Train/Validation/Test, chứng minh việc đo lường hiệu năng tổng thể của thuật toán phải được tiến hành độc lập để tránh bị sai lệch bởi phân phối dữ liệu không đồng nhất cục bộ.
+
+## 4. Federated Evaluation of On-device Personalization
+- **Tác giả:** Wang et al., 2019 (arXiv:1910.10252) - Nhóm nghiên cứu từ Google.
+- **Vai trò:** Bổ sung góc nhìn chuyên sâu về cách đánh giá mô hình trong Federated Learning, đặc biệt là khi mô hình được cá nhân hóa (personalized) trên từng thiết bị.
+- **Trích dẫn chính:** Bài báo thảo luận chi tiết về sự cần thiết của *Federated Evaluation* (đánh giá phân tán) khi dữ liệu hoàn toàn phi tập trung và cách đo lường chính xác tác động của Global Model đối với trải nghiệm cá nhân hóa của từng Client. Nó cung cấp cơ sở vững chắc cho việc sử dụng `fraction_evaluate` để các Client tự đánh giá trên tập Local Test của mình.
