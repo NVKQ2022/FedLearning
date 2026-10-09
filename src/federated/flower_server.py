@@ -312,33 +312,32 @@ def start_flower_server(
         def on_evaluate_config(server_round: int) -> Dict[str, Scalar]:
             return {"server_round": server_round}
             
-        if strategy_name.lower() == "fedprox":
-            base_strategy = fl.server.strategy.FedProx(
-                fraction_fit=fraction_fit,
-                fraction_evaluate=fraction_evaluate,
-                min_fit_clients=min_fit_clients,
-                min_evaluate_clients=min_evaluate_clients,
-                min_available_clients=min_available_clients,
-                evaluate_fn=evaluate_fn,
-                on_fit_config_fn=on_fit_config,
-                on_evaluate_config_fn=on_evaluate_config,
-                fit_metrics_aggregation_fn=aggregate_weighted_metrics,
-                evaluate_metrics_aggregation_fn=aggregate_weighted_metrics,
-                proximal_mu=mu
-            )
+        kwargs = {
+            "fraction_fit": fraction_fit,
+            "fraction_evaluate": fraction_evaluate,
+            "min_fit_clients": min_fit_clients,
+            "min_evaluate_clients": min_evaluate_clients,
+            "min_available_clients": min_available_clients,
+            "evaluate_fn": evaluate_fn,
+            "on_fit_config_fn": on_fit_config,
+            "on_evaluate_config_fn": on_evaluate_config,
+            "fit_metrics_aggregation_fn": aggregate_weighted_metrics,
+            "evaluate_metrics_aggregation_fn": aggregate_weighted_metrics
+        }
+        
+        # Dynamically resolve any strategy class from flwr.server.strategy
+        strat_name = strategy_name.lower()
+        if strat_name == "fedprox":
+            base_strategy = fl.server.strategy.FedProx(proximal_mu=mu, **kwargs)
         else:
-            base_strategy = fl.server.strategy.FedAvg(
-                fraction_fit=fraction_fit,
-                fraction_evaluate=fraction_evaluate,
-                min_fit_clients=min_fit_clients,
-                min_evaluate_clients=min_evaluate_clients,
-                min_available_clients=min_available_clients,
-                evaluate_fn=evaluate_fn,
-                on_fit_config_fn=on_fit_config,
-                on_evaluate_config_fn=on_evaluate_config,
-                fit_metrics_aggregation_fn=aggregate_weighted_metrics,
-                evaluate_metrics_aggregation_fn=aggregate_weighted_metrics
-            )
+            # Fallback to dynamic lookup or FedAvg
+            # e.g., 'fedadam' -> fl.server.strategy.FedAdam
+            import inspect
+            strategy_classes = {name.lower(): cls for name, cls in inspect.getmembers(fl.server.strategy, inspect.isclass)}
+            if strat_name in strategy_classes:
+                base_strategy = strategy_classes[strat_name](**kwargs)
+            else:
+                base_strategy = fl.server.strategy.FedAvg(**kwargs)
             
         strategy = TrackingStrategyWrapper(
             base_strategy=base_strategy,
@@ -365,7 +364,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Start the Flower IoT Server Process.")
     parser.add_argument("--server-address", type=str, default="0.0.0.0:8080", help="gRPC bind address.")
     parser.add_argument("--rounds", type=int, default=10, help="Number of communication rounds.")
-    parser.add_argument("--strategy", type=str, default="fedavg", choices=["fedavg", "fedprox"], help="FL Strategy.")
+    parser.add_argument("--strategy", type=str, default="fedavg", help="FL Strategy name (e.g., fedavg, fedprox, fedadam).")
     parser.add_argument("--mu", type=float, default=0.0, help="FedProx proximal parameter mu (0.0 for FedAvg).")
     parser.add_argument("--fraction-evaluate", type=float, default=0.0, help="Fraction of clients evaluated each round (default: 0.0, local evaluation runs during fit).")
     parser.add_argument("--min-clients", type=int, default=2, help="Minimum connected clients.")

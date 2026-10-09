@@ -150,7 +150,14 @@ def run_flower_grpc(
     scenario_name = scenario_name or "federated_experiment"
     num_clients = int(num_clients) if num_clients is not None else 5
     rounds = int(rounds) if rounds is not None else 10
-    strategy = str(strategy or "fedavg").lower()
+    if strategy is None and federated_config is not None:
+        if getattr(federated_config, "strategy_class", None) is not None:
+            strategy = federated_config.strategy_class.__name__.lower()
+        else:
+            strategy = getattr(federated_config, "strategy", "fedavg").lower()
+    else:
+        strategy = str(strategy or "fedavg").lower()
+        
     mu = float(mu) if mu is not None else (0.05 if "prox" in strategy else 0.0)
     local_epochs = int(local_epochs) if local_epochs is not None else 2
     fraction_evaluate = float(fraction_evaluate) if fraction_evaluate is not None else 0.0
