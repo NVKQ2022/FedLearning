@@ -151,10 +151,7 @@ def run_flower_grpc(
     num_clients = int(num_clients) if num_clients is not None else 5
     rounds = int(rounds) if rounds is not None else 10
     if strategy is None and federated_config is not None:
-        if getattr(federated_config, "strategy_class", None) is not None:
-            strategy = federated_config.strategy_class.__name__.lower()
-        else:
-            strategy = getattr(federated_config, "strategy", "fedavg").lower()
+        strategy = getattr(federated_config, "strategy", "fedavg").lower()
     else:
         strategy = str(strategy or "fedavg").lower()
         
