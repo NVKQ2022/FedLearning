@@ -90,8 +90,8 @@ if HAS_TORCH:
                 global_params = list(global_model.parameters())
 
             for X_batch, y_batch in dataloader:
-                X_batch = X_batch.to(self.device)
-                y_batch = y_batch.to(self.device)
+                X_batch = X_batch.to(self.device, non_blocking=True)
+                y_batch = y_batch.to(self.device, non_blocking=True)
                 batch_size = len(y_batch)
 
                 self.optimizer.zero_grad()

@@ -276,7 +276,8 @@ def build_flower_server_eval_fn(
 
         with torch.no_grad():
             for X_batch, y_batch in val_loader:
-                X_batch, y_batch = X_batch.to(device), y_batch.to(device)
+                X_batch = X_batch.to(device, non_blocking=True)
+                y_batch = y_batch.to(device, non_blocking=True)
                 outputs = model(X_batch)
                 loss = criterion(outputs, y_batch)
                 total_loss += loss.item() * len(y_batch)

@@ -116,8 +116,8 @@ if HAS_TORCH:
 
         with torch.no_grad():
             for X_batch, y_batch in dataloader:
-                X_batch = X_batch.to(device)
-                y_batch = y_batch.to(device)
+                X_batch = X_batch.to(device, non_blocking=True)
+                y_batch = y_batch.to(device, non_blocking=True)
                 batch_size = len(y_batch)
 
                 outputs = model(X_batch)
