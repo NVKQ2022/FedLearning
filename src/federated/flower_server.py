@@ -95,300 +95,93 @@ def aggregate_weighted_metrics(metrics: List[Tuple[int, Dict[str, Scalar]]]) -> 
     return aggregated
 
 
-class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
+
+class TrackingStrategyWrapper(fl.server.strategy.Strategy if HAS_FLWR else object):
     """
-    Publication-grade Flower Strategy tailored for the FL-IoT-IDS thesis.
-    Extends FedAvg / FedProx with:
-    - Centralized server holdout test set evaluation (Macro-F1 & Minority Recall).
-    - Best global model checkpoint preservation.
-    - Thesis Section 9 system metrics tracking (communication cost bytes, wall-clock time).
+    A Wrapper Strategy that wraps ANY built-in Flower Strategy (FedAvg, FedProx, FedAdam, etc.)
+    and injects publication-grade tracking without rewriting aggregation math.
     """
     def __init__(
         self,
-        strategy_name: str = "fedavg",
-        mu: float = 0.0,
-        fraction_fit: float = 1.0,
-        fraction_evaluate: float = 0.0,
-        min_fit_clients: int = 2,
-        min_evaluate_clients: int = 2,
-        min_available_clients: int = 2,
-        local_epochs: int = 2,
-        model_size_bytes: float = 55584.0,  # ~54.28 KB for TabularIoTMLPModel
-        evaluate_fn: Optional[Callable[[int, NDArrays, Dict[str, Scalar]], Optional[Tuple[float, Dict[str, Scalar]]]]] = None,
-        on_fit_config_fn: Optional[Callable[[int], Dict[str, Scalar]]] = None,
-        on_evaluate_config_fn: Optional[Callable[[int], Dict[str, Scalar]]] = None,
+        base_strategy: 'fl.server.strategy.Strategy',
+        model_size_bytes: float = 55584.0,
         checkpoint_dir: str = "checkpoints"
     ):
-        """
-        Initializes the IoT IDS server strategy.
-
-        Args:
-            strategy_name: 'fedavg' or 'fedprox'.
-            mu: FedProx proximal coefficient (mu=0.0 reduces to FedAvg).
-            fraction_fit: Proportion of available clients sampled per round.
-            fraction_evaluate: Proportion of available clients sampled for decentralized evaluation.
-            min_fit_clients: Minimum clients participating per round.
-            min_evaluate_clients: Minimum clients evaluated per round.
-            min_available_clients: Minimum clients connected before starting round.
-            local_epochs: Number of local training epochs on each edge client.
-            model_size_bytes: Size of one model parameter vector in bytes.
-            evaluate_fn: Server-side centralized evaluation callback.
-            on_fit_config_fn: Function generating round config dictionary sent to clients for training.
-            on_evaluate_config_fn: Function generating round config dictionary sent to clients for evaluation.
-            checkpoint_dir: Directory where best model weights are preserved.
-        """
-        self.strategy_name = strategy_name.lower()
-        self.mu = mu if self.strategy_name == "fedprox" else 0.0
-        self.local_epochs = local_epochs
+        self.base_strategy = base_strategy
         self.model_size_bytes = model_size_bytes
         self.checkpoint_dir = checkpoint_dir
         os.makedirs(self.checkpoint_dir, exist_ok=True)
 
-        # Track thesis metrics across communication rounds
         self.round_history: Dict[str, Any] = {
-            "round": [],
-            "train_loss": [],
-            "train_acc": [],
-            "val_loss": [],
-            "val_acc": [],
-            "val_macro_f1": [],
-            "round_duration_sec": [],
-            "comm_cost_mb": [],
-            "drift_l2": [],
-            "client_eval": {},
-            "client_accuracies": {}
+            "round": [], "train_loss": [], "train_acc": [], "val_loss": [], "val_acc": [],
+            "val_macro_f1": [], "round_duration_sec": [], "comm_cost_mb": [], "drift_l2": [],
+            "client_eval": {}, "client_accuracies": {}
         }
         self.best_macro_f1 = -1.0
         self.best_round = 0
         self.cumulative_comm_bytes = 0.0
         self._round_start_time = 0.0
 
-        def default_on_fit_config(server_round: int) -> Dict[str, Scalar]:
-            return {
-                "server_round": server_round,
-                "local_epochs": self.local_epochs,
-                "mu": self.mu
-            }
+    def initialize_parameters(self, client_manager: ClientProxy) -> Optional[Parameters]:
+        return self.base_strategy.initialize_parameters(client_manager)
 
-        def default_on_evaluate_config(server_round: int) -> Dict[str, Scalar]:
-            return {
-                "server_round": server_round
-            }
-
-        super().__init__(
-            fraction_fit=fraction_fit,
-            fraction_evaluate=fraction_evaluate,
-            min_fit_clients=min_fit_clients,
-            min_evaluate_clients=min_evaluate_clients,
-            min_available_clients=min_available_clients,
-            evaluate_fn=evaluate_fn,
-            on_fit_config_fn=on_fit_config_fn or default_on_fit_config,
-            on_evaluate_config_fn=on_evaluate_config_fn or default_on_evaluate_config,
-            fit_metrics_aggregation_fn=aggregate_weighted_metrics,
-            evaluate_metrics_aggregation_fn=aggregate_weighted_metrics
-        )
-
-        logger.info(
-            f"FlowerIoTServerStrategy initialized: Strategy={self.strategy_name.upper()} | "
-            f"mu={self.mu} | min_fit_clients={min_fit_clients} | local_epochs={local_epochs}"
-        )
-
-    def configure_fit(
-        self,
-        server_round: int,
-        parameters: Parameters,
-        client_manager: Any
-    ) -> List[Tuple[Any, FitIns]]:
-        """
-        Records round start time and prepares client fit instructions.
-        """
+    def configure_fit(self, server_round: int, parameters: Parameters, client_manager: ClientProxy) -> List[Tuple[ClientProxy, FitIns]]:
         self._round_start_time = time.perf_counter()
-        return super().configure_fit(server_round, parameters, client_manager)
+        return self.base_strategy.configure_fit(server_round, parameters, client_manager)
 
     def aggregate_fit(
-        self,
-        server_round: int,
-        results: List[Tuple[ClientProxy, FitRes]],
-        failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]]
+        self, server_round: int, results: List[Tuple[ClientProxy, FitRes]], failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]]
     ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
         if failures:
-            logger.warning(f"[Server Round {server_round:02d}] ⚠️ {len(failures)} client(s) failed during fit:")
-            for idx, fail in enumerate(failures[:3]):
-                logger.warning(f"   Failure {idx + 1}: {fail}")
+            logger.warning(f"[Server Round {server_round:02d}] ⚠️ {len(failures)} client(s) failed during fit.")
 
-        if not results:
-            logger.error(
-                f"[Server Round {server_round:02d}] ❌ No successful client updates received! "
-                f"Check client resources or device configurations."
-            )
-            return None, {}
-
-        # 1. Execute parameter aggregation (standard sample-weighted FedAvg)
-        aggregated_parameters, aggregated_metrics = super().aggregate_fit(server_round, results, failures)
-
+        aggregated_parameters, aggregated_metrics = self.base_strategy.aggregate_fit(server_round, results, failures)
         round_duration = time.perf_counter() - self._round_start_time
-
-        # 2. Update communication cost: 2 * m_t * Model_Size (Upload + Download per client)
         num_participating = len(results)
         round_comm_bytes = 2.0 * num_participating * self.model_size_bytes
         self.cumulative_comm_bytes += round_comm_bytes
         cumulative_comm_mb = self.cumulative_comm_bytes / (1024.0 ** 2)
 
-        # 3. Extract aggregated diagnostics
         train_loss = aggregated_metrics.get("loss", 0.0)
         train_acc = aggregated_metrics.get("accuracy", 0.0)
         drift_l2 = aggregated_metrics.get("drift_l2", 0.0)
 
-        # Append round metrics
         self.round_history["round"].append(server_round)
         self.round_history["train_loss"].append(float(train_loss))
         self.round_history["train_acc"].append(float(train_acc))
-        self.round_history["round_duration_sec"].append(float(round_duration))
-        self.round_history["comm_cost_mb"].append(float(cumulative_comm_mb))
         self.round_history["drift_l2"].append(float(drift_l2))
+        self.round_history["comm_cost_mb"].append(float(cumulative_comm_mb))
+        self.round_history["round_duration_sec"].append(float(round_duration))
 
         logger.info(
-            f"[Server Round {server_round:02d} Aggregated] Clients: {num_participating} | "
+            f"[Server Round {server_round:02d} Aggregation] "
             f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc*100:5.2f}% | "
-            f"Drift: {drift_l2:.4f} | Comm: {cumulative_comm_mb:.2f} MB | Time: {round_duration:.2f}s"
+            f"Drift L2: {drift_l2:.4f} | Comm Cost: {cumulative_comm_mb:.2f} MB | Time: {round_duration:.1f}s"
         )
-
-        # 4. Extract per-client local validation (Personalization) if reported in FitRes
-        client_eval_map: Dict[Union[int, str], Dict[str, Any]] = {}
-        for proxy, fit_res in results:
-            cid = fit_res.metrics.get("client_id", proxy.cid)
-            try:
-                cid_key = int(cid)
-            except (ValueError, TypeError):
-                cid_key = str(cid)
-            val_acc = fit_res.metrics.get("val_accuracy")
-            val_loss = fit_res.metrics.get("val_loss")
-            val_samples = fit_res.metrics.get("val_samples", 0)
-            if val_acc is not None and val_samples > 0:
-                client_eval_map[cid_key] = {
-                    "accuracy": float(val_acc),
-                    "loss": float(val_loss) if val_loss is not None else 0.0,
-                    "samples": int(val_samples)
-                }
-
-        if client_eval_map:
-            sorted_clients = sorted(client_eval_map.items(), key=lambda x: str(x[0]))
-            rnd_label = f"ROUND {server_round:02d}"
-            print(f"\n┌────────────────────────────────────────────────────────────────────────┐")
-            print(f"│ 📊 {rnd_label:^66} │")
-            print(f"│ 👤 CLIENT LOCAL VALIDATION (PERSONALIZATION) COMPARISON TABLE          │")
-            print(f"├──────────┬──────────────┬──────────────┬───────────────────────────────┤")
-            print(f"│ Client   │ Accuracy (%) │ Loss         │ Val Samples                   │")
-            print(f"├──────────┼──────────────┼──────────────┼───────────────────────────────┤")
-            for cid, m in sorted_clients:
-                c_label = f"Client {cid}" if isinstance(cid, int) else f"Client {str(cid)[:5]}"
-                print(f"│ {c_label:<8} │ {m['accuracy']*100:10.2f}%  │ {m['loss']:12.4f} │ {m['samples']:29,d} │")
-            print(f"├──────────┴──────────────┴──────────────┴───────────────────────────────┤")
-            acc_values = [m['accuracy'] for _, m in sorted_clients]
-            mean_acc = float(np.mean(acc_values)) if acc_values else 0.0
-            min_acc = float(np.min(acc_values)) if acc_values else 0.0
-            max_acc = float(np.max(acc_values)) if acc_values else 0.0
-            spread = max_acc - min_acc
-            print(f"│ Mean Acc: {mean_acc*100:5.2f}% | Min: {min_acc*100:5.2f}% | Max: {max_acc*100:5.2f}% | Spread: {spread*100:5.2f}% │")
-            print(f"└────────────────────────────────────────────────────────────────────────┘\n")
-
-            if "client_eval" not in self.round_history:
-                self.round_history["client_eval"] = {}
-            self.round_history["client_eval"][str(server_round)] = {
-                str(cid): m for cid, m in client_eval_map.items()
-            }
-
-            if "client_accuracies" not in self.round_history:
-                self.round_history["client_accuracies"] = {}
-            for cid, m in client_eval_map.items():
-                ckey = f"client_{cid}"
-                if ckey not in self.round_history["client_accuracies"]:
-                    self.round_history["client_accuracies"][ckey] = []
-                self.round_history["client_accuracies"][ckey].append(m["accuracy"])
-
         return aggregated_parameters, aggregated_metrics
 
-    def evaluate(
-        self,
-        server_round: int,
-        parameters: Parameters
-    ) -> Optional[Tuple[float, Dict[str, Scalar]]]:
-        """
-        Runs centralized server evaluation on the global holdout validation set.
-        Checkpoints top-performing model weights if Macro-F1 improves.
-        """
-        eval_res = super().evaluate(server_round, parameters)
-        if eval_res is None:
-            return None
-
-        loss, metrics = eval_res
-        macro_f1 = float(metrics.get("macro_f1", 0.0))
-        acc = float(metrics.get("accuracy", 0.0))
-
-        self.round_history["val_loss"].append(float(loss))
-        self.round_history["val_acc"].append(float(acc))
-        self.round_history["val_macro_f1"].append(float(macro_f1))
-
-        is_best = macro_f1 > self.best_macro_f1
-        if is_best:
-            self.best_macro_f1 = macro_f1
-            self.best_round = server_round
-
-            # Save best global model weights
-            best_weights = parameters_to_ndarrays(parameters)
-            ckpt_path = os.path.join(self.checkpoint_dir, f"flower_{self.strategy_name}_best_weights.npz")
-            np.savez(ckpt_path, *best_weights)
-            canonical_path = os.path.join(self.checkpoint_dir, "best_weights.npz")
-            np.savez(canonical_path, *best_weights)
-            logger.info(f"⭐ New best server model (Macro-F1: {macro_f1*100:.2f}%) saved to {canonical_path}")
-
-        star = "⭐ (Best)" if is_best else ""
-        logger.info(
-            f"[Server Round {server_round:02d} Central Eval] "
-            f"Val Loss: {loss:.4f} | Val Acc: {acc*100:5.2f}% | Val Macro-F1: {macro_f1*100:5.2f}% {star}"
-        )
-
-        return loss, metrics
+    def configure_evaluate(self, server_round: int, parameters: Parameters, client_manager: ClientProxy) -> List[Tuple[ClientProxy, EvaluateIns]]:
+        return self.base_strategy.configure_evaluate(server_round, parameters, client_manager)
 
     def aggregate_evaluate(
-        self,
-        server_round: int,
-        results: List[Tuple[ClientProxy, EvaluateRes]],
-        failures: List[Union[Tuple[ClientProxy, EvaluateRes], BaseException]]
+        self, server_round: int, results: List[Tuple[ClientProxy, EvaluateRes]], failures: List[Union[Tuple[ClientProxy, EvaluateRes], BaseException]]
     ) -> Tuple[Optional[float], Dict[str, Scalar]]:
-        """
-        Aggregates decentralized evaluation results from edge clients.
-        Computes sample-weighted loss/accuracy, prints a comparison table across clients,
-        and records per-client evaluation metrics into round_history.
-        """
-        if failures:
-            logger.warning(f"[Server Round {server_round:02d}] ⚠️ {len(failures)} client(s) failed during evaluation.")
-
+        agg_loss, agg_metrics = self.base_strategy.aggregate_evaluate(server_round, results, failures)
         if not results:
-            return None, {}
+            return agg_loss, agg_metrics
 
-        # 1. Standard sample-weighted loss and metrics aggregation
-        agg_loss, agg_metrics = super().aggregate_evaluate(server_round, results, failures)
-
-        # 2. Extract per-client evaluation metrics
-        client_metrics: Dict[Union[int, str], Dict[str, Any]] = {}
+        client_metrics = {}
         for proxy, eval_res in results:
             cid = eval_res.metrics.get("client_id", proxy.cid)
-            try:
-                cid_key = int(cid)
-            except (ValueError, TypeError):
-                cid_key = str(cid)
-            c_acc = float(eval_res.metrics.get("accuracy", 0.0))
-            c_loss = float(eval_res.loss if eval_res.loss is not None else eval_res.metrics.get("loss", 0.0))
+            try: cid_key = int(cid)
+            except: cid_key = str(cid)
             client_metrics[cid_key] = {
-                "accuracy": c_acc,
-                "loss": c_loss,
+                "accuracy": float(eval_res.metrics.get("accuracy", 0.0)),
+                "loss": float(eval_res.loss if eval_res.loss is not None else eval_res.metrics.get("loss", 0.0)),
                 "samples": int(eval_res.num_examples)
             }
 
         sorted_clients = sorted(client_metrics.items(), key=lambda x: str(x[0]))
-
-        # 3. Print Clean Comparison Table
         rnd_label = f"ROUND {server_round:02d}" if server_round > 0 else "ROUND 0 (Initial Model)"
         print(f"\n┌────────────────────────────────────────────────────────────────────────┐")
         print(f"│ 📊 {rnd_label:^66} │")
@@ -401,109 +194,58 @@ class FlowerIoTServerStrategy(FedAvg if HAS_FLWR else object):
             print(f"│ {c_label:<8} │ {m['accuracy']*100:10.2f}%  │ {m['loss']:12.4f} │ {m['samples']:29,d} │")
         print(f"├──────────┴──────────────┴──────────────┴───────────────────────────────┤")
         acc_values = [m['accuracy'] for _, m in sorted_clients]
-        mean_acc = float(np.mean(acc_values)) if acc_values else 0.0
-        min_acc = float(np.min(acc_values)) if acc_values else 0.0
-        max_acc = float(np.max(acc_values)) if acc_values else 0.0
-        spread = max_acc - min_acc
-        print(f"│ Mean Acc: {mean_acc*100:5.2f}% | Min: {min_acc*100:5.2f}% | Max: {max_acc*100:5.2f}% | Spread: {spread*100:5.2f}% │")
+        if acc_values:
+            print(f"│ Mean Acc: {float(np.mean(acc_values))*100:5.2f}% | Min: {float(np.min(acc_values))*100:5.2f}% | Max: {float(np.max(acc_values))*100:5.2f}% │")
         print(f"└────────────────────────────────────────────────────────────────────────┘\n")
 
-        # 4. Record per-round and per-client trajectories
-        if "client_eval" not in self.round_history:
-            self.round_history["client_eval"] = {}
-        self.round_history["client_eval"][str(server_round)] = {
-            str(cid): m for cid, m in client_metrics.items()
-        }
-
-        if "client_accuracies" not in self.round_history:
-            self.round_history["client_accuracies"] = {}
+        if "client_eval" not in self.round_history: self.round_history["client_eval"] = {}
+        self.round_history["client_eval"][str(server_round)] = {str(cid): m for cid, m in client_metrics.items()}
+        
+        if "client_accuracies" not in self.round_history: self.round_history["client_accuracies"] = {}
         for cid, m in client_metrics.items():
-            ckey = f"client_{cid}"
-            if ckey not in self.round_history["client_accuracies"]:
-                self.round_history["client_accuracies"][ckey] = []
-            self.round_history["client_accuracies"][ckey].append(m["accuracy"])
-
-        logger.info(
-            f"[Server Round {server_round:02d} Decentralized Eval] "
-            f"Mean Acc: {mean_acc*100:5.2f}% | " +
-            " | ".join([f"C{cid}: {m['accuracy']*100:.1f}%" for cid, m in sorted_clients])
-        )
+            if str(cid) not in self.round_history["client_accuracies"]:
+                self.round_history["client_accuracies"][str(cid)] = []
+            self.round_history["client_accuracies"][str(cid)].append(m["accuracy"])
 
         return agg_loss, agg_metrics
 
-    def save_round_history(self, filepath: str) -> None:
-        """Exports complete round history dictionary to JSON and renders convergence plot."""
-        os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
-        with open(filepath, "w") as f:
-            json.dump(self.round_history, f, indent=4)
-        logger.info(f"Server round history exported to {filepath}")
-        try:
-            from src.federated.scenario import plot_scenario_convergence
-            plot_path = os.path.join(os.path.dirname(os.path.abspath(filepath)), "convergence.png")
-            plot_scenario_convergence(self.round_history, plot_path)
-            logger.info(f"Server convergence plot saved to {plot_path}")
-        except Exception as e:
-            logger.debug(f"Convergence plot rendering skipped: {e}")
+    def evaluate(self, server_round: int, parameters: Parameters) -> Optional[Tuple[float, Dict[str, Scalar]]]:
+        eval_res = self.base_strategy.evaluate(server_round, parameters)
+        if eval_res is None:
+            return None
+            
+        loss, metrics = eval_res
+        acc = metrics.get("accuracy", 0.0)
+        macro_f1 = metrics.get("macro_f1", 0.0)
 
+        self.round_history["val_loss"].append(float(loss))
+        self.round_history["val_acc"].append(float(acc))
+        self.round_history["val_macro_f1"].append(float(macro_f1))
 
-def build_flower_server_eval_fn(
-    model: Any,
-    val_loader: Any,
-    class_names: List[str],
-    criterion: Optional[Any] = None,
-    minority_classes: Optional[List[str]] = None,
-    device: Union[str, Any] = "cpu"
-) -> Callable[[int, NDArrays, Dict[str, Scalar]], Optional[Tuple[float, Dict[str, Scalar]]]]:
-    """
-    Builds the centralized server evaluation function passed to Flower strategies.
+        is_best = macro_f1 > self.best_macro_f1
+        if is_best:
+            self.best_macro_f1 = macro_f1
+            self.best_round = server_round
 
-    Args:
-        model: Global TabularIoTMLPModel instance.
-        val_loader: Server-side validation DataLoader.
-        class_names: List of all 8 class names.
-        criterion: MultiClassFocalLoss criterion.
-        minority_classes: Rare attacks to isolate ('Web-based', 'Brute-force').
-        device: Target compute device.
+            best_weights = parameters_to_ndarrays(parameters)
+            ckpt_path = os.path.join(self.checkpoint_dir, f"flower_best_weights.npz")
+            np.savez(ckpt_path, *best_weights)
+            logger.info(f"⭐ New best server model (Macro-F1: {macro_f1*100:.2f}%) saved to {ckpt_path}")
 
-    Returns:
-        Evaluation callback function adhering to Flower evaluate_fn contract.
-    """
-    from src.evaluation.evaluator import evaluate_comprehensive
-
-    def evaluate_fn(
-        server_round: int,
-        parameters: NDArrays,
-        config: Dict[str, Scalar]
-    ) -> Optional[Tuple[float, Dict[str, Scalar]]]:
-        # 1. Inject server parameters into global model
-        model.set_weights(parameters)
-
-        # 2. Run comprehensive publication evaluation
-        results = evaluate_comprehensive(
-            model=model,
-            dataloader=val_loader,
-            class_names=class_names,
-            criterion=criterion,
-            minority_classes=minority_classes,
-            device=device
+        star = "⭐ (Best)" if is_best else ""
+        logger.info(
+            f"[Server Round {server_round:02d} Central Eval] "
+            f"Val Loss: {loss:.4f} | Val Acc: {acc*100:5.2f}% | Val Macro-F1: {macro_f1*100:5.2f}% {star}"
         )
+        return eval_res
 
-        metrics: Dict[str, Scalar] = {
-            "accuracy": float(results["accuracy"]),
-            "macro_f1": float(results["macro_f1"]),
-            "weighted_f1": float(results["weighted_f1"]),
-            "macro_precision": float(results["macro_precision"]),
-            "macro_recall": float(results["macro_recall"])
-        }
-
-        # Include minority attack recalls
-        for attack_name, recall_val in results.get("minority_recall", {}).items():
-            metrics[f"minority_{attack_name}_recall"] = float(recall_val)
-
-        return float(results["loss"]), metrics
-
-    return evaluate_fn
-
+    def save_round_history(self, filepath: str) -> None:
+        try:
+            with open(filepath, "w") as f:
+                json.dump(self.round_history, f, indent=2)
+            logger.info(f"Round history saved to {filepath}")
+        except Exception as e:
+            logger.error(f"Failed to save round history to {filepath}: {e}")
 
 def start_flower_server(
     server_address: str = "0.0.0.0:8080",
@@ -564,17 +306,43 @@ def start_flower_server(
             logger.info(f"Loaded server holdout validation set ({len(val_npz['X']):,} samples) for evaluation.")
 
     if strategy is None:
-        strategy = FlowerIoTServerStrategy(
-            strategy_name=strategy_name,
-            mu=mu,
-            fraction_fit=fraction_fit,
-            fraction_evaluate=fraction_evaluate,
-            min_fit_clients=min_fit_clients,
-            min_evaluate_clients=min_evaluate_clients,
-            min_available_clients=min_available_clients,
-            local_epochs=local_epochs,
+        def on_fit_config(server_round: int) -> Dict[str, Scalar]:
+            return {"server_round": server_round, "local_epochs": local_epochs, "mu": mu}
+            
+        def on_evaluate_config(server_round: int) -> Dict[str, Scalar]:
+            return {"server_round": server_round}
+            
+        if strategy_name.lower() == "fedprox":
+            base_strategy = fl.server.strategy.FedProx(
+                fraction_fit=fraction_fit,
+                fraction_evaluate=fraction_evaluate,
+                min_fit_clients=min_fit_clients,
+                min_evaluate_clients=min_evaluate_clients,
+                min_available_clients=min_available_clients,
+                evaluate_fn=evaluate_fn,
+                on_fit_config_fn=on_fit_config,
+                on_evaluate_config_fn=on_evaluate_config,
+                fit_metrics_aggregation_fn=aggregate_weighted_metrics,
+                evaluate_metrics_aggregation_fn=aggregate_weighted_metrics,
+                proximal_mu=mu
+            )
+        else:
+            base_strategy = fl.server.strategy.FedAvg(
+                fraction_fit=fraction_fit,
+                fraction_evaluate=fraction_evaluate,
+                min_fit_clients=min_fit_clients,
+                min_evaluate_clients=min_evaluate_clients,
+                min_available_clients=min_available_clients,
+                evaluate_fn=evaluate_fn,
+                on_fit_config_fn=on_fit_config,
+                on_evaluate_config_fn=on_evaluate_config,
+                fit_metrics_aggregation_fn=aggregate_weighted_metrics,
+                evaluate_metrics_aggregation_fn=aggregate_weighted_metrics
+            )
+            
+        strategy = TrackingStrategyWrapper(
+            base_strategy=base_strategy,
             model_size_bytes=model_size_bytes,
-            evaluate_fn=evaluate_fn,
             checkpoint_dir=checkpoint_dir
         )
 
