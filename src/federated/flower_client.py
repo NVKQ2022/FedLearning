@@ -90,6 +90,11 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
         self.val_loader = val_loader
         self.test_loader = test_loader
         self.device = torch.device(device)
+        
+        # Optimize CPU multi-processing overhead
+        if self.device.type == "cpu" and HAS_TORCH:
+            torch.set_num_threads(1)
+            
         self.metrics_path = metrics_path
         self.model.to(self.device)
 
