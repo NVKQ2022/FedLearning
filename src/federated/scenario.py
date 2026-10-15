@@ -741,3 +741,131 @@ def create_centralized_scenario(
     logger.info(f"✅ Centralized scenario '{scenario_name}' exported successfully to {scenario_dir}.")
     return scenario_dir
 
+
+def backup_scenario_to_drive(
+    scenario_path_or_name: str,
+    destination_dir: str = "/content/drive/MyDrive/FedLearning/scenarios",
+    exclude_datasets: bool = True,
+    scenarios_root: str = "scenarios"
+) -> Dict[str, Any]:
+    """
+    Backs up experimental scenario artifacts to Google Drive while omitting heavy dataset partitions.
+
+    Preserves:
+        - config.json, eda.json, meta.json
+        - metrics.json, round_history.json, test_results.json
+        - flower_best_weights.npz / best_weights.npz (Trained model weights)
+        - class_distribution.png, confusion_matrix plots
+
+    Excludes (when exclude_datasets=True):
+        - partition.npz, val_partition.npz, test_partition.npz
+        - val_data.npz, test_data.npz, server_val.npz, global_test.npz
+        - Any raw data files (.csv, .parquet, raw .npy tensors)
+
+    Args:
+        scenario_path_or_name: Path or name of the scenario folder.
+        destination_dir: Target root directory in Google Drive or local storage.
+        exclude_datasets: Whether to skip heavy partition/dataset array files.
+        scenarios_root: Default root directory if scenario_path_or_name is just a name.
+
+    Returns:
+        Dict with backup summary (destination path, files copied, sizes, excluded files).
+    """
+    # 1. Resolve source directory path
+    if os.path.isabs(scenario_path_or_name) and os.path.exists(scenario_path_or_name):
+        src_path = scenario_path_or_name
+        scenario_name = os.path.basename(os.path.normpath(src_path))
+    elif os.path.exists(scenario_path_or_name):
+        src_path = os.path.abspath(scenario_path_or_name)
+        scenario_name = os.path.basename(os.path.normpath(src_path))
+    else:
+        candidate = os.path.join(scenarios_root, scenario_path_or_name)
+        if os.path.exists(candidate):
+            src_path = os.path.abspath(candidate)
+            scenario_name = scenario_path_or_name
+        else:
+            raise FileNotFoundError(
+                f"Source scenario directory not found: '{scenario_path_or_name}' (checked '{candidate}')"
+            )
+
+    # 2. Check Google Drive mount condition
+    if destination_dir.startswith("/content/drive") and not os.path.exists("/content/drive/MyDrive"):
+        raise RuntimeError(
+            "Google Drive is not mounted at '/content/drive'. "
+            "Please mount Google Drive first via: from google.colab import drive; drive.mount('/content/drive')"
+        )
+
+    target_scenario_dir = os.path.join(destination_dir, scenario_name)
+    os.makedirs(target_scenario_dir, exist_ok=True)
+
+    excluded_files: List[str] = []
+    copied_files: List[str] = []
+
+    def ignore_datasets_filter(dir_path: str, files: List[str]):
+        ignored = set()
+        if not exclude_datasets:
+            return ignored
+
+        for f in files:
+            full_path = os.path.join(dir_path, f)
+            if os.path.isdir(full_path):
+                continue
+
+            f_lower = f.lower()
+            # Exclude dataset arrays but keep model weights
+            is_dataset_npz = f_lower.endswith(".npz") and "weight" not in f_lower
+            is_raw_data = f_lower.endswith((".csv", ".parquet", ".feather", ".h5"))
+            is_raw_tensor = f_lower.endswith(".npy") and "weight" not in f_lower
+
+            if is_dataset_npz or is_raw_data or is_raw_tensor:
+                ignored.add(f)
+                rel_path = os.path.relpath(full_path, src_path)
+                excluded_files.append(rel_path)
+
+        return ignored
+
+    # 3. Copy directory tree with selective filter
+    shutil.copytree(
+        src_path,
+        target_scenario_dir,
+        ignore=ignore_datasets_filter if exclude_datasets else None,
+        dirs_exist_ok=True
+    )
+
+    # 4. Compute statistics
+    orig_size = 0
+    for root, _, f_list in os.walk(src_path):
+        for f in f_list:
+            orig_size += os.path.getsize(os.path.join(root, f))
+
+    backed_up_size = 0
+    for root, _, f_list in os.walk(target_scenario_dir):
+        for f in f_list:
+            fp = os.path.join(root, f)
+            backed_up_size += os.path.getsize(fp)
+            copied_files.append(os.path.relpath(fp, target_scenario_dir))
+
+    # 5. Formatted audit log
+    print("=" * 80)
+    print(f"☁️ GOOGLE DRIVE SCENARIO BACKUP: {scenario_name}")
+    print("=" * 80)
+    print(f"📁 Source Directory:       {src_path}")
+    print(f"💾 Destination (Drive):    {target_scenario_dir}")
+    print(f"📦 Total Files Backed Up:  {len(copied_files)}")
+    print(f"🚫 Heavy Datasets Skipped: {len(excluded_files)} files")
+    print(f"📊 Storage Size:           {backed_up_size / (1024*1024):.2f} MB (Drive) vs {orig_size / (1024*1024):.2f} MB (Local)")
+    if orig_size > 0:
+        reduction = (1.0 - (backed_up_size / orig_size)) * 100
+        print(f"⚡ Space Savings:          {reduction:.1f}% bandwidth & Drive quota saved!")
+    print("=" * 80)
+
+    return {
+        "status": "success",
+        "scenario_name": scenario_name,
+        "source_path": src_path,
+        "destination_path": target_scenario_dir,
+        "files_backed_up": copied_files,
+        "files_excluded": excluded_files,
+        "original_size_bytes": orig_size,
+        "backed_up_size_bytes": backed_up_size
+    }
