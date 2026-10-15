@@ -163,7 +163,7 @@ Section 8 of the proposal defines the benchmark matrix:
 | **E3** | Mild Non-IID Dirichlet | Dirichlet $\alpha=1.0$ ($K=5$) | FedAvg | Assess initial degradation under mild statistical skew | [`federated_training_pipeline.ipynb`](../notebooks/federated_training_pipeline.ipynb) |
 | **E4** | Moderate Non-IID Dirichlet | Dirichlet $\alpha=0.5$ ($K=5$) | FedAvg vs FedProx | Measure performance degradation under typical IoT heterogeneity | [`federated_training_pipeline.ipynb`](../notebooks/federated_training_pipeline.ipynb) |
 | **E5** | Severe Non-IID Dirichlet | Dirichlet $\alpha=0.1$ ($K=5$) | FedProx ($\mu=0.05$) vs FedAvg | Demonstrate FedProx stabilization against extreme client drift | [`federated_training_pipeline.ipynb`](../notebooks/federated_training_pipeline.ipynb) |
-| **E6** | Client Scalability Benchmark | $K \in \{5, 7, 10\}$ clients | FedAvg / FedProx | Evaluate wall-clock latency and communication overhead | [`flower_federated_pipeline.ipynb`](../notebooks/flower_federated_pipeline.ipynb) |
+| **E6** | Client Scalability Benchmark | $K \in \{5, 7, 10\}$ clients | FedAvg / FedProx | Evaluate wall-clock latency and communication overhead | [`flower_distributed_grpc_pipeline.ipynb`](../notebooks/flower_distributed_grpc_pipeline.ipynb) |
 
 ---
 

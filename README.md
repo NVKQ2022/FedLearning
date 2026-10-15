@@ -25,7 +25,7 @@ Run full experiments directly in your browser with zero local setup:
 
 | Notebook | Focus & Methodology | Colab Quick Link |
 | :--- | :--- | :--- |
-| **Flower Distributed FL (gRPC)** | Standalone Flower server & $K=5$ edge clients via multi-process gRPC over TCP/IP sockets | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVKQ2022/FedLearning/blob/main/notebooks/flower_federated_pipeline.ipynb) |
+| **Flower Distributed FL (gRPC)** | Standalone Flower server & $K=5$ edge clients via multi-process gRPC over TCP/IP sockets | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVKQ2022/FedLearning/blob/main/notebooks/flower_distributed_grpc_pipeline.ipynb) |
 | **Federated Simulation Pipeline** | End-to-end PyTorch FL loop benchmarking IID (FedAvg) vs. Dirichlet Non-IID $\alpha=0.1$ (FedProx $\mu=0.05$) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVKQ2022/FedLearning/blob/main/notebooks/federated_training_pipeline.ipynb) |
 | **Centralized Baseline** | Centralized Tabular IoT MLP with Weighted Cross-Entropy & Minority Attack Recall profiling | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVKQ2022/FedLearning/blob/main/notebooks/centralized_training_pipeline.ipynb) |
 | **Comprehensive EDA** | Statistical diagnosis, heavy-tail skewness, and Dirichlet client heterogeneity visualization | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVKQ2022/FedLearning/blob/main/notebooks/comprehensive_eda.ipynb) |

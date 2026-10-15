@@ -6,7 +6,7 @@ Comprehensive, step-by-step technical guide for configuring, pulling, and orches
 * **Associated Notebooks:**
   * Centralized Pipeline: [`notebooks/centralized_training_pipeline.ipynb`](file:///home/quan/projects/FedLearning/notebooks/centralized_training_pipeline.ipynb)
   * Native Federated Pipeline: [`notebooks/federated_training_pipeline.ipynb`](file:///home/quan/projects/FedLearning/notebooks/federated_training_pipeline.ipynb)
-  * Flower Federated Pipeline: [`notebooks/flower_federated_pipeline.ipynb`](file:///home/quan/projects/FedLearning/notebooks/flower_federated_pipeline.ipynb)
+  * Flower Distributed gRPC Pipeline: [`notebooks/flower_distributed_grpc_pipeline.ipynb`](file:///home/quan/projects/FedLearning/notebooks/flower_distributed_grpc_pipeline.ipynb)
   * Multi-Scenario Runner: [`notebooks/colab_experiment_runner.ipynb`](file:///home/quan/projects/FedLearning/notebooks/colab_experiment_runner.ipynb)
 * **Skill Reference:** [skills/experiment-orchestration/SKILL.md](file:///home/quan/projects/FedLearning/.agents/skills/experiment-orchestration/SKILL.md) & [skills/code-documentation/SKILL.md](file:///home/quan/projects/FedLearning/.agents/skills/code-documentation/SKILL.md)
 
