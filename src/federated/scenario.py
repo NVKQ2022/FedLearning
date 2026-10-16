@@ -31,6 +31,7 @@ import json
 import logging
 import os
 import shutil
+import subprocess
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -869,3 +870,170 @@ def backup_scenario_to_drive(
         "original_size_bytes": orig_size,
         "backed_up_size_bytes": backed_up_size
     }
+
+
+def commit_scenario_to_github(
+    scenario_path_or_name: str,
+    github_token: Optional[str] = None,
+    branch: str = "main",
+    repo_url: str = "https://github.com/NVKQ2022/FedLearning.git",
+    author_name: str = "Nguyen Viet Ky Quan",
+    author_email: str = "nguyenvietkyquan2022@gmail.com",
+    commit_message: Optional[str] = None,
+    push: bool = True,
+    max_file_size_mb: float = 25.0,
+    scenarios_root: str = "scenarios"
+) -> Dict[str, Any]:
+    """
+    Commits and pushes experimental scenario artifacts to GitHub from Colab or local environment.
+
+    Safeguards:
+        - .gitignore ensures heavy dataset files (*.npz like val_data, partition) are ignored.
+        - Lightweight model weights (flower_best_weights.npz ~55KB), JSON configs, metrics, and plots are tracked.
+        - Checks file sizes before staging (rejects any file exceeding max_file_size_mb).
+        - If github_token is provided (e.g. from Colab Secrets), authenticates securely and clears token immediately after push.
+
+    Args:
+        scenario_path_or_name: Path or name of the scenario folder.
+        github_token: Optional GitHub Personal Access Token (PAT) with repo write permissions.
+        branch: Git branch name (default 'main').
+        repo_url: Repository URL.
+        author_name: Git commit author name.
+        author_email: Git commit author email.
+        commit_message: Custom commit message.
+        push: Whether to push commits to remote.
+        max_file_size_mb: Max allowed file size for safety (default 25MB).
+        scenarios_root: Scenarios directory.
+
+    Returns:
+        Dict with commit summary (status, scenario_name, staged_files, commit_hash).
+    """
+    # 1. Resolve source directory path
+    if os.path.isabs(scenario_path_or_name) and os.path.exists(scenario_path_or_name):
+        src_path = scenario_path_or_name
+        scenario_name = os.path.basename(os.path.normpath(src_path))
+    elif os.path.exists(scenario_path_or_name):
+        src_path = os.path.abspath(scenario_path_or_name)
+        scenario_name = os.path.basename(os.path.normpath(src_path))
+    else:
+        candidate = os.path.join(scenarios_root, scenario_path_or_name)
+        if os.path.exists(candidate):
+            src_path = os.path.abspath(candidate)
+            scenario_name = scenario_path_or_name
+        else:
+            raise FileNotFoundError(
+                f"Source scenario directory not found: '{scenario_path_or_name}' (checked '{candidate}')"
+            )
+
+    # Get path relative to git root
+    try:
+        git_root = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip()
+    except subprocess.CalledProcessError:
+        raise RuntimeError("Current workspace is not a valid git repository.")
+
+    rel_scenario_path = os.path.relpath(src_path, git_root)
+
+    # 2. Safety check: ensure no file exceeds max_file_size_mb
+    max_bytes = max_file_size_mb * 1024 * 1024
+    oversized_files = []
+    for root, _, files in os.walk(src_path):
+        for f in files:
+            fp = os.path.join(root, f)
+            check_ignore = subprocess.run(["git", "check-ignore", fp], capture_output=True, text=True)
+            if not check_ignore.stdout.strip():  # Not ignored by git
+                sz = os.path.getsize(fp)
+                if sz > max_bytes:
+                    oversized_files.append((os.path.relpath(fp, git_root), sz / (1024 * 1024)))
+
+    if oversized_files:
+        raise ValueError(
+            f"Safety check failed! The following files exceed {max_file_size_mb}MB and should NOT be pushed to GitHub:\n"
+            + "\n".join([f"  - {f}: {sz:.2f} MB" for f, sz in oversized_files])
+        )
+
+    # 3. Configure git author if not configured
+    current_name = subprocess.run(["git", "config", "user.name"], capture_output=True, text=True).stdout.strip()
+    if not current_name:
+        subprocess.run(["git", "config", "user.name", author_name], check=True)
+    current_email = subprocess.run(["git", "config", "user.email"], capture_output=True, text=True).stdout.strip()
+    if not current_email:
+        subprocess.run(["git", "config", "user.email", author_email], check=True)
+
+    # 4. Stage scenario files
+    subprocess.run(["git", "add", rel_scenario_path], check=True)
+
+    # 5. Check if there are staged changes
+    staged_output = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--", rel_scenario_path],
+        capture_output=True,
+        text=True
+    ).stdout.strip()
+    staged_files = [f for f in staged_output.split("\n") if f]
+
+    if not staged_files:
+        print(f"ℹ️ Không có thay đổi mới nào trong '{rel_scenario_path}' để commit.")
+        return {
+            "status": "no_changes",
+            "scenario_name": scenario_name,
+            "staged_files": [],
+            "pushed": False
+        }
+
+    # 6. Commit changes
+    default_msg = f"chore(scenario): update experimental artifacts for {scenario_name}"
+    msg = commit_message or default_msg
+    subprocess.run(["git", "commit", "-m", msg], check=True)
+    commit_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
+    print(f"✅ Đã tạo commit [{commit_hash}]: {msg}")
+    print(f"   Số lượng files artifacts đã commit: {len(staged_files)}")
+
+    # 7. Push to GitHub if requested
+    pushed = False
+    if push:
+        clean_url = repo_url.strip()
+        if clean_url.startswith("https://"):
+            host_path = clean_url[len("https://"):]
+        elif clean_url.startswith("http://"):
+            host_path = clean_url[len("http://"):]
+        else:
+            host_path = clean_url
+
+        original_remote = subprocess.check_output(["git", "remote", "get-url", "origin"], text=True).strip()
+
+        try:
+            if github_token and github_token.strip():
+                tok = github_token.strip()
+                auth_url = f"https://{tok}@{host_path}"
+                subprocess.run(["git", "remote", "set-url", "origin", auth_url], check=True)
+                print(f"🔄 Đang đẩy commit lên GitHub (nhánh '{branch}')...")
+            else:
+                print(f"🔄 Đang đẩy commit lên GitHub bằng thông tin đăng nhập hiện tại...")
+
+            push_res = subprocess.run(["git", "push", "origin", branch], capture_output=True, text=True)
+            if push_res.returncode != 0:
+                print(f"❌ Git push thất bại:\n{push_res.stderr}")
+                raise RuntimeError(f"Git push failed: {push_res.stderr}")
+            else:
+                pushed = True
+                print(f"🚀 Đã đồng bộ thành công kết quả scenario '{scenario_name}' lên GitHub!")
+        finally:
+            # Always restore unauthenticated remote URL so token is never kept on disk
+            subprocess.run(["git", "remote", "set-url", "origin", original_remote], check=True)
+
+    print("=" * 80)
+    print(f"📦 GITHUB SCENARIO SYNC: {scenario_name}")
+    print("=" * 80)
+    print(f"📁 Scenario Path:   {rel_scenario_path}")
+    print(f"🏷️ Commit Hash:     {commit_hash}")
+    print(f"📄 Staged Files:    {len(staged_files)} files")
+    print(f"🚀 Pushed to Repo:  {'Yes' if pushed else 'No'}")
+    print("=" * 80)
+
+    return {
+        "status": "success",
+        "scenario_name": scenario_name,
+        "commit_hash": commit_hash,
+        "staged_files": staged_files,
+        "pushed": pushed
+    }
+

@@ -47,6 +47,10 @@ datasets/**/*.parquet
 *.npz
 checkpoints/
 
+# Whitelist lightweight model weight checkpoints in scenarios (sub-1MB)
+!scenarios/**/flower_best_weights.npz
+!scenarios/**/best_weights.npz
+
 # Jupyter Notebook Checkpoints
 .ipynb_checkpoints/
 

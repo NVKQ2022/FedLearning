@@ -21,6 +21,7 @@ from .scenario import (
     load_server_test_data,
     plot_scenario_convergence,
     backup_scenario_to_drive,
+    commit_scenario_to_github,
 )
 from .grpc_runner import run_flower_grpc
 
@@ -41,4 +42,5 @@ __all__ = [
     "load_server_test_data",
     "plot_scenario_convergence",
     "backup_scenario_to_drive",
+    "commit_scenario_to_github",
 ]
