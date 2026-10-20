@@ -1,32 +1,32 @@
 {
   "client_id": 3,
-  "total_samples": 11997,
+  "total_samples": 613966,
   "num_classes": 8,
   "dominant_class": "DDoS",
-  "dominant_class_pct": 37.58,
-  "shannon_entropy": 1.6255,
-  "normalized_entropy": 0.7817,
-  "imbalance_ratio": 150.27,
+  "dominant_class_pct": 37.57,
+  "shannon_entropy": 1.6259,
+  "normalized_entropy": 0.7819,
+  "imbalance_ratio": 147.09,
   "present_classes_count": 8,
   "missing_classes": [],
   "class_counts": {
-    "Benign": 2575,
-    "Brute-force": 30,
-    "DDoS": 4508,
-    "DoS": 1713,
-    "Mirai": 494,
-    "Recon": 1619,
-    "Spoof": 1000,
-    "Web-based": 58
+    "Benign": 131783,
+    "Brute-force": 1568,
+    "DDoS": 230640,
+    "DoS": 87641,
+    "Mirai": 25299,
+    "Recon": 82864,
+    "Spoof": 51192,
+    "Web-based": 2979
   },
   "class_percentages": {
     "Benign": 21.46,
-    "Brute-force": 0.25,
-    "DDoS": 37.58,
-    "DoS": 14.28,
+    "Brute-force": 0.26,
+    "DDoS": 37.57,
+    "DoS": 14.27,
     "Mirai": 4.12,
     "Recon": 13.5,
     "Spoof": 8.34,
-    "Web-based": 0.48
+    "Web-based": 0.49
   }
 }
