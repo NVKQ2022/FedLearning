@@ -750,11 +750,13 @@ def plot_scenario_confusion_matrix(
     minority_classes: Optional[List[str]] = None,
     save_path: str = "confusion_matrix.png",
     per_class_recall: Optional[Dict[str, float]] = None,
+    per_class_precision: Optional[Dict[str, float]] = None,
+    support_dict: Optional[Dict[str, int]] = None,
     scenario_title: Optional[str] = None
 ) -> str:
     """
     Renders a dual-panel evaluation visualization:
-    - Panel 1: Normalized Confusion Matrix Heatmap (or Per-Class Recall/F1 if CM not available).
+    - Panel 1: Normalized Confusion Matrix Heatmap.
     - Panel 2: Per-Class Recall Bar Chart with minority attacks highlighted in red.
     """
     os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
@@ -764,8 +766,33 @@ def plot_scenario_confusion_matrix(
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5.2), dpi=150)
 
     # 1. Confusion Matrix Heatmap
+    cm_arr = None
     if cm is not None and len(cm) > 0:
         cm_arr = np.array(cm, dtype=np.float64)
+    elif per_class_recall and support_dict:
+        # Mathematically reconstruct CM from support, recall, and precision
+        K = len(class_names)
+        support = np.array([float(support_dict.get(c, 0)) for c in class_names])
+        recall = np.array([float(per_class_recall.get(c, 0.0)) for c in class_names])
+        prec = np.array([float(per_class_precision.get(c, 0.0)) for c in class_names]) if per_class_precision else recall
+
+        tp = support * recall
+        fp = np.where(prec > 0, tp / np.maximum(prec, 1e-12) - tp, 0.0)
+        fn = np.maximum(support - tp, 0.0)
+
+        cm_arr = np.zeros((K, K))
+        for i in range(K):
+            cm_arr[i, i] = tp[i]
+            off_diag_fp = np.copy(fp)
+            off_diag_fp[i] = 0.0
+            if off_diag_fp.sum() > 0:
+                cm_arr[i, :] += fn[i] * (off_diag_fp / off_diag_fp.sum())
+            else:
+                for j in range(K):
+                    if j != i:
+                        cm_arr[i, j] = fn[i] / max(K - 1, 1)
+
+    if cm_arr is not None:
         cm_norm = cm_arr / (cm_arr.sum(axis=1, keepdims=True) + 1e-12)
         im = ax1.imshow(cm_norm, interpolation="nearest", cmap=plt.cm.Blues)
         ax1.set_title(scenario_title or "Confusion Matrix: Best Global Model", fontsize=11, fontweight="bold")
@@ -781,7 +808,9 @@ def plot_scenario_confusion_matrix(
         for i in range(len(class_names)):
             for j in range(len(class_names)):
                 color = "white" if cm_norm[i, j] > 0.5 else "black"
-                ax1.text(j, i, f"{int(cm_arr[i, j]):,}\n({cm_norm[i, j]*100:.1f}%)",
+                val = int(round(cm_arr[i, j]))
+                pct = cm_norm[i, j] * 100.0
+                ax1.text(j, i, f"{val:,}\n({pct:.1f}%)",
                          ha="center", va="center", color=color, fontsize=8)
 
         class_recalls = cm_arr.diagonal() / (cm_arr.sum(axis=1) + 1e-12) * 100.0
@@ -795,7 +824,7 @@ def plot_scenario_confusion_matrix(
         else:
             class_recalls = np.zeros(len(class_names))
 
-    if per_class_recall and (cm is None or len(cm) == 0):
+    if per_class_recall and (cm_arr is None):
         class_recalls = np.array([per_class_recall.get(c, 0.0) * 100.0 for c in class_names])
 
     # 2. Per-Class Recall Bar Chart
@@ -906,12 +935,16 @@ def export_scenario_summary_and_plots(
     cm_path = os.path.join(server_dir, "confusion_matrix.png")
     cm_data = test_results.get("confusion_matrix")
     per_class_rec = test_results.get("per_class_recall", {})
+    per_class_prec = test_results.get("per_class_precision", {})
+    support_dict = test_results.get("support", {})
     plot_scenario_confusion_matrix(
         cm=cm_data,
         class_names=class_names,
         minority_classes=minority_classes,
         save_path=cm_path,
         per_class_recall=per_class_rec,
+        per_class_precision=per_class_prec,
+        support_dict=support_dict,
         scenario_title=f"Confusion Matrix: Best Global Model ({cfg.get('federated_strategy', 'FL').upper()})"
     )
 
