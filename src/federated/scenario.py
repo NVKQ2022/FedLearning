@@ -747,7 +747,6 @@ def create_centralized_scenario(
 def plot_scenario_confusion_matrix(
     cm: Optional[Union[np.ndarray, List[List[float]]]] = None,
     class_names: Optional[List[str]] = None,
-    minority_classes: Optional[List[str]] = None,
     save_path: str = "confusion_matrix.png",
     per_class_recall: Optional[Dict[str, float]] = None,
     per_class_precision: Optional[Dict[str, float]] = None,
@@ -755,17 +754,13 @@ def plot_scenario_confusion_matrix(
     scenario_title: Optional[str] = None
 ) -> str:
     """
-    Renders a dual-panel evaluation visualization:
-    - Panel 1: Normalized Confusion Matrix Heatmap.
-    - Panel 2: Per-Class Recall Bar Chart with minority attacks highlighted in red.
+    Renders a standalone, publication-grade 8x8 Normalized Confusion Matrix Heatmap.
     """
     os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
     class_names = class_names or ["Benign", "Brute-force", "DDoS", "DoS", "Mirai", "Recon", "Spoof", "Web-based"]
-    minority_classes = minority_classes or ["Web-based", "Brute-force"]
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5.2), dpi=150)
+    fig, ax = plt.subplots(figsize=(8, 7), dpi=150)
 
-    # 1. Confusion Matrix Heatmap
     cm_arr = None
     if cm is not None and len(cm) > 0:
         cm_arr = np.array(cm, dtype=np.float64)
@@ -794,59 +789,73 @@ def plot_scenario_confusion_matrix(
 
     if cm_arr is not None:
         cm_norm = cm_arr / (cm_arr.sum(axis=1, keepdims=True) + 1e-12)
-        im = ax1.imshow(cm_norm, interpolation="nearest", cmap=plt.cm.Blues)
-        ax1.set_title(scenario_title or "Confusion Matrix: Best Global Model", fontsize=11, fontweight="bold")
-        plt.colorbar(im, ax=ax1, fraction=0.046, pad=0.04)
+        im = ax.imshow(cm_norm, interpolation="nearest", cmap=plt.cm.Blues)
+        ax.set_title(scenario_title or "Confusion Matrix: Best Global Model", fontsize=12, fontweight="bold", pad=12)
+        plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
         tick_marks = np.arange(len(class_names))
-        ax1.set_xticks(tick_marks)
-        ax1.set_xticklabels(class_names, rotation=35, ha="right", fontsize=9)
-        ax1.set_yticks(tick_marks)
-        ax1.set_yticklabels(class_names, fontsize=9)
-        ax1.set_ylabel("True Label", fontsize=10)
-        ax1.set_xlabel("Predicted Label", fontsize=10)
+        ax.set_xticks(tick_marks)
+        ax.set_xticklabels(class_names, rotation=35, ha="right", fontsize=9.5)
+        ax.set_yticks(tick_marks)
+        ax.set_yticklabels(class_names, fontsize=9.5)
+        ax.set_ylabel("True Label", fontsize=11, fontweight="bold")
+        ax.set_xlabel("Predicted Label", fontsize=11, fontweight="bold")
 
         for i in range(len(class_names)):
             for j in range(len(class_names)):
                 color = "white" if cm_norm[i, j] > 0.5 else "black"
                 val = int(round(cm_arr[i, j]))
                 pct = cm_norm[i, j] * 100.0
-                ax1.text(j, i, f"{val:,}\n({pct:.1f}%)",
-                         ha="center", va="center", color=color, fontsize=8)
-
-        class_recalls = cm_arr.diagonal() / (cm_arr.sum(axis=1) + 1e-12) * 100.0
+                ax.text(j, i, f"{val:,}\n({pct:.1f}%)",
+                        ha="center", va="center", color=color, fontsize=8.5)
     else:
-        # Fallback if raw CM not available
-        ax1.text(0.5, 0.5, "Confusion Matrix Heatmap\n(Detailed per-class recall shown on right panel)",
-                 ha="center", va="center", fontsize=10, style="italic")
-        ax1.set_axis_off()
-        if per_class_recall:
-            class_recalls = np.array([per_class_recall.get(c, 0.0) * 100.0 for c in class_names])
-        else:
-            class_recalls = np.zeros(len(class_names))
+        ax.text(0.5, 0.5, "Confusion Matrix data not available", ha="center", va="center", fontsize=12)
+        ax.set_axis_off()
 
-    if per_class_recall and (cm_arr is None):
-        class_recalls = np.array([per_class_recall.get(c, 0.0) * 100.0 for c in class_names])
+    plt.tight_layout()
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.close(fig)
+    return os.path.abspath(save_path)
 
-    # 2. Per-Class Recall Bar Chart
+
+def plot_scenario_per_class_recall(
+    class_names: Optional[List[str]] = None,
+    minority_classes: Optional[List[str]] = None,
+    per_class_recall: Optional[Dict[str, float]] = None,
+    save_path: str = "per_class_recall.png",
+    scenario_title: Optional[str] = None
+) -> str:
+    """
+    Renders a standalone bar chart of Per-Class Detection Recall, highlighting minority attack classes.
+    """
+    os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
+    class_names = class_names or ["Benign", "Brute-force", "DDoS", "DoS", "Mirai", "Recon", "Spoof", "Web-based"]
+    minority_classes = minority_classes or ["Web-based", "Brute-force"]
+    per_class_recall = per_class_recall or {}
+
+    fig, ax = plt.subplots(figsize=(9, 5.2), dpi=150)
+    tick_marks = np.arange(len(class_names))
+    class_recalls = np.array([per_class_recall.get(c, 0.0) * 100.0 for c in class_names])
+
     bar_colors = ["#d62728" if name in minority_classes else "#1f77b4" for name in class_names]
-    ax2.set_xticks(np.arange(len(class_names)))
-    bars = ax2.bar(class_names, class_recalls, color=bar_colors, alpha=0.85, edgecolor="black")
-    ax2.set_title("Tỷ lệ nhận diện (Recall) theo từng lớp tấn công", fontsize=11, fontweight="bold")
-    ax2.set_ylabel("Recall (%)", fontsize=10)
-    ax2.set_ylim(0, 108)
-    ax2.set_xticklabels(class_names, rotation=35, ha="right", fontsize=9)
-    ax2.grid(axis="y", linestyle="--", alpha=0.5)
+    ax.set_xticks(tick_marks)
+    bars = ax.bar(class_names, class_recalls, color=bar_colors, alpha=0.85, edgecolor="black", width=0.6)
+    ax.set_title(scenario_title or "Tỷ lệ nhận diện (Recall) theo từng lớp tấn công", fontsize=12, fontweight="bold", pad=12)
+    ax.set_ylabel("Recall (%)", fontsize=11, fontweight="bold")
+    ax.set_ylim(0, 110)
+    ax.set_xticklabels(class_names, rotation=30, ha="right", fontsize=9.5)
+    ax.grid(axis="y", linestyle="--", alpha=0.5)
 
     for bar in bars:
         h = bar.get_height()
-        ax2.annotate(f"{h:.1f}%",
-                     xy=(bar.get_x() + bar.get_width() / 2, h),
-                     xytext=(0, 3), textcoords="offset points",
-                     ha="center", va="bottom", fontsize=8.5, fontweight="bold")
+        ax.annotate(f"{h:.1f}%",
+                    xy=(bar.get_x() + bar.get_width() / 2, h),
+                    xytext=(0, 4), textcoords="offset points",
+                    ha="center", va="bottom", fontsize=9, fontweight="bold")
 
     red_patch = mpatches.Patch(color="#d62728", label="Minority Attack (Web-based, Brute-force)")
     blue_patch = mpatches.Patch(color="#1f77b4", label="Majority / Standard Class")
-    ax2.legend(handles=[red_patch, blue_patch], loc="lower right", framealpha=0.9)
+    ax.legend(handles=[red_patch, blue_patch], loc="lower right", framealpha=0.9, fontsize=9.5)
 
     plt.tight_layout()
     plt.savefig(save_path, bbox_inches="tight")
@@ -865,8 +874,9 @@ def export_scenario_summary_and_plots(
     """
     Automatically generates and saves:
     1. server/convergence.png: Optimization trajectory and communication cost plot.
-    2. server/confusion_matrix.png: Dual-panel Confusion Matrix Heatmap and Recall bar chart.
-    3. server/summary.md: Publication-grade Markdown summary report table for the thesis.
+    2. server/confusion_matrix.png: Normalized 8x8 Confusion Matrix Heatmap.
+    3. server/per_class_recall.png: Standalone Per-Class Recall bar chart.
+    4. server/summary.md: Publication-grade Markdown summary report table for the thesis.
 
     Returns:
         Dict mapping artifact names to their file paths.
@@ -940,7 +950,6 @@ def export_scenario_summary_and_plots(
     plot_scenario_confusion_matrix(
         cm=cm_data,
         class_names=class_names,
-        minority_classes=minority_classes,
         save_path=cm_path,
         per_class_recall=per_class_rec,
         per_class_precision=per_class_prec,
@@ -948,7 +957,17 @@ def export_scenario_summary_and_plots(
         scenario_title=f"Confusion Matrix: Best Global Model ({cfg.get('federated_strategy', 'FL').upper()})"
     )
 
-    # 5. Generate server/summary.md
+    # 5. Generate server/per_class_recall.png
+    recall_path = os.path.join(server_dir, "per_class_recall.png")
+    plot_scenario_per_class_recall(
+        class_names=class_names,
+        minority_classes=minority_classes,
+        per_class_recall=per_class_rec,
+        save_path=recall_path,
+        scenario_title=f"Tỷ lệ nhận diện (Recall) theo từng lớp tấn công ({cfg.get('federated_strategy', 'FL').upper()})"
+    )
+
+    # 6. Generate server/summary.md
     strat = str(cfg.get("federated_strategy", cfg.get("algorithm", {}).get("name", "fedavg"))).upper()
     mu_val = cfg.get("mu", 0.0)
     part_type = cfg.get("partition_type", "IID")
@@ -1020,8 +1039,10 @@ def export_scenario_summary_and_plots(
         "\n## 5. Trực quan hóa Đồ thị Thực nghiệm",
         "### 📈 Quỹ đạo Hội tụ và Chi phí Mạng (Convergence & Communication)",
         "![Convergence Trajectory](convergence.png)\n",
-        "### 🎯 Ma trận Nhầm lẫn & Tỷ lệ Nhận diện theo Lớp (Confusion Matrix & Recall)",
-        "![Confusion Matrix](confusion_matrix.png)\n"
+        "### 🎯 Ma trận Nhầm lẫn Toàn diện (Normalized Confusion Matrix 8x8)",
+        "![Confusion Matrix](confusion_matrix.png)\n",
+        "### 📊 Tỷ lệ Nhận diện theo Lớp & Tấn công Thiểu số (Per-Class Recall)",
+        "![Per-Class Recall](per_class_recall.png)\n"
     ])
 
     summary_path = os.path.join(server_dir, "summary.md")
@@ -1031,11 +1052,13 @@ def export_scenario_summary_and_plots(
     print(f"📊 [Scenario Artifacts] Đã tạo thành công các báo cáo cho: {scenario_name}")
     print(f"   • Convergence plot:      {conv_path}")
     print(f"   • Confusion matrix plot: {cm_path}")
+    print(f"   • Per-class recall plot: {recall_path}")
     print(f"   • Summary report:        {summary_path}")
 
     return {
         "convergence_plot": conv_path,
         "confusion_matrix_plot": cm_path,
+        "per_class_recall_plot": recall_path,
         "summary_markdown": summary_path
     }
 

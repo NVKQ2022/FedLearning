@@ -45,5 +45,8 @@
 ### 📈 Quỹ đạo Hội tụ và Chi phí Mạng (Convergence & Communication)
 ![Convergence Trajectory](convergence.png)
 
-### 🎯 Ma trận Nhầm lẫn & Tỷ lệ Nhận diện theo Lớp (Confusion Matrix & Recall)
+### 🎯 Ma trận Nhầm lẫn Toàn diện (Normalized Confusion Matrix 8x8)
 ![Confusion Matrix](confusion_matrix.png)
+
+### 📊 Tỷ lệ Nhận diện theo Lớp & Tấn công Thiểu số (Per-Class Recall)
+![Per-Class Recall](per_class_recall.png)
