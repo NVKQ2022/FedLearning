@@ -41,6 +41,7 @@ from sklearn.model_selection import train_test_split
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 logger = logging.getLogger(__name__)
 
@@ -579,7 +580,7 @@ def plot_scenario_convergence(
 
     # 1. Validation Macro-F1
     ax1 = axes[0, 0]
-    val_f1 = [v * 100.0 for v in round_history.get("val_macro_f1", [])]
+    val_f1 = [v * 100.0 for v in round_history.get("val_macro_f1", [])][-len(rounds):]
     if val_f1:
         ax1.plot(rounds, val_f1, marker="o", color="#2b6cb0", linewidth=2.0)
         ax1.set_title("Central Holdout Validation Macro-F1 (%)", fontsize=10, fontweight="bold")
@@ -589,7 +590,7 @@ def plot_scenario_convergence(
 
     # 2. Training Loss
     ax2 = axes[0, 1]
-    train_loss = round_history.get("train_loss", [])
+    train_loss = round_history.get("train_loss", [])[-len(rounds):]
     if train_loss:
         ax2.plot(rounds, train_loss, marker="s", color="#c53030", linewidth=2.0)
         ax2.set_title("Aggregated Training Loss", fontsize=10, fontweight="bold")
@@ -599,7 +600,7 @@ def plot_scenario_convergence(
 
     # 3. Parameter Drift
     ax3 = axes[1, 0]
-    drift = round_history.get("drift_l2", [])
+    drift = round_history.get("drift_l2", [])[-len(rounds):]
     if drift:
         ax3.plot(rounds, drift, marker="^", color="#d69e2e", linewidth=2.0)
         ax3.set_title("Client Weight Drift (||w_local - w_global||_2)", fontsize=10, fontweight="bold")
@@ -609,7 +610,7 @@ def plot_scenario_convergence(
 
     # 4. Cumulative Communication Cost
     ax4 = axes[1, 1]
-    comm = round_history.get("comm_cost_mb", [])
+    comm = round_history.get("comm_cost_mb", [])[-len(rounds):]
     if comm:
         ax4.plot(rounds, comm, marker="d", color="#2f855a", linewidth=2.0)
         ax4.set_title("Cumulative Network Overhead (MB)", fontsize=10, fontweight="bold")
@@ -741,6 +742,269 @@ def create_centralized_scenario(
 
     logger.info(f"✅ Centralized scenario '{scenario_name}' exported successfully to {scenario_dir}.")
     return scenario_dir
+
+
+def plot_scenario_confusion_matrix(
+    cm: Optional[Union[np.ndarray, List[List[float]]]] = None,
+    class_names: Optional[List[str]] = None,
+    minority_classes: Optional[List[str]] = None,
+    save_path: str = "confusion_matrix.png",
+    per_class_recall: Optional[Dict[str, float]] = None,
+    scenario_title: Optional[str] = None
+) -> str:
+    """
+    Renders a dual-panel evaluation visualization:
+    - Panel 1: Normalized Confusion Matrix Heatmap (or Per-Class Recall/F1 if CM not available).
+    - Panel 2: Per-Class Recall Bar Chart with minority attacks highlighted in red.
+    """
+    os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
+    class_names = class_names or ["Benign", "Brute-force", "DDoS", "DoS", "Mirai", "Recon", "Spoof", "Web-based"]
+    minority_classes = minority_classes or ["Web-based", "Brute-force"]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5.2), dpi=150)
+
+    # 1. Confusion Matrix Heatmap
+    if cm is not None and len(cm) > 0:
+        cm_arr = np.array(cm, dtype=np.float64)
+        cm_norm = cm_arr / (cm_arr.sum(axis=1, keepdims=True) + 1e-12)
+        im = ax1.imshow(cm_norm, interpolation="nearest", cmap=plt.cm.Blues)
+        ax1.set_title(scenario_title or "Confusion Matrix: Best Global Model", fontsize=11, fontweight="bold")
+        plt.colorbar(im, ax=ax1, fraction=0.046, pad=0.04)
+        tick_marks = np.arange(len(class_names))
+        ax1.set_xticks(tick_marks)
+        ax1.set_xticklabels(class_names, rotation=35, ha="right", fontsize=9)
+        ax1.set_yticks(tick_marks)
+        ax1.set_yticklabels(class_names, fontsize=9)
+        ax1.set_ylabel("True Label", fontsize=10)
+        ax1.set_xlabel("Predicted Label", fontsize=10)
+
+        for i in range(len(class_names)):
+            for j in range(len(class_names)):
+                color = "white" if cm_norm[i, j] > 0.5 else "black"
+                ax1.text(j, i, f"{int(cm_arr[i, j]):,}\n({cm_norm[i, j]*100:.1f}%)",
+                         ha="center", va="center", color=color, fontsize=8)
+
+        class_recalls = cm_arr.diagonal() / (cm_arr.sum(axis=1) + 1e-12) * 100.0
+    else:
+        # Fallback if raw CM not available
+        ax1.text(0.5, 0.5, "Confusion Matrix Heatmap\n(Detailed per-class recall shown on right panel)",
+                 ha="center", va="center", fontsize=10, style="italic")
+        ax1.set_axis_off()
+        if per_class_recall:
+            class_recalls = np.array([per_class_recall.get(c, 0.0) * 100.0 for c in class_names])
+        else:
+            class_recalls = np.zeros(len(class_names))
+
+    if per_class_recall and (cm is None or len(cm) == 0):
+        class_recalls = np.array([per_class_recall.get(c, 0.0) * 100.0 for c in class_names])
+
+    # 2. Per-Class Recall Bar Chart
+    bar_colors = ["#d62728" if name in minority_classes else "#1f77b4" for name in class_names]
+    ax2.set_xticks(np.arange(len(class_names)))
+    bars = ax2.bar(class_names, class_recalls, color=bar_colors, alpha=0.85, edgecolor="black")
+    ax2.set_title("Tỷ lệ nhận diện (Recall) theo từng lớp tấn công", fontsize=11, fontweight="bold")
+    ax2.set_ylabel("Recall (%)", fontsize=10)
+    ax2.set_ylim(0, 108)
+    ax2.set_xticklabels(class_names, rotation=35, ha="right", fontsize=9)
+    ax2.grid(axis="y", linestyle="--", alpha=0.5)
+
+    for bar in bars:
+        h = bar.get_height()
+        ax2.annotate(f"{h:.1f}%",
+                     xy=(bar.get_x() + bar.get_width() / 2, h),
+                     xytext=(0, 3), textcoords="offset points",
+                     ha="center", va="bottom", fontsize=8.5, fontweight="bold")
+
+    red_patch = mpatches.Patch(color="#d62728", label="Minority Attack (Web-based, Brute-force)")
+    blue_patch = mpatches.Patch(color="#1f77b4", label="Majority / Standard Class")
+    ax2.legend(handles=[red_patch, blue_patch], loc="lower right", framealpha=0.9)
+
+    plt.tight_layout()
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.close(fig)
+    return os.path.abspath(save_path)
+
+
+def export_scenario_summary_and_plots(
+    scenario_path_or_name: str,
+    test_results: Optional[Dict[str, Any]] = None,
+    round_history: Optional[Dict[str, Any]] = None,
+    class_names: Optional[List[str]] = None,
+    minority_classes: Optional[List[str]] = None,
+    scenarios_root: str = "scenarios"
+) -> Dict[str, str]:
+    """
+    Automatically generates and saves:
+    1. server/convergence.png: Optimization trajectory and communication cost plot.
+    2. server/confusion_matrix.png: Dual-panel Confusion Matrix Heatmap and Recall bar chart.
+    3. server/summary.md: Publication-grade Markdown summary report table for the thesis.
+
+    Returns:
+        Dict mapping artifact names to their file paths.
+    """
+    # 1. Resolve scenario paths
+    if os.path.isabs(scenario_path_or_name) and os.path.exists(scenario_path_or_name):
+        src_path = scenario_path_or_name
+        scenario_name = os.path.basename(os.path.normpath(src_path))
+    elif os.path.exists(scenario_path_or_name):
+        src_path = os.path.abspath(scenario_path_or_name)
+        scenario_name = os.path.basename(os.path.normpath(src_path))
+    else:
+        candidate = os.path.join(scenarios_root, scenario_path_or_name)
+        if os.path.exists(candidate):
+            src_path = os.path.abspath(candidate)
+            scenario_name = scenario_path_or_name
+        else:
+            raise FileNotFoundError(f"Scenario directory not found: '{scenario_path_or_name}' (checked '{candidate}')")
+
+    server_dir = os.path.join(src_path, "server")
+    os.makedirs(server_dir, exist_ok=True)
+
+    # 2. Load missing artifacts from disk if needed
+    cfg: Dict[str, Any] = {}
+    cfg_file = os.path.join(src_path, "config.json")
+    if os.path.exists(cfg_file):
+        with open(cfg_file) as f:
+            cfg = json.load(f)
+
+    meta: Dict[str, Any] = {}
+    meta_file = os.path.join(server_dir, "meta.json")
+    if os.path.exists(meta_file):
+        with open(meta_file) as f:
+            meta = json.load(f)
+
+    if test_results is None:
+        tr_file = os.path.join(server_dir, "test_results.json")
+        if os.path.exists(tr_file):
+            with open(tr_file) as f:
+                test_results = json.load(f)
+        else:
+            test_results = {}
+
+    if round_history is None:
+        rh_file = os.path.join(server_dir, "round_history.json")
+        if os.path.exists(rh_file):
+            with open(rh_file) as f:
+                round_history = json.load(f)
+        else:
+            round_history = {}
+
+    class_names = class_names or meta.get("class_names", [
+        "Benign", "Brute-force", "DDoS", "DoS", "Mirai", "Recon", "Spoof", "Web-based"
+    ])
+    minority_classes = minority_classes or ["Web-based", "Brute-force"]
+
+    # 3. Generate server/convergence.png
+    conv_path = os.path.join(server_dir, "convergence.png")
+    plot_scenario_convergence(
+        round_history=round_history,
+        save_path=conv_path,
+        scenario_title=f"Federated Optimization Trajectory - {scenario_name}"
+    )
+
+    # 4. Generate server/confusion_matrix.png
+    cm_path = os.path.join(server_dir, "confusion_matrix.png")
+    cm_data = test_results.get("confusion_matrix")
+    per_class_rec = test_results.get("per_class_recall", {})
+    plot_scenario_confusion_matrix(
+        cm=cm_data,
+        class_names=class_names,
+        minority_classes=minority_classes,
+        save_path=cm_path,
+        per_class_recall=per_class_rec,
+        scenario_title=f"Confusion Matrix: Best Global Model ({cfg.get('federated_strategy', 'FL').upper()})"
+    )
+
+    # 5. Generate server/summary.md
+    strat = str(cfg.get("federated_strategy", cfg.get("algorithm", {}).get("name", "fedavg"))).upper()
+    mu_val = cfg.get("mu", 0.0)
+    part_type = cfg.get("partition_type", "IID")
+    alpha_val = cfg.get("dirichlet_alpha", "N/A")
+    num_clients = cfg.get("num_clients", meta.get("num_clients", 5))
+    num_rounds = cfg.get("num_rounds", len(round_history.get("round", [])))
+    local_epochs = cfg.get("local_epochs", 2)
+
+    comm_list = round_history.get("comm_cost_mb", [0.0])
+    comm_mb = comm_list[-1] if comm_list else 0.0
+    drift_list = round_history.get("drift_l2", [0.0])
+    drift_val = drift_list[-1] if drift_list else 0.0
+
+    acc = test_results.get("accuracy", 0.0) * 100.0
+    macro_f1 = test_results.get("macro_f1", 0.0) * 100.0
+    weighted_f1 = test_results.get("weighted_f1", 0.0) * 100.0
+    macro_prec = test_results.get("macro_precision", 0.0) * 100.0
+    macro_rec = test_results.get("macro_recall", 0.0) * 100.0
+
+    min_rec = test_results.get("minority_recall", {})
+    web_rec = min_rec.get("Web-based", per_class_rec.get("Web-based", 0.0)) * 100.0
+    brute_rec = min_rec.get("Brute-force", per_class_rec.get("Brute-force", 0.0)) * 100.0
+
+    md_lines = [
+        f"# 📊 Báo cáo Thực nghiệm Kịch bản: `{scenario_name}`\n",
+        "## 1. Thông số Cấu hình Thực nghiệm",
+        "| Tham số | Giá trị | Ý nghĩa thực nghiệm |",
+        "| :--- | :--- | :--- |",
+        f"| **Kịch bản (Scenario)** | `{scenario_name}` | Tên định danh kịch bản thực nghiệm |",
+        f"| **Chiến lược FL (Strategy)** | `{strat}` (mu={mu_val}) | Thuật toán tổng hợp tham số tại Server |",
+        f"| **Phân vùng dữ liệu (Partition)** | `{part_type}` (alpha={alpha_val}) | Mức độ dị biệt Non-IID giữa các Client |",
+        f"| **Số lượng Edge Clients (K)** | `{num_clients}` clients | Số trạm mạng IoT biên tham gia huấn luyện |",
+        f"| **Số vòng giao tiếp (Rounds)** | `{num_rounds}` rounds (Epochs cục bộ: `{local_epochs}`) | Tổng chu kỳ huấn luyện liên đoàn |",
+        f"| **Chi phí truyền thông (Comm Cost)** | **{comm_mb:.2f} MB** | Tổng lưu lượng mạng tải lên/tải xuống |",
+        f"| **Độ trôi dạt tham số (Client Drift)** | **{drift_val:.2f}** | Độ lệch chuẩn Euclidean ||w_local - w_global||_2 |\n",
+        "## 2. Kết quả Đánh giá Tổng thể trên Global Test Set (30% Upcoming Data)",
+        "| Chỉ số Đánh giá (Metric) | Kết quả (%) | Ý nghĩa theo Đề cương Luận văn KLTN |",
+        "| :--- | :---: | :--- |",
+        f"| **Test Accuracy** | **{acc:.2f}%** | Độ chính xác tổng thể trên toàn bộ lưu lượng kiểm định |",
+        f"| **Macro-F1 Score** | **{macro_f1:.2f}%** | **Chỉ số cốt lõi** đánh giá cân bằng (không thiên lệch lớp đa số) |",
+        f"| **Weighted-F1 Score** | **{weighted_f1:.2f}%** | F1 có tính trọng số theo tần suất xuất hiện thực tế |",
+        f"| **Macro-Precision** | **{macro_prec:.2f}%** | Độ chuẩn xác trung bình trên 8 lớp tấn công |",
+        f"| **Macro-Recall** | **{macro_rec:.2f}%** | Tỷ lệ nhận diện trung bình trên 8 lớp tấn công |\n",
+        "## 3. Khả năng Phát hiện các Lớp Tấn công Thiểu số (Minority Attack Recall)",
+        "> [!IMPORTANT]",
+        "> Trong môi trường mạng IoT, tấn công thiểu số (Web-based, Brute-force) có tần suất thấp nhưng mức độ đe dọa cao, là trọng tâm đánh giá của Luận văn.\n",
+        "| Lớp tấn công thiểu số | Tần suất xuất hiện | Tỷ lệ nhận diện (Recall %) | Nhận xét |",
+        "| :--- | :---: | :---: | :--- |",
+        f"| **Web-based** | 0.49% (Rất hiếm) | **{web_rec:.2f}%** | {'Phát hiện tốt' if web_rec > 10 else 'Thách thức do mất cân bằng cực đoan'} |",
+        f"| **Brute-force** | 0.26% (Rất hiếm) | **{brute_rec:.2f}%** | {'Phát hiện tốt' if brute_rec > 10 else 'Cần tinh chỉnh loss/mu'} |\n",
+        "## 4. Chi tiết Hiệu năng theo từng Lớp Tấn công (Per-Class Metrics)",
+        "| Lớp tấn công (Class) | Phân loại | Precision (%) | Recall (%) | F1-Score (%) | Số mẫu (Support) |",
+        "| :--- | :---: | :---: | :---: | :---: | :---: |"
+    ]
+
+    per_p = test_results.get("per_class_precision", {})
+    per_f = test_results.get("per_class_f1", {})
+    supp = test_results.get("support", {})
+
+    for c in class_names:
+        c_type = "Thiểu số (Minority)" if c in minority_classes else "Đa số / Chuẩn"
+        p_val = per_p.get(c, 0.0) * 100.0
+        r_val = per_class_rec.get(c, 0.0) * 100.0
+        f_val = per_f.get(c, 0.0) * 100.0
+        s_val = supp.get(c, 0)
+        md_lines.append(f"| **{c}** | {c_type} | {p_val:.2f}% | {r_val:.2f}% | {f_val:.2f}% | {s_val:,} |")
+
+    md_lines.extend([
+        "\n## 5. Trực quan hóa Đồ thị Thực nghiệm",
+        "### 📈 Quỹ đạo Hội tụ và Chi phí Mạng (Convergence & Communication)",
+        "![Convergence Trajectory](convergence.png)\n",
+        "### 🎯 Ma trận Nhầm lẫn & Tỷ lệ Nhận diện theo Lớp (Confusion Matrix & Recall)",
+        "![Confusion Matrix](confusion_matrix.png)\n"
+    ])
+
+    summary_path = os.path.join(server_dir, "summary.md")
+    with open(summary_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(md_lines))
+
+    print(f"📊 [Scenario Artifacts] Đã tạo thành công các báo cáo cho: {scenario_name}")
+    print(f"   • Convergence plot:      {conv_path}")
+    print(f"   • Confusion matrix plot: {cm_path}")
+    print(f"   • Summary report:        {summary_path}")
+
+    return {
+        "convergence_plot": conv_path,
+        "confusion_matrix_plot": cm_path,
+        "summary_markdown": summary_path
+    }
 
 
 def backup_scenario_to_drive(

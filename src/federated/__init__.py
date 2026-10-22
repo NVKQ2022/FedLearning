@@ -20,6 +20,8 @@ from .scenario import (
     load_server_data,
     load_server_test_data,
     plot_scenario_convergence,
+    plot_scenario_confusion_matrix,
+    export_scenario_summary_and_plots,
     backup_scenario_to_drive,
     commit_scenario_to_github,
 )
@@ -41,6 +43,8 @@ __all__ = [
     "load_server_data",
     "load_server_test_data",
     "plot_scenario_convergence",
+    "plot_scenario_confusion_matrix",
+    "export_scenario_summary_and_plots",
     "backup_scenario_to_drive",
     "commit_scenario_to_github",
 ]

@@ -64,3 +64,9 @@ checkpoints/
 *.log
 runs/
 wandb/
+
+# one-off scratch scripts
+scratch/
+
+# Code graph for agent
+.codegraph/
