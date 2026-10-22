@@ -1,0 +1,52 @@
+{
+  "accuracy": 0.8019,
+  "macro_f1": 0.590082412111887,
+  "macro_precision": 0.6290064886541378,
+  "macro_recall": 0.5763069012365838,
+  "weighted_f1": 0.7870678105394512,
+  "per_class_f1": {
+    "Benign": 0.801743853630646,
+    "Brute-force": 0.0,
+    "DDoS": 0.886895095810328,
+    "DoS": 0.5709433379651073,
+    "Mirai": 0.9923294307630198,
+    "Recon": 0.7164668769716088,
+    "Spoof": 0.752280701754386,
+    "Web-based": 0.0
+  },
+  "per_class_recall": {
+    "Benign": 0.8710979965833204,
+    "Brute-force": 0.0,
+    "DDoS": 0.9692102928127773,
+    "DoS": 0.43170674760681765,
+    "Mirai": 0.9943365695792881,
+    "Recon": 0.7011607804396147,
+    "Spoof": 0.6429428228708517,
+    "Web-based": 0.0
+  },
+  "per_class_precision": {
+    "Benign": 0.7426188269561763,
+    "Brute-force": 0.0,
+    "DDoS": 0.8174674449932645,
+    "DoS": 0.8427529626253418,
+    "Mirai": 0.9903303787268332,
+    "Recon": 0.7324561403508771,
+    "Spoof": 0.9064261555806088,
+    "Web-based": 0.0
+  },
+  "support": {
+    "Benign": 6439,
+    "Brute-force": 76,
+    "DDoS": 11270,
+    "DoS": 4283,
+    "Mirai": 1236,
+    "Recon": 4049,
+    "Spoof": 2501,
+    "Web-based": 146
+  },
+  "minority_recall": {
+    "Web-based": 0.0,
+    "Brute-force": 0.0
+  },
+  "loss": 0.0
+}
