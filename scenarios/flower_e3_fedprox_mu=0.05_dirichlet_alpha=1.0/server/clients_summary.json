@@ -1,52 +1,52 @@
 [
   {
     "client_id": 0,
-    "samples": 12003,
-    "train_samples": 8402,
-    "val_samples": 1200,
-    "test_samples": 2401,
+    "samples": 539779,
+    "train_samples": 377845,
+    "val_samples": 53978,
+    "test_samples": 107956,
     "dominant_class": "DDoS",
-    "dominant_pct": 37.56,
-    "entropy": 0.7821
+    "dominant_pct": 55.28,
+    "entropy": 0.6471
   },
   {
     "client_id": 1,
-    "samples": 12002,
-    "train_samples": 8401,
-    "val_samples": 1200,
-    "test_samples": 2401,
-    "dominant_class": "DDoS",
-    "dominant_pct": 37.56,
-    "entropy": 0.782
+    "samples": 590511,
+    "train_samples": 413357,
+    "val_samples": 59051,
+    "test_samples": 118103,
+    "dominant_class": "Benign",
+    "dominant_pct": 67.66,
+    "entropy": 0.4954
   },
   {
     "client_id": 2,
-    "samples": 12001,
-    "train_samples": 8400,
-    "val_samples": 1200,
-    "test_samples": 2401,
-    "dominant_class": "DDoS",
-    "dominant_pct": 37.56,
-    "entropy": 0.782
+    "samples": 530581,
+    "train_samples": 371406,
+    "val_samples": 53058,
+    "test_samples": 106117,
+    "dominant_class": "DoS",
+    "dominant_pct": 30.36,
+    "entropy": 0.8323
   },
   {
     "client_id": 3,
-    "samples": 11997,
-    "train_samples": 8397,
-    "val_samples": 1200,
-    "test_samples": 2400,
+    "samples": 827245,
+    "train_samples": 579071,
+    "val_samples": 82724,
+    "test_samples": 165450,
     "dominant_class": "DDoS",
-    "dominant_pct": 37.58,
-    "entropy": 0.7817
+    "dominant_pct": 41.67,
+    "entropy": 0.6808
   },
   {
     "client_id": 4,
-    "samples": 11996,
-    "train_samples": 8397,
-    "val_samples": 1199,
-    "test_samples": 2400,
+    "samples": 581717,
+    "train_samples": 407201,
+    "val_samples": 58172,
+    "test_samples": 116344,
     "dominant_class": "DDoS",
-    "dominant_pct": 37.57,
-    "entropy": 0.7817
+    "dominant_pct": 45.73,
+    "entropy": 0.7429
   }
 ]
