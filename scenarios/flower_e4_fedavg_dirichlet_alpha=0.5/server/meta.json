@@ -1,0 +1,21 @@
+{
+  "scenario_name": "flower_e4_fedavg_dirichlet_alpha=0.5",
+  "input_dim": 39,
+  "num_classes": 8,
+  "class_names": [
+    "Benign",
+    "Brute-force",
+    "DDoS",
+    "DoS",
+    "Mirai",
+    "Recon",
+    "Spoof",
+    "Web-based"
+  ],
+  "num_clients": 5,
+  "total_train_samples": 3069833,
+  "total_val_samples": 511640,
+  "total_test_samples": 1534918,
+  "client_val_ratio": 0.1,
+  "client_test_ratio": 0.2
+}
