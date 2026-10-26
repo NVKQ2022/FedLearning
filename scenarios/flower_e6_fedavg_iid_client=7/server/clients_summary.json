@@ -1,0 +1,72 @@
+[
+  {
+    "client_id": 0,
+    "samples": 438551,
+    "train_samples": 306985,
+    "val_samples": 43855,
+    "test_samples": 87711,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 1,
+    "samples": 438549,
+    "train_samples": 306984,
+    "val_samples": 43855,
+    "test_samples": 87710,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 2,
+    "samples": 438549,
+    "train_samples": 306984,
+    "val_samples": 43855,
+    "test_samples": 87710,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 3,
+    "samples": 438549,
+    "train_samples": 306984,
+    "val_samples": 43855,
+    "test_samples": 87710,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 4,
+    "samples": 438546,
+    "train_samples": 306982,
+    "val_samples": 43854,
+    "test_samples": 87710,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 5,
+    "samples": 438546,
+    "train_samples": 306982,
+    "val_samples": 43854,
+    "test_samples": 87710,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 6,
+    "samples": 438543,
+    "train_samples": 306980,
+    "val_samples": 43854,
+    "test_samples": 87709,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  }
+]
