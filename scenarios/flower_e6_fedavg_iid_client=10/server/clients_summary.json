@@ -1,0 +1,102 @@
+[
+  {
+    "client_id": 0,
+    "samples": 306986,
+    "train_samples": 214890,
+    "val_samples": 30698,
+    "test_samples": 61398,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 1,
+    "samples": 306986,
+    "train_samples": 214890,
+    "val_samples": 30698,
+    "test_samples": 61398,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 2,
+    "samples": 306986,
+    "train_samples": 214890,
+    "val_samples": 30698,
+    "test_samples": 61398,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 3,
+    "samples": 306985,
+    "train_samples": 214889,
+    "val_samples": 30698,
+    "test_samples": 61398,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 4,
+    "samples": 306983,
+    "train_samples": 214888,
+    "val_samples": 30698,
+    "test_samples": 61397,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 5,
+    "samples": 306983,
+    "train_samples": 214888,
+    "val_samples": 30698,
+    "test_samples": 61397,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 6,
+    "samples": 306982,
+    "train_samples": 214887,
+    "val_samples": 30698,
+    "test_samples": 61397,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 7,
+    "samples": 306981,
+    "train_samples": 214886,
+    "val_samples": 30698,
+    "test_samples": 61397,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 8,
+    "samples": 306981,
+    "train_samples": 214886,
+    "val_samples": 30698,
+    "test_samples": 61397,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 9,
+    "samples": 306980,
+    "train_samples": 214885,
+    "val_samples": 30698,
+    "test_samples": 61397,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  }
+]

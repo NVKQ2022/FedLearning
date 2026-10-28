@@ -1,0 +1,21 @@
+{
+  "scenario_name": "flower_e6_fedavg_iid_client=10",
+  "algorithm": {
+    "name": "fedavg"
+  },
+  "federated_strategy": "fedavg",
+  "num_clients": 10,
+  "num_rounds": 10,
+  "local_epochs": 2,
+  "partition_type": "iid",
+  "dirichlet_alpha": 0.5,
+  "fraction_fit": 1.0,
+  "fraction_evaluate": 0.0,
+  "client_val_ratio": 0.1,
+  "client_test_ratio": 0.2,
+  "min_fit_clients": 2,
+  "min_available_clients": 2,
+  "mu": 0.0,
+  "input_dim": 39,
+  "num_classes": 8
+}
