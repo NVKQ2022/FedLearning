@@ -381,6 +381,18 @@ class FederatedConfig:
         """True if algorithm is FedProx."""
         return self.algorithm.name in ("fedprox", "prox")
 
+    def build_strategy(self) -> Any:
+        """Builds and returns the aggregation algorithm strategy instance."""
+        algo_name_map = {
+            "fedavg": "FedAvg",
+            "fedprox": "FedProx",
+            "fedmedian": "FedMedian",
+            "fedtrimmedmean": "FedTrimmedMean",
+        }
+        strat = copy.deepcopy(self.algorithm)
+        strat.name = algo_name_map.get(strat.name.lower(), strat.name)
+        return strat
+
     def get_strategy_kwargs(self) -> Dict[str, Any]:
         """Extracts kwargs specific to the selected algorithm for server instantiation."""
         kwargs: Dict[str, Any] = {

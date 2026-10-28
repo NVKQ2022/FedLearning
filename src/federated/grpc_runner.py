@@ -190,6 +190,7 @@ def run_flower_grpc(
 
     server_proc: Optional[subprocess.Popen] = None
     client_procs: List[subprocess.Popen] = []
+    client_log_files: List[Any] = []
 
     try:
         # 1. Launch Flower Central Server process
@@ -216,7 +217,15 @@ def run_flower_grpc(
         # 2. Wait for server socket initialization
         time.sleep(2.0)
 
-        # 3. Launch K Client processes
+        # 3. Launch K Client processes (redirect logs to disk or devnull to prevent pipe buffer deadlock)
+        logs_dir = os.path.join(scenario_dir, "logs")
+        can_log_to_file = False
+        try:
+            os.makedirs(logs_dir, exist_ok=True)
+            can_log_to_file = True
+        except Exception:
+            can_log_to_file = False
+
         for client_id in range(num_clients):
             client_cmd = [
                 sys.executable, "-m", "src.federated.flower_client",
@@ -230,16 +239,24 @@ def run_flower_grpc(
                 "--scenario-dir", scenario_dir,
                 "--device", device
             ]
+            client_stdout = subprocess.DEVNULL
+            if can_log_to_file:
+                try:
+                    client_log = open(os.path.join(logs_dir, f"client_{client_id}.log"), "w", encoding="utf-8")
+                    client_log_files.append(client_log)
+                    client_stdout = client_log
+                except Exception:
+                    client_stdout = subprocess.DEVNULL
+
             logger.info(f"Starting Client {client_id} process...")
             p = subprocess.Popen(
                 client_cmd,
-                stdout=subprocess.PIPE,
+                stdout=client_stdout,
                 stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1
+                text=True
             )
             client_procs.append(p)
-            time.sleep(0.3)
+            time.sleep(0.2)
 
         logger.info(f"All {num_clients} edge clients connected over gRPC. Training in progress...\n")
 
@@ -260,6 +277,11 @@ def run_flower_grpc(
                 p.terminate()
         if server_proc and server_proc.poll() is None:
             server_proc.terminate()
+        for f in client_log_files:
+            try:
+                f.close()
+            except Exception:
+                pass
 
     # 5. Load and return round history
     history_path = os.path.join(scenario_dir, "server", "round_history.json")

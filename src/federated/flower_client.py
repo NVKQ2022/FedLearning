@@ -211,6 +211,11 @@ class FlowerIoTClient(fl.client.NumPyClient if HAS_FLWR else object):
             f"Drift: {drift_norm:.4f} | Time: {train_duration:.2f}s"
         )
 
+        if global_ref is not None:
+            del global_ref
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         return updated_weights, num_samples, metrics
 
     def evaluate(
@@ -364,7 +369,7 @@ if __name__ == "__main__":
     X_train_data = client_npz["X_train"] if "X_train" in client_npz else client_npz["X"]
     y_train_data = client_npz["y_train"] if "y_train" in client_npz else client_npz["y"]
     train_ds = TensorDataset(torch.from_numpy(X_train_data), torch.from_numpy(y_train_data))
-    train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, pin_memory=True)
+    train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, pin_memory=False)
 
     # Load 20% validation split if available
     val_loader = None
@@ -382,36 +387,15 @@ if __name__ == "__main__":
 
     if X_val_data is not None and y_val_data is not None and len(y_val_data) > 0:
         val_ds = TensorDataset(torch.from_numpy(X_val_data), torch.from_numpy(y_val_data))
-        val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, pin_memory=True)
+        val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, pin_memory=False)
     else:
         val_ds = None
 
-    # Load test split if available
     test_loader = None
-    X_test_data = None
-    y_test_data = None
-    if "X_test" in client_npz and "y_test" in client_npz and len(client_npz["y_test"]) > 0:
-        X_test_data = client_npz["X_test"]
-        y_test_data = client_npz["y_test"]
-    else:
-        test_file = os.path.join(os.path.dirname(client_file), "test_partition.npz")
-        if os.path.exists(test_file):
-            test_npz = np.load(test_file)
-            X_test_data = test_npz["X_test"] if "X_test" in test_npz else test_npz["X"]
-            y_test_data = test_npz["y_test"] if "y_test" in test_npz else test_npz["y"]
-
-    if X_test_data is not None and y_test_data is not None and len(y_test_data) > 0:
-        test_ds = TensorDataset(torch.from_numpy(X_test_data), torch.from_numpy(y_test_data))
-        test_loader = DataLoader(test_ds, batch_size=args.batch_size, shuffle=False, pin_memory=True)
-    else:
-        test_ds = None
-
     print(f"Flower Client CLI: Client ID {args.client_id} loaded:")
     print(f"  - Train: {len(train_ds):,} samples")
     if val_loader:
         print(f"  - Val:   {len(val_ds):,} samples")
-    if test_loader:
-        print(f"  - Test:  {len(test_ds):,} samples")
 
     start_flower_client(
         client_id=args.client_id,
