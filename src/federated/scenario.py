@@ -539,18 +539,45 @@ def load_server_data(
 
 
 def load_server_test_data(
-    scenario_dir: str
-) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Dict[str, Any]]:
+    scenario_dir: Optional[str] = None,
+    scenario_path: Optional[str] = None,
+    batch_size: Optional[int] = None,
+    device: Optional[Union[str, Any]] = None,
+    **kwargs: Any
+) -> Any:
     """
     Loads central server global test data (30% upcoming data) and scenario metadata.
 
     Args:
         scenario_dir: Scenario root directory.
+        scenario_path: Alias for scenario_dir.
+        batch_size: If provided, wraps test data into a PyTorch DataLoader.
+        device: Device to place tensors on if DataLoader is constructed.
 
     Returns:
-        Tuple of (X_test, y_test, meta).
+        If batch_size is None: Tuple of (X_test, y_test, meta).
+        If batch_size is provided: DataLoader yielding test batches.
     """
-    return load_server_data(scenario_dir, split="test")
+    scen_dir = scenario_dir or scenario_path
+    if not scen_dir:
+        raise ValueError("Must provide scenario_dir or scenario_path to load_server_test_data")
+
+    X_test, y_test, meta = load_server_data(scen_dir, split="test")
+
+    if batch_size is not None:
+        if X_test is None or y_test is None:
+            raise FileNotFoundError(f"No test_data.npz found in {scen_dir}/server")
+        try:
+            import torch
+            from torch.utils.data import TensorDataset, DataLoader
+            X_tensor = torch.from_numpy(np.ascontiguousarray(X_test, dtype=np.float32))
+            y_tensor = torch.from_numpy(np.ascontiguousarray(y_test, dtype=np.int64))
+            ds = TensorDataset(X_tensor, y_tensor)
+            return DataLoader(ds, batch_size=batch_size, shuffle=False)
+        except ImportError:
+            pass
+
+    return X_test, y_test, meta
 
 
 def plot_scenario_convergence(
