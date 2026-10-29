@@ -21,6 +21,9 @@ from src.utils.config import (
     OptimizationConfig,
     FederatedConfig,
     FederatedParametersConfig,
+    CentralizedConfig,
+    CentralizedScenarioConfig,
+    CentralizedParametersConfig,
     FedAlgorithm,
     FederatedAlgorithm,
     FedAvg,
@@ -332,3 +335,67 @@ def test_experiment_with_federated_algorithm():
     assert cfg.num_rounds == 10
     assert cfg.is_proximal is True
     assert cfg.mu == 0.06
+
+
+# ==============================================================================
+# CentralizedConfig Tests
+# ==============================================================================
+
+def test_centralized_config_defaults():
+    cent = CentralizedConfig()
+    assert cent.scenario_name == "E1_centralized"
+    assert cent.epochs == 15
+    assert cent.num_epochs == 15
+    assert cent.patience == 4
+    assert cent.monitor_metric == "val_loss"
+    assert cent.monitor == "val_loss"
+    assert cent.save_top_k == 3
+    assert cent.val_ratio == 0.2
+    assert cent.test_ratio == 0.2
+    assert cent.verbose is True
+
+    # Property setters
+    cent.monitor = "val_acc"
+    assert cent.monitor_metric == "val_acc"
+    cent.num_epochs = 25
+    assert cent.epochs == 25
+
+
+def test_experiment_with_centralized_config():
+    cent_cfg = CentralizedConfig(
+        scenario_name="E1_centralized_mlp",
+        epochs=30,
+        patience=6,
+        monitor_metric="val_loss",
+        save_top_k=5,
+    )
+    cfg = Experiment(
+        experiment_name="centralized_test",
+        centralized=cent_cfg,
+    )
+    assert cfg.centralized is not None
+    assert cfg.federated is None
+    assert cfg.is_centralized is True
+    assert cfg.is_federated is False
+    assert cfg.centralized.epochs == 30
+    assert cfg.epochs == 30
+    assert cfg.patience == 6
+    assert cfg.scenario_name == "E1_centralized_mlp"
+
+    # Display test
+    cfg.display()
+
+    # Serialization test
+    d = cfg.to_dict()
+    assert "centralized" in d
+    assert "federated" not in d
+    assert d["centralized"]["epochs"] == 30
+
+
+def test_experiment_for_scenario_e1():
+    cfg = ExperimentConfig.for_scenario("E1")
+    assert cfg.is_centralized is True
+    assert cfg.centralized is not None
+    assert cfg.federated is None
+    assert cfg.centralized.scenario_name == "E1_centralized"
+

@@ -518,6 +518,67 @@ class FederatedConfig:
         return cls(algorithm=CustomAlgorithm(name=name, params=algo_params), **common_kwargs)
 
 
+# ==============================================================================
+# Centralized Scenario Configuration (Scenario E1 Baseline)
+# ==============================================================================
+
+@dataclass
+class CentralizedConfig:
+    """
+    Centralized Scenario Configuration (Scenario E1 Baseline).
+
+    Configuration container for centralized baseline execution without client partitioning.
+    Attributes:
+        scenario_name: Identifier for the scenario output directory (default: 'E1_centralized').
+        epochs: Maximum number of centralized training epochs (default: 15).
+        patience: Early stopping patience (default: 4).
+        monitor_metric: Metric to monitor for early stopping and best checkpoint ('val_loss' or 'val_acc').
+        save_top_k: Number of best model checkpoints to keep (default: 3).
+        val_ratio: Validation split ratio on central server data (default: 0.2).
+        test_ratio: Test split ratio on central server data (default: 0.2).
+        batch_size: Optional batch size override for centralized training.
+        verbose: Verbose progress reporting during training (default: True).
+    """
+    scenario_name: Optional[str] = "E1_centralized"
+    epochs: int = 15
+    patience: int = 4
+    monitor_metric: str = "val_loss"
+    save_top_k: int = 3
+    val_ratio: float = 0.2
+    test_ratio: float = 0.2
+    batch_size: Optional[int] = None
+    verbose: bool = True
+
+    @property
+    def monitor(self) -> str:
+        """Alias for monitor_metric."""
+        return self.monitor_metric
+
+    @monitor.setter
+    def monitor(self, val: str) -> None:
+        self.monitor_metric = val
+
+    @property
+    def num_epochs(self) -> int:
+        """Alias for epochs."""
+        return self.epochs
+
+    @num_epochs.setter
+    def num_epochs(self, val: int) -> None:
+        self.epochs = val
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert configuration to dictionary."""
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "CentralizedConfig":
+        """Instantiate from dictionary."""
+        valid_keys = {f.name for f in fields(cls)}
+        filtered = {k: v for k, v in data.items() if k in valid_keys}
+        return cls(**filtered)
+
+
 # Sub-config class aliases
 DatasetPreprocessingConfig = DataConfig
 ArchitectureRegularizationConfig = ModelConfig
@@ -525,6 +586,8 @@ ArchitectureConfig = ModelConfig
 LossFunctionConfig = LossConfig
 OptimizationConfig = OptimizerConfig
 FederatedParametersConfig = FederatedConfig
+CentralizedScenarioConfig = CentralizedConfig
+CentralizedParametersConfig = CentralizedConfig
 
 
 # ==============================================================================
@@ -539,6 +602,7 @@ class ExperimentConfig:
     - loss / loss_function: LossConfig (Loss Function)
     - optimizer / optimization: OptimizerConfig (Optimization)
     - federated / federated_parameters: FederatedConfig (Federated Parameters & Algorithm)
+    - centralized / centralized_parameters: CentralizedConfig (Centralized Baseline Scenario)
 
     Maintains backward compatibility via attribute delegation: accessing `config.batch_size`
     or `config.learning_rate` delegates seamlessly to `config.data.batch_size` or
@@ -556,6 +620,8 @@ class ExperimentConfig:
         "optimization": ("optimizer", "optimization"),
         "federated": ("federated", "federated_parameters"),
         "federated_parameters": ("federated", "federated_parameters"),
+        "centralized": ("centralized", "centralized_parameters"),
+        "centralized_parameters": ("centralized", "centralized_parameters"),
     }
 
     def __init__(
@@ -569,12 +635,14 @@ class ExperimentConfig:
         loss: Optional[Union[LossConfig, Dict[str, Any]]] = None,
         optimizer: Optional[Union[OptimizerConfig, Dict[str, Any]]] = None,
         federated: Optional[Union[FederatedConfig, FedAlgorithm, str, Dict[str, Any]]] = None,
+        centralized: Optional[Union[CentralizedConfig, Dict[str, Any]]] = None,
         # Section name aliases
         dataset_preprocessing: Optional[Union[DataConfig, Dict[str, Any]]] = None,
         architecture: Optional[Union[ModelConfig, Dict[str, Any]]] = None,
         loss_function: Optional[Union[LossConfig, Dict[str, Any]]] = None,
         optimization: Optional[Union[OptimizerConfig, Dict[str, Any]]] = None,
         federated_parameters: Optional[Union[FederatedConfig, FedAlgorithm, str, Dict[str, Any]]] = None,
+        centralized_parameters: Optional[Union[CentralizedConfig, Dict[str, Any]]] = None,
         **kwargs: Any,
     ):
         self.experiment_name = experiment_name
@@ -625,7 +693,15 @@ class ExperimentConfig:
         super().__setattr__("optimizer", resolved_opt)
         super().__setattr__("optimization", resolved_opt)
 
-        # 5. Federated Parameters (with internal Algorithm)
+        # 5. Federated or Centralized Parameters
+        raw_cent = centralized if centralized is not None else centralized_parameters
+        if isinstance(raw_cent, dict):
+            resolved_cent = CentralizedConfig.from_dict(raw_cent)
+        elif isinstance(raw_cent, CentralizedConfig):
+            resolved_cent = copy.deepcopy(raw_cent)
+        else:
+            resolved_cent = None
+
         raw_fed = federated if federated is not None else federated_parameters
         if isinstance(raw_fed, dict):
             resolved_fed = FederatedConfig.from_dict(raw_fed)
@@ -633,18 +709,33 @@ class ExperimentConfig:
             resolved_fed = copy.deepcopy(raw_fed)
         elif isinstance(raw_fed, (FedAlgorithm, str)):
             resolved_fed = FederatedConfig(algorithm=raw_fed)
+        elif resolved_cent is not None:
+            resolved_fed = None
         else:
             resolved_fed = FederatedConfig()
-        if getattr(resolved_fed, "scenario_name", None) is None:
+
+        if resolved_cent is not None:
+            if getattr(resolved_cent, "scenario_name", None) is None:
+                resolved_cent.scenario_name = self.experiment_name
+            # Keep optimizer training params aligned with centralized configuration
+            self.optimizer.epochs = resolved_cent.epochs
+            self.optimizer.patience = resolved_cent.patience
+            self.optimizer.monitor_metric = resolved_cent.monitor_metric
+            self.optimizer.save_top_k = resolved_cent.save_top_k
+
+        if resolved_fed is not None and getattr(resolved_fed, "scenario_name", None) is None:
             resolved_fed.scenario_name = self.experiment_name
+
+        super().__setattr__("centralized", resolved_cent)
+        super().__setattr__("centralized_parameters", resolved_cent)
         super().__setattr__("federated", resolved_fed)
         super().__setattr__("federated_parameters", resolved_fed)
 
         # Route remaining kwargs to matching sub-configs or self
         for k, v in kwargs.items():
             routed = False
-            for sub in (self.data, self.model, self.loss, self.optimizer, self.federated):
-                if hasattr(sub, k):
+            for sub in (self.centralized, self.data, self.model, self.loss, self.optimizer, self.federated):
+                if sub is not None and hasattr(sub, k):
                     setattr(sub, k, v)
                     routed = True
                     break
@@ -652,7 +743,8 @@ class ExperimentConfig:
                 super().__setattr__(k, v)
 
     def __getattr__(self, name: str) -> Any:
-        for sub_name in ("data", "model", "loss", "optimizer", "federated"):
+        order = ("centralized", "data", "model", "loss", "optimizer", "federated") if self.__dict__.get("centralized") is not None else ("data", "model", "loss", "optimizer", "federated")
+        for sub_name in order:
             sub_obj = self.__dict__.get(sub_name)
             if sub_obj is not None and hasattr(sub_obj, name):
                 return getattr(sub_obj, name)
@@ -668,7 +760,8 @@ class ExperimentConfig:
                 super().__setattr__(alias, value)
             return
 
-        for sub_name in ("data", "model", "loss", "optimizer", "federated"):
+        order = ("centralized", "data", "model", "loss", "optimizer", "federated") if self.__dict__.get("centralized") is not None else ("data", "model", "loss", "optimizer", "federated")
+        for sub_name in order:
             sub_obj = self.__dict__.get(sub_name)
             if sub_obj is not None and hasattr(sub_obj, name):
                 setattr(sub_obj, name, value)
@@ -678,7 +771,7 @@ class ExperimentConfig:
 
     def to_dict(self) -> Dict[str, Any]:
         """Converts configuration to a structured dictionary organized by sub-configs."""
-        return {
+        d = {
             "experiment_name": self.experiment_name,
             "seed": self.seed,
             "device": self.device,
@@ -686,8 +779,12 @@ class ExperimentConfig:
             "model": self.model.to_dict(),
             "loss": self.loss.to_dict(),
             "optimizer": self.optimizer.to_dict(),
-            "federated": self.federated.to_dict(),
         }
+        if self.centralized is not None:
+            d["centralized"] = self.centralized.to_dict()
+        if self.federated is not None:
+            d["federated"] = self.federated.to_dict()
+        return d
 
     def to_flat_dict(self) -> Dict[str, Any]:
         """Converts configuration to a backward-compatible flat dictionary."""
@@ -700,7 +797,10 @@ class ExperimentConfig:
         flat.update(self.model.to_dict())
         flat.update(self.loss.to_dict())
         flat.update(self.optimizer.to_dict())
-        flat.update(self.federated.to_dict())
+        if self.centralized is not None:
+            flat.update(self.centralized.to_dict())
+        if self.federated is not None:
+            flat.update(self.federated.to_dict())
         return flat
 
     @classmethod
@@ -726,6 +826,8 @@ class ExperimentConfig:
                     nested_kwargs["federated"] = FederatedConfig.from_dict(v)
                 else:
                     nested_kwargs["federated"] = FederatedConfig(algorithm=v)
+            elif k in ("centralized", "centralized_parameters"):
+                nested_kwargs["centralized"] = v if isinstance(v, CentralizedConfig) else CentralizedConfig.from_dict(v)
             else:
                 flat_kwargs[k] = v
 
@@ -755,36 +857,44 @@ class ExperimentConfig:
             yaml.dump(self.to_dict(), f, default_flow_style=False, sort_keys=False)
         logger.info(f"Hyperparameter configuration saved to {filepath}")
 
+    @property
+    def is_centralized(self) -> bool:
+        """True if this experiment runs as a centralized benchmark."""
+        return self.centralized is not None or self.federated is None or "centralized" in self.experiment_name.lower()
+
+    @property
+    def is_federated(self) -> bool:
+        """True if this experiment runs as a federated learning simulation."""
+        return self.federated is not None and self.centralized is None
+
     def display(self) -> None:
         """Prints a structured summary table of all active hyperparameters."""
         print("=" * 70)
         print(f"⚙️ HYPERPARAMETER CONFIGURATION: {self.experiment_name.upper()}")
         print("=" * 70)
 
-        is_centralized = "centralized" in self.experiment_name.lower() or getattr(self, "mode", "") == "centralized"
-
         fed_params = []
-        if self.federated is not None and not is_centralized:
+        if self.federated is not None:
             algo_display = self.federated.algorithm.name.upper() if hasattr(self.federated, "algorithm") else "FEDAVG"
-            if self.federated.is_fedavg:
+            if getattr(self.federated, "is_fedavg", False):
                 algo_display += " (McMahan et al., 2017)"
-            elif self.federated.is_fedprox:
+            elif getattr(self.federated, "is_fedprox", False):
                 algo_display += " (Li et al., 2020)"
 
             fed_params = [
                 ("Federated Algorithm", algo_display),
-                ("Partition Type", self.federated.partition_type.upper()),
-                ("Number of Clients", self.federated.num_clients),
-                ("Communication Rounds", self.federated.num_rounds),
-                ("Local Client Epochs", self.federated.local_epochs),
+                ("Partition Type", getattr(self.federated, "partition_type", "iid").upper()),
+                ("Number of Clients", getattr(self.federated, "num_clients", 5)),
+                ("Communication Rounds", getattr(self.federated, "num_rounds", 10)),
+                ("Local Client Epochs", getattr(self.federated, "local_epochs", 2)),
             ]
-            if self.federated.partition_type == "dirichlet":
-                fed_params.append(("Dirichlet Alpha (α)", self.federated.dirichlet_alpha))
-            if self.federated.is_proximal or hasattr(self.federated.algorithm, "mu"):
-                fed_params.append(("Proximal Mu (μ)", self.federated.mu))
-            if hasattr(self.federated.algorithm, "trim_fraction"):
-                fed_params.append(("Trim Fraction", self.federated.trim_fraction))
-            if isinstance(self.federated.algorithm, CustomAlgorithm):
+            if getattr(self.federated, "partition_type", "") == "dirichlet":
+                fed_params.append(("Dirichlet Alpha (α)", getattr(self.federated, "dirichlet_alpha", 0.5)))
+            if getattr(self.federated, "is_proximal", False) or hasattr(getattr(self.federated, "algorithm", None), "mu"):
+                fed_params.append(("Proximal Mu (μ)", getattr(self.federated, "mu", 0.0)))
+            if hasattr(getattr(self.federated, "algorithm", None), "trim_fraction"):
+                fed_params.append(("Trim Fraction", getattr(self.federated, "trim_fraction", 0.1)))
+            if isinstance(getattr(self.federated, "algorithm", None), CustomAlgorithm):
                 for k, v in self.federated.algorithm.params.items():
                     fed_params.append((f"Algo Param ({k})", v))
 
@@ -823,14 +933,18 @@ class ExperimentConfig:
             ],
         }
 
-        if not is_centralized and fed_params:
-            groups["Federated Parameters (FederatedConfig)"] = fed_params
-        elif is_centralized:
-            groups["Training Execution Mode"] = [
-                ("Mode", "Centralized Benchmark (Scenario E1)"),
-                ("Architecture", "Single Central Server (No Edge Partitions)"),
-                ("Upper Bound Role", "Empirical Performance Upper Bound Ceiling"),
+        if self.centralized is not None:
+            groups["Centralized Parameters (CentralizedConfig)"] = [
+                ("Scenario Name", self.centralized.scenario_name),
+                ("Max Epochs", self.centralized.epochs),
+                ("Early Stopping Patience", self.centralized.patience),
+                ("Monitored Metric", f"{self.centralized.monitor_metric} {'(min)' if self.centralized.monitor_metric == 'val_loss' else '(max)'}"),
+                ("Save Top-K Checkpoints", f"Top {self.centralized.save_top_k} models"),
+                ("Validation Ratio", f"{self.centralized.val_ratio * 100:.1f}%"),
+                ("Holdout Test Ratio", f"{self.centralized.test_ratio * 100:.1f}%"),
             ]
+        elif self.federated is not None and fed_params:
+            groups["Federated Parameters (FederatedConfig)"] = fed_params
 
         for group_name, params in groups.items():
             print(f"\n📂 {group_name}:")
@@ -861,7 +975,13 @@ class ExperimentConfig:
         T = num_rounds or 10
 
         if sc == "E1":
-            return cls(experiment_name="centralized_e1_baseline", seed=seed, **kwargs)
+            return cls(
+                experiment_name="centralized_e1_baseline",
+                seed=seed,
+                centralized=CentralizedConfig(scenario_name="E1_centralized"),
+                federated=None,
+                **kwargs
+            )
         elif sc == "E2":
             return cls(
                 experiment_name="flower_e2_fedavg_iid",
