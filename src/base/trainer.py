@@ -99,6 +99,10 @@ if HAS_TORCH:
                 for X_batch, y_batch in dataloader:
                     X_batch = X_batch.to(self.device)
                     y_batch = y_batch.to(self.device)
+                    if X_batch.ndim == 1:
+                        X_batch = X_batch.unsqueeze(0)
+                    if y_batch.ndim == 0:
+                        y_batch = y_batch.unsqueeze(0)
                     batch_size = len(y_batch)
 
                     outputs = self.model(X_batch)
@@ -106,7 +110,7 @@ if HAS_TORCH:
                         loss = self.criterion(outputs, y_batch)
                         total_loss += float(loss.item()) * batch_size
 
-                    preds = outputs.argmax(dim=1)
+                    preds = outputs.argmax(dim=-1)
                     correct += int((preds == y_batch).sum().item())
                     total_samples += batch_size
 

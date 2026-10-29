@@ -356,21 +356,22 @@ def load_and_preprocess_ciciot2023(
 
     # 8. Construct PyTorch DataLoaders if PyTorch is available
     if HAS_TORCH:
+        effective_batch_size = batch_size if (batch_size is not None and batch_size > 0) else 128
         train_ds = TabularFlowDataset(X_train, y_train)
         results["train_dataset"] = train_ds
-        results["train_loader"] = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+        results["train_loader"] = DataLoader(train_ds, batch_size=effective_batch_size, shuffle=True)
 
         if X_val is not None and len(X_val) > 0:
             val_ds = TabularFlowDataset(X_val, y_val)
             results["val_dataset"] = val_ds
-            results["val_loader"] = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+            results["val_loader"] = DataLoader(val_ds, batch_size=effective_batch_size, shuffle=False)
         else:
             results["val_dataset"] = None
             results["val_loader"] = None
 
         test_ds = TabularFlowDataset(X_test, y_test)
         results["test_dataset"] = test_ds
-        results["test_loader"] = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+        results["test_loader"] = DataLoader(test_ds, batch_size=effective_batch_size, shuffle=False)
 
     return results
 

@@ -81,6 +81,10 @@ if HAS_TORCH:
 
             for X_b, y_b in iterator:
                 X_b, y_b = X_b.to(self.device), y_b.to(self.device)
+                if X_b.ndim == 1:
+                    X_b = X_b.unsqueeze(0)
+                if y_b.ndim == 0:
+                    y_b = y_b.unsqueeze(0)
                 self.optimizer.zero_grad()
                 out = self.model(X_b)
                 loss = self.criterion(out, y_b)
@@ -90,7 +94,7 @@ if HAS_TORCH:
 
                 batch_samples = len(y_b)
                 t_loss += loss.item() * batch_samples
-                t_correct += (out.argmax(dim=1) == y_b).sum().item()
+                t_correct += (out.argmax(dim=-1) == y_b).sum().item()
                 t_total += batch_samples
 
                 if verbose and hasattr(iterator, "set_postfix"):

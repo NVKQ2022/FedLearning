@@ -536,7 +536,6 @@ class CentralizedConfig:
         save_top_k: Number of best model checkpoints to keep (default: 3).
         val_ratio: Validation split ratio on central server data (default: 0.2).
         test_ratio: Test split ratio on central server data (default: 0.2).
-        batch_size: Optional batch size override for centralized training.
         verbose: Verbose progress reporting during training (default: True).
     """
     scenario_name: Optional[str] = "E1_centralized"
@@ -546,7 +545,6 @@ class CentralizedConfig:
     save_top_k: int = 3
     val_ratio: float = 0.2
     test_ratio: float = 0.2
-    batch_size: Optional[int] = None
     verbose: bool = True
 
     @property
@@ -744,10 +742,19 @@ class ExperimentConfig:
 
     def __getattr__(self, name: str) -> Any:
         order = ("centralized", "data", "model", "loss", "optimizer", "federated") if self.__dict__.get("centralized") is not None else ("data", "model", "loss", "optimizer", "federated")
+        found_val = None
+        has_val = False
         for sub_name in order:
             sub_obj = self.__dict__.get(sub_name)
             if sub_obj is not None and hasattr(sub_obj, name):
-                return getattr(sub_obj, name)
+                val = getattr(sub_obj, name)
+                if val is not None:
+                    return val
+                if not has_val:
+                    found_val = val
+                    has_val = True
+        if has_val:
+            return found_val
         raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
     def __setattr__(self, name: str, value: Any) -> None:
