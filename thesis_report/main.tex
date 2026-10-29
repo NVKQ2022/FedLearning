@@ -314,7 +314,7 @@ Dưới góc nhìn phản biện khoa học độc lập, đề tài xác địn
     \end{itemize}
     \item \textbf{Khoảng cách giữa mô phỏng đa tiến trình gRPC và mạng IoT vật lý:} Mặc dù sử dụng socket TCP/IP gRPC thực thụ, môi trường thử nghiệm trên một máy chủ chưa tái hiện được các yếu tố ngẫu nhiên của sóng vô tuyến: mất gói tin (packet loss), trễ biến thiên (jitter), thiết bị ngắt kết nối đột ngột (client dropouts), và phần cứng không đồng nhất (Straggler problem).
     \item \textbf{Thiên kiến đơn dữ liệu (Single-Dataset Bias):} Nghiên cứu thực hiện trên CICIoT2023. Để nâng cao tính tổng quát hóa cho bài báo quốc tế, mô hình cần được kiểm chứng chéo trên các bộ dữ liệu khác như Edge-IIoTset hoặc TON\_IoT.
-    \item \textbf{Nguy cơ từ tấn công đầu độc trọng số (No Byzantine Robustness):} FedAvg và FedProx giả định toàn bộ client đều trung thực. Nếu một trạm IoT biên bị chiếm quyền và gửi trọng số độc hại (Poisoning/Backdoor attack), mô hình toàn cục sẽ bị phá hủy \cite{blanchard2017machine, yin2018byzantine}. Khung mã nguồn của đề tài đã chuẩn bị sẵn các mô-đun mở rộng cho `FedMedian` và `FedTrimmedMean` để nghiên cứu sâu hơn.
+    \item \textbf{Nguy cơ từ tấn công đầu độc trọng số (No Byzantine Robustness):} FedAvg và FedProx giả định toàn bộ client đều trung thực. Nếu một trạm IoT biên bị chiếm quyền và gửi trọng số độc hại (Poisoning/Backdoor attack), mô hình toàn cục sẽ bị phá hủy \cite{blanchard2017machine, yin2018byzantine}. Khung mã nguồn của đề tài đã chuẩn bị sẵn các mô-đun mở rộng cho \texttt{FedMedian} và \texttt{FedTrimmedMean} để nghiên cứu sâu hơn.
 \end{enumerate}
 
 \subsection{Ba Đề xuất Thuật toán Nâng tầm Giá trị Khoa học (Algorithmic Proposals)}
@@ -328,7 +328,7 @@ Thay vì ép toàn bộ mạng phải học một mô hình phẳng duy nhất, 
 \end{itemize}
 Cơ chế này kỳ vọng sẽ khôi phục Macro-F1 ở kịch bản Non-IID cực đoan $\alpha=0.1$ từ $43.01\%$ lên trên $75\%$, đồng thời cứu tỷ lệ Recall của lớp Web-based tại các client có dữ liệu lớp này mà không bị phép lấy trung bình toàn cục xóa sổ.
 
-\subsubsection{Đề xuất 2: Phạt Proximal Thích ứng theo Entropy ($\mu$-Adaptive FedProx)}
+\subsubsection{Đề xuất 2: Phạt Proximal Thích ứng theo Entropy (\texorpdfstring{$\mu$}{mu}-Adaptive FedProx)}
 Thay vì cố định hằng số phạt $\mu = 0.05$ làm tê liệt tính dẻo cục bộ, đề tài đề xuất công thức điều hòa động theo chuẩn hóa Shannon Entropy của phân phối nhãn tại client $k$:
 \begin{equation}
     \mu_k = \mu_0 \cdot \left( \frac{\mathcal{H}(P_k)}{\log_2(C)} \right)^\gamma
@@ -341,7 +341,7 @@ Tái cân bằng trọng số tổng hợp tại Server dựa trên độ hiếm
 \subsection{Kế hoạch Hoàn thiện Khóa luận và Bảo vệ}
 Lộ trình thực hiện trong các tuần tới bao gồm:
 \begin{itemize}
-    \item Hoàn thành kịch bản đối chứng cuối cùng: `flower_e5_fedavg_dirichlet_alpha=0.1` trên Google Colab để hoàn thiện cặp đối sánh trực tiếp FedAvg vs FedProx ở mức phân cực cao nhất.
+    \item Hoàn thành kịch bản đối chứng cuối cùng: \texttt{flower\_e5\_fedavg\_dirichlet\_alpha=0.1} trên Google Colab để hoàn thiện cặp đối sánh trực tiếp FedAvg vs FedProx ở mức phân cực cao nhất.
     \item Hiện thực hóa thử nghiệm kịch bản E7 ứng dụng Decoupled FL (FedPer) nhằm chứng minh bằng số liệu thực nghiệm giải pháp khắc phục thành công suy thoái Non-IID $\alpha=0.1$.
     \item Hoàn thiện toàn văn Khóa luận Tốt nghiệp theo đúng quy chuẩn định dạng của Trường Đại học Công nghệ Thông tin (ĐHQG-HCM) và thiết kế slide bảo vệ trước Hội đồng chấm khóa luận.
 \end{itemize}
