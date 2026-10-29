@@ -56,7 +56,7 @@
 \begin{abstract}
 Sự phát triển mạnh mẽ của Internet vạn vật (IoT) đã mở rộng đáng kể bề mặt tấn công mạng, đòi hỏi các giải pháp Phát hiện Xâm nhập Mạng (NIDS) hiệu quả và bảo toàn quyền riêng tư. Học liên đoàn (Federated Learning -- FL) nổi lên như một hướng tiếp cận đầy triển vọng cho phép huấn luyện mô hình phân tán mà không cần tập trung hóa dữ liệu thô. Tuy nhiên, sự phi đồng nhất về mặt thống kê (Non-IID) và hiện tượng mất cân bằng lớp cực đoan giữa các trạm mạng IoT biên đặt ra rào cản kỹ thuật nghiêm trọng đối với quá trình hội tụ mô hình. 
 
-Báo cáo này trình bày thiết kế, hiện thực nguyên mẫu (prototype) và đánh giá thực nghiệm đa chiều của hệ thống FL-IoT-IDS trên tập dữ liệu chuẩn mới CICIoT2023. Hệ thống được triển khai trên nền tảng giao thức Flower gRPC sockets với mô hình Tabular MLP nhỏ gọn ($14,024$ tham số, $\approx 54.28\text{ KB}$). Thông qua chuỗi 10 kịch bản thực nghiệm đối chứng có kiểm soát (từ E1 đến E6) bao gồm chuẩn tập trung (Centralized Baseline), dữ liệu IID, và phân phối Dirichlet Non-IID ($\alpha \in \{1.0, 0.5, 0.1\}$), nghiên cứu cung cấp các bằng chứng thực nghiệm phản biện định lượng mang giá trị học thuật cao:
+Báo cáo này thực hiện một nghiên cứu thực nghiệm và đo kiểm khoa học (Empirical Benchmarking Study) về hiệu năng của Học liên đoàn (Federated Learning -- FL) đối với bài toán Phát hiện Xâm nhập IoT trên tập dữ liệu chuẩn CICIoT2023 trong điều kiện dữ liệu phi đồng nhất (Non-IID) và mất cân bằng lớp cực đoan. Thông qua chuỗi 10 kịch bản thực nghiệm đối chứng có kiểm soát (từ E1 đến E6) bao gồm chuẩn đối chứng tập trung (Centralized Baseline), dữ liệu IID, và chuỗi phân phối Dirichlet Non-IID ($\alpha \in \{1.0, 0.5, 0.1\}$), nghiên cứu cung cấp các bằng chứng thực nghiệm phản biện định lượng mang giá trị học thuật cao:
 \begin{enumerate}
     \item \textbf{Phát hiện phản nghiệm (Empirical Counter-Evidence):} Trong khi mô hình tập trung (E1) đạt tỷ lệ phát hiện (Recall) lớp \texttt{Web-based} là $52.41\%$ và \texttt{Brute-force} là $53.36\%$, việc phân tán qua FedAvg làm tỷ lệ này sụp đổ xuống $1.66\%$ ($K=5$) và $0.39\%$ ($K=10$), và bị dập tắt hoàn toàn về $0.00\%$ ở FedProx do cơ chế phạt proximal ghìm chết gradient. Điều này chứng minh sự sụp đổ lớp thiểu số không phải do khiếm khuyết kiến trúc MLP mà do hạn chế toán học của cơ chế tổng hợp tham số phân tán.
     \item \textbf{Hiệu năng vượt trội ở các lớp lưu lượng thể tích lớn:} Hệ thống đạt khả năng phát hiện xuất sắc trên các cuộc tấn công hạ tầng nguy hiểm: Mirai Botnet đạt F1-score $98.78\%$ (Recall $99.88\%$), DDoS đạt F1-score $88.38\%$ (Precision $90.45\%$), và Spoofing đạt F1-score $83.98\%$.
@@ -94,13 +94,13 @@ Học liên đoàn (Federated Learning -- FL) do McMahan et al. \cite{mcmahan201
     \item \textbf{Giới hạn tài nguyên phần cứng thiết bị biên (Resource Constraints):} Các gateway biên chỉ sở hữu năng lực CPU khiêm tốn và bộ nhớ hạn hẹp, không thể gánh vác các kiến trúc học sâu cồng kềnh (CNN-LSTM, Transformer) vốn đòi hỏi hàng chục megabytes payload cho mỗi vòng giao tiếp \cite{albanbay2025federated}.
 \end{enumerate}
 
-\subsection{Mục tiêu và Định vị Đóng góp của Đề tài}
-Bám sát định hướng của một nghiên cứu thực nghiệm chuẩn mực, đề tài không tự xưng phát minh lý thuyết toán học vi mô xa rời thực tế, mà tập trung vào tính \textbf{hiện thực hóa kỹ thuật hệ thống} và \textbf{đo kiểm thực nghiệm có đối chứng khoa học (Empirical Benchmarking \& System Prototype)} nhằm cung cấp ba đóng góp cốt lõi:
-\begin{itemize}
-    \item \textbf{Xây dựng hoàn chỉnh Prototype FL-IoT-IDS:} Hiện thực hóa kiến trúc 4 lớp dựa trên framework Flower \cite{beutel2020flower} giao tiếp qua socket TCP/IP gRPC thực thụ, sử dụng mô hình Tabular MLP nhỏ gọn ($14,024$ tham số, $\approx 54.28\text{ KB}$) vận hành tối ưu trên CPU thiết bị biên, triệt tiêu triệt để các lỗi hệ thống Linux pipe buffer deadlock và GPU OOM.
-    \item \textbf{Phát hiện thực nghiệm phản biện (Negative Finding):} Cung cấp bằng chứng định lượng đanh thép đối chứng giữa Centralized (E1) và FL (E2--E6), chứng minh cơ chế tổng hợp gia quyền thô $n_k/N$ và số hạng điều hòa FedProx là nguyên nhân trực tiếp làm sụp đổ hoàn toàn khả năng phát hiện lớp thiểu số, bác bỏ giả định rằng Focal Loss/Class Weights cục bộ có thể giải quyết bài toán này.
-    \item \textbf{Ma trận đối sánh đa chiều chuẩn mực \& Đề xuất giải pháp cải tiến:} Thiết lập chuỗi kịch bản có kiểm soát từ E1 đến E6, vạch ra đường cong suy thoái định lượng theo hệ số Dirichlet $\alpha \in \{1.0, 0.5, 0.1\}$ và đánh giá chi phí truyền thông khi mở rộng quy mô $K \in \{5, 7, 10\}$ trạm biên; đồng thời đề xuất kiến trúc Decoupled Federated Learning nhằm nâng tầm giá trị khoa học cho công trình.
-\end{itemize}
+\subsection{Mục tiêu và Định vị Đóng góp Khoa học của Đề tài}
+Đề tài được định vị là một \textbf{Nghiên cứu Thực nghiệm và Đo kiểm Hệ thống (Empirical Benchmarking Study)}. Nghiên cứu phân định rạch ròi giữa phương tiện kỹ thuật (việc thiết lập môi trường thử nghiệm đa tiến trình gRPC chỉ đóng vai trò công cụ thu thập số liệu khách quan) và giá trị học thuật thực chất. Đề tài tập trung vào ba đóng góp khoa học chính:
+\begin{enumerate}
+    \item \textbf{Phát hiện phản nghiệm thực nghiệm (Empirical Counter-Evidence):} Đối chứng trực diện giữa mô hình tập trung (E1) và mô hình liên đoàn (E2--E6) để chứng minh rằng sự sụp đổ của các lớp tấn công thiểu số ($<0.5\%$) không xuất phát từ năng lực biểu diễn của mô hình MLP, mà là hệ quả toán học tất yếu của cơ chế trung bình trọng số $n_k/N$ trong FedAvg và số hạng phạt proximal trong FedProx làm dập tắt tính dẻo cục bộ.
+    \item \textbf{Xác lập đường cong suy thoái định lượng (Quantified Dirichlet Degradation Curve):} Cung cấp dữ liệu đo kiểm bậc thang có kiểm soát qua các mốc Dirichlet ($\text{IID} \to \alpha=1.0 \to \alpha=0.5 \to \alpha=0.1$), xác định chính xác ngưỡng gãy đổ $\alpha \le 0.5$ và hiện tượng nhiễu loạn triệt tiêu tại $\alpha=0.1$ (Macro-F1 sụt giảm tới $25\%$).
+    \item \textbf{Khung đánh đổi đa chiều và Đề xuất giải pháp cải tiến:} Định lượng hóa tam giác đánh đổi giữa độ chính xác (Utility), chi phí truyền thông (Cost) và tính ổn định quy mô (Scalability $K=5 \to 7 \to 10$); đồng thời đề xuất kiến trúc Decoupled Federated Learning (FedPer/FedRep) nhằm bảo toàn tri thức lớp thiểu số trong môi trường phân cực cực đoan.
+\end{enumerate}
 
 % ==============================================================================
 % CHƯƠNG 2
@@ -153,7 +153,7 @@ Bảng \ref{tab:lit_comparison} tổng hợp định vị học thuật của đ
 Alahmari et al. (2025) \cite{alahmari2025enhancing} & Deep Neural Network, FedAvg & Sử dụng mạng đối kháng GANs để sinh dữ liệu nhân tạo & Không khả thi trong mạng phân tán thực; không đo Client Drift. \\
 Albanbay et al. (2025) \cite{albanbay2025federated} & CNN / MLP, FedAvg & Khảo sát scaling dữ liệu trên CICIoT2023 & Chỉ thử nghiệm 1 mốc $\alpha$ cố định; bỏ qua chi phí truyền thông. \\
 Huang et al. (2022) \cite{huang2022federated} & MLP / FedAvg & Phân vùng Non-IID trên dataset cũ & Mô hình cũ; không đánh giá tấn công thiểu số. \\
-\textbf{Công trình này (FL-IoT-IDS)} & \textbf{TabularIoTMLP (14k params), FedAvg vs FedProx} & \textbf{Đối chứng Centralized E1, 3 mốc Dirichlet ($\alpha \in \{1.0, 0.5, 0.1\}$), No-leakage Scaler} & \textbf{Đo toàn diện: Macro-F1, Minority Recall, Client Drift, Comm Cost, Scale $K \in \{5, 7, 10\}$.} \\
+\textbf{Nghiên cứu này (Empirical Benchmark)} & \textbf{TabularIoTMLP (14k params), FedAvg vs FedProx} & \textbf{Đối chứng Centralized E1, chuỗi đối chứng Dirichlet ($\alpha \in \{1.0, 0.5, 0.1\}$)} & \textbf{Phát hiện phản nghiệm sụp đổ lớp thiểu số, vạch ra ngưỡng gãy đổ $\alpha \le 0.5$, đo tam giác đánh đổi đa chiều.} \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -161,11 +161,11 @@ Huang et al. (2022) \cite{huang2022federated} & MLP / FedAvg & Phân vùng Non-I
 % ==============================================================================
 % CHƯƠNG 3
 % ==============================================================================
-\section{Thiết kế Kiến trúc Hệ thống Prototype FL-IoT-IDS}
+\section{Phương pháp Nghiên cứu và Thiết lập Môi trường Đo kiểm}
 \label{sec:system_design}
 
-\subsection{Tổng quan Kiến trúc 4 Lớp (The 4-Layer Architecture)}
-Hệ thống prototype FL-IoT-IDS được thiết kế theo cấu trúc mô-đun 4 lớp chặt chẽ nhằm bảo đảm tính độc lập dữ liệu và khả năng tái lập thực nghiệm:
+\subsection{Cấu trúc Thiết lập Môi trường Thực nghiệm (Experimental Testbed)}
+Để phục vụ việc thu thập số liệu thực nghiệm khách quan và bảo đảm khả năng tái lập khoa học, môi trường đo kiểm phân tán được thiết lập theo cấu trúc 4 lớp có kiểm soát:
 \begin{enumerate}
     \item \textbf{Lớp 1 -- Dữ liệu và Phân vùng (Data \& Partitioning Layer):} Thực hiện chuẩn hóa đặc trưng bằng RobustScaler (chỉ fit trên tập train nhằm triệt tiêu hoàn toàn Data Leakage), phân chia thành $70\%$ dữ liệu huấn luyện và $30\%$ dữ liệu kiểm định tương lai (Global Holdout Test Set gồm 1,534,918 mẫu). Dữ liệu huấn luyện được hỗ trợ hai chế độ:
     \begin{itemize}
