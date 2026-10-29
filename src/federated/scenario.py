@@ -571,9 +571,11 @@ def plot_scenario_convergence(
         Absolute filepath to the saved image.
     """
     os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
-    rounds = round_history.get("round", [])
+    rounds = round_history.get("round", round_history.get("epoch", []))
     if not rounds:
         return save_path
+
+    x_label = "Epoch" if (scenario_title and "centralized" in scenario_title.lower()) else "Communication Round"
 
     fig, axes = plt.subplots(2, 2, figsize=(11, 7), dpi=150)
     fig.suptitle(scenario_title or "Federated Learning Optimization Trajectory", fontsize=13, fontweight="bold")
@@ -581,11 +583,13 @@ def plot_scenario_convergence(
     # 1. Validation Macro-F1
     ax1 = axes[0, 0]
     val_f1 = [v * 100.0 for v in round_history.get("val_macro_f1", [])][-len(rounds):]
+    if not val_f1 and "val_acc" in round_history:
+        val_f1 = [v * 100.0 for v in round_history["val_acc"]][-len(rounds):]
     if val_f1:
         ax1.plot(rounds, val_f1, marker="o", color="#2b6cb0", linewidth=2.0)
-        ax1.set_title("Central Holdout Validation Macro-F1 (%)", fontsize=10, fontweight="bold")
-        ax1.set_xlabel("Communication Round")
-        ax1.set_ylabel("Macro-F1 (%)")
+        ax1.set_title("Validation Macro-F1 / Acc (%)", fontsize=10, fontweight="bold")
+        ax1.set_xlabel(x_label)
+        ax1.set_ylabel("Metric (%)")
         ax1.grid(True, linestyle="--", alpha=0.5)
 
     # 2. Training Loss
@@ -594,7 +598,7 @@ def plot_scenario_convergence(
     if train_loss:
         ax2.plot(rounds, train_loss, marker="s", color="#c53030", linewidth=2.0)
         ax2.set_title("Aggregated Training Loss", fontsize=10, fontweight="bold")
-        ax2.set_xlabel("Communication Round")
+        ax2.set_xlabel(x_label)
         ax2.set_ylabel("Loss")
         ax2.grid(True, linestyle="--", alpha=0.5)
 
@@ -603,8 +607,8 @@ def plot_scenario_convergence(
     drift = round_history.get("drift_l2", [])[-len(rounds):]
     if drift:
         ax3.plot(rounds, drift, marker="^", color="#d69e2e", linewidth=2.0)
-        ax3.set_title("Client Weight Drift (||w_local - w_global||_2)", fontsize=10, fontweight="bold")
-        ax3.set_xlabel("Communication Round")
+        ax3.set_title("Parameter Drift" if x_label == "Epoch" else "Client Weight Drift (||w_local - w_global||_2)", fontsize=10, fontweight="bold")
+        ax3.set_xlabel(x_label)
         ax3.set_ylabel("Drift L2 Norm")
         ax3.grid(True, linestyle="--", alpha=0.5)
 
@@ -614,7 +618,7 @@ def plot_scenario_convergence(
     if comm:
         ax4.plot(rounds, comm, marker="d", color="#2f855a", linewidth=2.0)
         ax4.set_title("Cumulative Network Overhead (MB)", fontsize=10, fontweight="bold")
-        ax4.set_xlabel("Communication Round")
+        ax4.set_xlabel(x_label)
         ax4.set_ylabel("Megabytes (MB)")
         ax4.grid(True, linestyle="--", alpha=0.5)
 
@@ -676,7 +680,8 @@ def create_centralized_scenario(
     )
 
     scenario_dir = os.path.join(base_dir, scenario_name)
-    os.makedirs(scenario_dir, exist_ok=True)
+    server_dir = os.path.join(scenario_dir, "server")
+    os.makedirs(server_dir, exist_ok=True)
 
     input_dim = int(X_train.shape[1])
     unique_classes = sorted(np.unique(y_train).tolist())
@@ -696,9 +701,16 @@ def create_centralized_scenario(
     }
     with open(os.path.join(scenario_dir, "meta.json"), "w") as f:
         json.dump(meta, f, indent=2)
+    with open(os.path.join(server_dir, "meta.json"), "w") as f:
+        json.dump(meta, f, indent=2)
 
     # 2. Config
-    scen_config = config.copy() if config else {}
+    if hasattr(config, "to_dict"):
+        scen_config = config.to_dict()
+    elif config:
+        scen_config = config.copy()
+    else:
+        scen_config = {}
     scen_config.setdefault("scenario_name", scenario_name)
     scen_config.setdefault("mode", "centralized")
     with open(os.path.join(scenario_dir, "config.json"), "w") as f:
@@ -707,11 +719,21 @@ def create_centralized_scenario(
     # 3. Validation and Test splits
     if X_val is not None and y_val is not None:
         np.savez_compressed(
+            os.path.join(server_dir, "val_data.npz"),
+            X=np.ascontiguousarray(X_val, dtype=np.float32),
+            y=np.ascontiguousarray(y_val, dtype=np.int64)
+        )
+        np.savez_compressed(
             os.path.join(scenario_dir, "val_data.npz"),
             X=np.ascontiguousarray(X_val, dtype=np.float32),
             y=np.ascontiguousarray(y_val, dtype=np.int64)
         )
     if X_test is not None and y_test is not None:
+        np.savez_compressed(
+            os.path.join(server_dir, "test_data.npz"),
+            X=np.ascontiguousarray(X_test, dtype=np.float32),
+            y=np.ascontiguousarray(y_test, dtype=np.int64)
+        )
         np.savez_compressed(
             os.path.join(scenario_dir, "test_data.npz"),
             X=np.ascontiguousarray(X_test, dtype=np.float32),
@@ -720,14 +742,22 @@ def create_centralized_scenario(
 
     # 4. EDA profiling via src.eda
     eda = analyze_partition(y_train, class_names=class_names)
+    with open(os.path.join(server_dir, "eda.json"), "w") as f:
+        json.dump(eda, f, indent=2)
     with open(os.path.join(scenario_dir, "eda.json"), "w") as f:
         json.dump(eda, f, indent=2)
 
     dataset_audit = analyze_dataset(X_train, y_train, class_names=class_names, feature_names=feature_names)
+    export_dataset_audit(server_dir, dataset_audit)
     export_dataset_audit(scenario_dir, dataset_audit)
 
     # 5. Visualizations
     if generate_plots:
+        plot_class_distribution(
+            eda=eda,
+            save_path=os.path.join(server_dir, "class_distribution.png"),
+            title=f"Centralized Training Set - Label Distribution (N={len(y_train):,})"
+        )
         plot_class_distribution(
             eda=eda,
             save_path=os.path.join(scenario_dir, "class_distribution.png"),
@@ -737,10 +767,15 @@ def create_centralized_scenario(
         plot_feature_skewness(
             stats_df=stats_df,
             top_k=15,
+            save_path=os.path.join(server_dir, "feature_skewness.png")
+        )
+        plot_feature_skewness(
+            stats_df=stats_df,
+            top_k=15,
             save_path=os.path.join(scenario_dir, "feature_skewness.png")
         )
 
-    logger.info(f"✅ Centralized scenario '{scenario_name}' exported successfully to {scenario_dir}.")
+    logger.info(f"✅ Centralized scenario '{scenario_name}' exported successfully to {scenario_dir} (server-only).")
     return scenario_dir
 
 
@@ -933,12 +968,18 @@ def export_scenario_summary_and_plots(
     ])
     minority_classes = minority_classes or ["Web-based", "Brute-force"]
 
+    is_centralized = (
+        cfg.get("mode") == "centralized"
+        or meta.get("mode") == "centralized"
+        or "centralized" in scenario_name.lower()
+    )
+
     # 3. Generate server/convergence.png
     conv_path = os.path.join(server_dir, "convergence.png")
     plot_scenario_convergence(
         round_history=round_history,
         save_path=conv_path,
-        scenario_title=f"Federated Optimization Trajectory - {scenario_name}"
+        scenario_title=f"Centralized Optimization Trajectory - {scenario_name}" if is_centralized else f"Federated Optimization Trajectory - {scenario_name}"
     )
 
     # 4. Generate server/confusion_matrix.png
@@ -954,7 +995,7 @@ def export_scenario_summary_and_plots(
         per_class_recall=per_class_rec,
         per_class_precision=per_class_prec,
         support_dict=support_dict,
-        scenario_title=f"Confusion Matrix: Best Global Model ({cfg.get('federated_strategy', 'FL').upper()})"
+        scenario_title=f"Confusion Matrix: Best Centralized Model ({scenario_name})" if is_centralized else f"Confusion Matrix: Best Global Model ({cfg.get('federated_strategy', 'FL').upper()})"
     )
 
     # 5. Generate server/per_class_recall.png
@@ -964,7 +1005,7 @@ def export_scenario_summary_and_plots(
         minority_classes=minority_classes,
         per_class_recall=per_class_rec,
         save_path=recall_path,
-        scenario_title=f"Tỷ lệ nhận diện (Recall) theo từng lớp tấn công ({cfg.get('federated_strategy', 'FL').upper()})"
+        scenario_title=f"Tỷ lệ nhận diện (Recall) theo từng lớp tấn công (Centralized E1)" if is_centralized else f"Tỷ lệ nhận diện (Recall) theo từng lớp tấn công ({cfg.get('federated_strategy', 'FL').upper()})"
     )
 
     # 6. Generate server/summary.md
@@ -991,37 +1032,71 @@ def export_scenario_summary_and_plots(
     web_rec = min_rec.get("Web-based", per_class_rec.get("Web-based", 0.0)) * 100.0
     brute_rec = min_rec.get("Brute-force", per_class_rec.get("Brute-force", 0.0)) * 100.0
 
-    md_lines = [
-        f"# 📊 Báo cáo Thực nghiệm Kịch bản: `{scenario_name}`\n",
-        "## 1. Thông số Cấu hình Thực nghiệm",
-        "| Tham số | Giá trị | Ý nghĩa thực nghiệm |",
-        "| :--- | :--- | :--- |",
-        f"| **Kịch bản (Scenario)** | `{scenario_name}` | Tên định danh kịch bản thực nghiệm |",
-        f"| **Chiến lược FL (Strategy)** | `{strat}` (mu={mu_val}) | Thuật toán tổng hợp tham số tại Server |",
-        f"| **Phân vùng dữ liệu (Partition)** | `{part_type}` (alpha={alpha_val}) | Mức độ dị biệt Non-IID giữa các Client |",
-        f"| **Số lượng Edge Clients (K)** | `{num_clients}` clients | Số trạm mạng IoT biên tham gia huấn luyện |",
-        f"| **Số vòng giao tiếp (Rounds)** | `{num_rounds}` rounds (Epochs cục bộ: `{local_epochs}`) | Tổng chu kỳ huấn luyện liên đoàn |",
-        f"| **Chi phí truyền thông (Comm Cost)** | **{comm_mb:.2f} MB** | Tổng lưu lượng mạng tải lên/tải xuống |",
-        f"| **Độ trôi dạt tham số (Client Drift)** | **{drift_val:.2f}** | Độ lệch chuẩn Euclidean ||w_local - w_global||_2 |\n",
-        "## 2. Kết quả Đánh giá Tổng thể trên Global Test Set (30% Upcoming Data)",
-        "| Chỉ số Đánh giá (Metric) | Kết quả (%) | Ý nghĩa theo Đề cương Luận văn KLTN |",
-        "| :--- | :---: | :--- |",
-        f"| **Test Accuracy** | **{acc:.2f}%** | Độ chính xác tổng thể trên toàn bộ lưu lượng kiểm định |",
-        f"| **Macro-F1 Score** | **{macro_f1:.2f}%** | **Chỉ số cốt lõi** đánh giá cân bằng (không thiên lệch lớp đa số) |",
-        f"| **Weighted-F1 Score** | **{weighted_f1:.2f}%** | F1 có tính trọng số theo tần suất xuất hiện thực tế |",
-        f"| **Macro-Precision** | **{macro_prec:.2f}%** | Độ chuẩn xác trung bình trên 8 lớp tấn công |",
-        f"| **Macro-Recall** | **{macro_rec:.2f}%** | Tỷ lệ nhận diện trung bình trên 8 lớp tấn công |\n",
-        "## 3. Khả năng Phát hiện các Lớp Tấn công Thiểu số (Minority Attack Recall)",
-        "> [!IMPORTANT]",
-        "> Trong môi trường mạng IoT, tấn công thiểu số (Web-based, Brute-force) có tần suất thấp nhưng mức độ đe dọa cao, là trọng tâm đánh giá của Luận văn.\n",
-        "| Lớp tấn công thiểu số | Tần suất xuất hiện | Tỷ lệ nhận diện (Recall %) | Nhận xét |",
-        "| :--- | :---: | :---: | :--- |",
-        f"| **Web-based** | 0.49% (Rất hiếm) | **{web_rec:.2f}%** | {'Phát hiện tốt' if web_rec > 10 else 'Thách thức do mất cân bằng cực đoan'} |",
-        f"| **Brute-force** | 0.26% (Rất hiếm) | **{brute_rec:.2f}%** | {'Phát hiện tốt' if brute_rec > 10 else 'Cần tinh chỉnh loss/mu'} |\n",
-        "## 4. Chi tiết Hiệu năng theo từng Lớp Tấn công (Per-Class Metrics)",
-        "| Lớp tấn công (Class) | Phân loại | Precision (%) | Recall (%) | F1-Score (%) | Số mẫu (Support) |",
-        "| :--- | :---: | :---: | :---: | :---: | :---: |"
-    ]
+    if is_centralized:
+        num_epochs = len(round_history.get("round", round_history.get("epoch", []))) or cfg.get("epochs", 12)
+        md_lines = [
+            f"# 📊 Báo cáo Thực nghiệm Kịch bản: `{scenario_name}`\n",
+            "## 1. Thông số Cấu hình Thực nghiệm (Centralized Upper Bound)",
+            "| Tham số | Giá trị | Ý nghĩa thực nghiệm |",
+            "| :--- | :--- | :--- |",
+            f"| **Kịch bản (Scenario)** | `{scenario_name}` | Scenario E1: Ngưỡng trần hiệu năng tập trung |",
+            f"| **Chế độ huấn luyện** | `Centralized Training (PyTorch)` | Huấn luyện tập trung toàn bộ dữ liệu trên 1 Server |",
+            f"| **Kiến trúc mô hình** | `TabularIoTMLPModel` | Mạng nơ-ron đa tầng cho dữ liệu bảng mạng IoT |",
+            f"| **Số lượng Node/Client** | `1 Central Server` | Không phân mảnh dữ liệu (Không có phân vùng Client) |",
+            f"| **Số Epoch huấn luyện** | `{num_epochs} Epochs` | Huấn luyện tập trung với Early Stopping |",
+            f"| **Chi phí truyền thông** | **0.00 MB** | Không phát sinh giao tiếp mạng phân tán |",
+            f"| **Độ trôi dạt tham số** | **0.00** | Không có hiện tượng trôi dạt tham số (Client Drift) |\n",
+            "## 2. Kết quả Đánh giá Tổng thể trên Global Test Set (30% Upcoming Data)",
+            "| Chỉ số Đánh giá (Metric) | Kết quả (%) | Ý nghĩa theo Đề cương Luận văn KLTN |",
+            "| :--- | :---: | :--- |",
+            f"| **Test Accuracy** | **{acc:.2f}%** | Độ chính xác tổng thể trên toàn bộ lưu lượng kiểm định |",
+            f"| **Macro-F1 Score** | **{macro_f1:.2f}%** | **Chỉ số cốt lõi** đánh giá cân bằng (không thiên lệch lớp đa số) |",
+            f"| **Weighted-F1 Score** | **{weighted_f1:.2f}%** | F1 có tính trọng số theo tần suất xuất hiện thực tế |",
+            f"| **Macro-Precision** | **{macro_prec:.2f}%** | Độ chuẩn xác trung bình trên 8 lớp tấn công |",
+            f"| **Macro-Recall** | **{macro_rec:.2f}%** | Tỷ lệ nhận diện trung bình trên 8 lớp tấn công |\n",
+            "## 3. Khả năng Phát hiện các Lớp Tấn công Thiểu số (Minority Attack Recall)",
+            "> [!IMPORTANT]",
+            "> Trong môi trường mạng IoT, tấn công thiểu số (Web-based, Brute-force) có tần suất thấp nhưng mức độ đe dọa cao, là trọng tâm đánh giá của Luận văn.\n",
+            "| Lớp tấn công thiểu số | Tần suất xuất hiện | Tỷ lệ nhận diện (Recall %) | Nhận xét |",
+            "| :--- | :---: | :---: | :--- |",
+            f"| **Web-based** | 0.49% (Rất hiếm) | **{web_rec:.2f}%** | {'Phát hiện tốt' if web_rec > 10 else 'Thách thức do mất cân bằng cực đoan'} |",
+            f"| **Brute-force** | 0.26% (Rất hiếm) | **{brute_rec:.2f}%** | {'Phát hiện tốt' if brute_rec > 10 else 'Cần tinh chỉnh loss/mu'} |\n",
+            "## 4. Chi tiết Hiệu năng theo từng Lớp Tấn công (Per-Class Metrics)",
+            "| Lớp tấn công (Class) | Phân loại | Precision (%) | Recall (%) | F1-Score (%) | Số mẫu (Support) |",
+            "| :--- | :---: | :---: | :---: | :---: | :---: |"
+        ]
+    else:
+        md_lines = [
+            f"# 📊 Báo cáo Thực nghiệm Kịch bản: `{scenario_name}`\n",
+            "## 1. Thông số Cấu hình Thực nghiệm",
+            "| Tham số | Giá trị | Ý nghĩa thực nghiệm |",
+            "| :--- | :--- | :--- |",
+            f"| **Kịch bản (Scenario)** | `{scenario_name}` | Tên định danh kịch bản thực nghiệm |",
+            f"| **Chiến lược FL (Strategy)** | `{strat}` (mu={mu_val}) | Thuật toán tổng hợp tham số tại Server |",
+            f"| **Phân vùng dữ liệu (Partition)** | `{part_type}` (alpha={alpha_val}) | Mức độ dị biệt Non-IID giữa các Client |",
+            f"| **Số lượng Edge Clients (K)** | `{num_clients}` clients | Số trạm mạng IoT biên tham gia huấn luyện |",
+            f"| **Số vòng giao tiếp (Rounds)** | `{num_rounds}` rounds (Epochs cục bộ: `{local_epochs}`) | Tổng chu kỳ huấn luyện liên đoàn |",
+            f"| **Chi phí truyền thông (Comm Cost)** | **{comm_mb:.2f} MB** | Tổng lưu lượng mạng tải lên/tải xuống |",
+            f"| **Độ trôi dạt tham số (Client Drift)** | **{drift_val:.2f}** | Độ lệch chuẩn Euclidean ||w_local - w_global||_2 |\n",
+            "## 2. Kết quả Đánh giá Tổng thể trên Global Test Set (30% Upcoming Data)",
+            "| Chỉ số Đánh giá (Metric) | Kết quả (%) | Ý nghĩa theo Đề cương Luận văn KLTN |",
+            "| :--- | :---: | :--- |",
+            f"| **Test Accuracy** | **{acc:.2f}%** | Độ chính xác tổng thể trên toàn bộ lưu lượng kiểm định |",
+            f"| **Macro-F1 Score** | **{macro_f1:.2f}%** | **Chỉ số cốt lõi** đánh giá cân bằng (không thiên lệch lớp đa số) |",
+            f"| **Weighted-F1 Score** | **{weighted_f1:.2f}%** | F1 có tính trọng số theo tần suất xuất hiện thực tế |",
+            f"| **Macro-Precision** | **{macro_prec:.2f}%** | Độ chuẩn xác trung bình trên 8 lớp tấn công |",
+            f"| **Macro-Recall** | **{macro_rec:.2f}%** | Tỷ lệ nhận diện trung bình trên 8 lớp tấn công |\n",
+            "## 3. Khả năng Phát hiện các Lớp Tấn công Thiểu số (Minority Attack Recall)",
+            "> [!IMPORTANT]",
+            "> Trong môi trường mạng IoT, tấn công thiểu số (Web-based, Brute-force) có tần suất thấp nhưng mức độ đe dọa cao, là trọng tâm đánh giá của Luận văn.\n",
+            "| Lớp tấn công thiểu số | Tần suất xuất hiện | Tỷ lệ nhận diện (Recall %) | Nhận xét |",
+            "| :--- | :---: | :---: | :--- |",
+            f"| **Web-based** | 0.49% (Rất hiếm) | **{web_rec:.2f}%** | {'Phát hiện tốt' if web_rec > 10 else 'Thách thức do mất cân bằng cực đoan'} |",
+            f"| **Brute-force** | 0.26% (Rất hiếm) | **{brute_rec:.2f}%** | {'Phát hiện tốt' if brute_rec > 10 else 'Cần tinh chỉnh loss/mu'} |\n",
+            "## 4. Chi tiết Hiệu năng theo từng Lớp Tấn công (Per-Class Metrics)",
+            "| Lớp tấn công (Class) | Phân loại | Precision (%) | Recall (%) | F1-Score (%) | Số mẫu (Support) |",
+            "| :--- | :---: | :---: | :---: | :---: | :---: |"
+        ]
 
     per_p = test_results.get("per_class_precision", {})
     per_f = test_results.get("per_class_f1", {})

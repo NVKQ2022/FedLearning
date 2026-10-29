@@ -761,28 +761,32 @@ class ExperimentConfig:
         print(f"⚙️ HYPERPARAMETER CONFIGURATION: {self.experiment_name.upper()}")
         print("=" * 70)
 
-        algo_display = self.federated.algorithm.name.upper()
-        if self.federated.is_fedavg:
-            algo_display += " (McMahan et al., 2017)"
-        elif self.federated.is_fedprox:
-            algo_display += " (Li et al., 2020)"
+        is_centralized = "centralized" in self.experiment_name.lower() or getattr(self, "mode", "") == "centralized"
 
-        fed_params = [
-            ("Federated Algorithm", algo_display),
-            ("Partition Type", self.federated.partition_type.upper()),
-            ("Number of Clients", self.federated.num_clients),
-            ("Communication Rounds", self.federated.num_rounds),
-            ("Local Client Epochs", self.federated.local_epochs),
-        ]
-        if self.federated.partition_type == "dirichlet":
-            fed_params.append(("Dirichlet Alpha (α)", self.federated.dirichlet_alpha))
-        if self.federated.is_proximal or hasattr(self.federated.algorithm, "mu"):
-            fed_params.append(("Proximal Mu (μ)", self.federated.mu))
-        if hasattr(self.federated.algorithm, "trim_fraction"):
-            fed_params.append(("Trim Fraction", self.federated.trim_fraction))
-        if isinstance(self.federated.algorithm, CustomAlgorithm):
-            for k, v in self.federated.algorithm.params.items():
-                fed_params.append((f"Algo Param ({k})", v))
+        fed_params = []
+        if self.federated is not None and not is_centralized:
+            algo_display = self.federated.algorithm.name.upper() if hasattr(self.federated, "algorithm") else "FEDAVG"
+            if self.federated.is_fedavg:
+                algo_display += " (McMahan et al., 2017)"
+            elif self.federated.is_fedprox:
+                algo_display += " (Li et al., 2020)"
+
+            fed_params = [
+                ("Federated Algorithm", algo_display),
+                ("Partition Type", self.federated.partition_type.upper()),
+                ("Number of Clients", self.federated.num_clients),
+                ("Communication Rounds", self.federated.num_rounds),
+                ("Local Client Epochs", self.federated.local_epochs),
+            ]
+            if self.federated.partition_type == "dirichlet":
+                fed_params.append(("Dirichlet Alpha (α)", self.federated.dirichlet_alpha))
+            if self.federated.is_proximal or hasattr(self.federated.algorithm, "mu"):
+                fed_params.append(("Proximal Mu (μ)", self.federated.mu))
+            if hasattr(self.federated.algorithm, "trim_fraction"):
+                fed_params.append(("Trim Fraction", self.federated.trim_fraction))
+            if isinstance(self.federated.algorithm, CustomAlgorithm):
+                for k, v in self.federated.algorithm.params.items():
+                    fed_params.append((f"Algo Param ({k})", v))
 
         groups = {
             "System & Reproducibility (Experiment)": [
@@ -817,8 +821,16 @@ class ExperimentConfig:
                 ("Save Top-K Checkpoints", f"Top {self.optimizer.save_top_k} models"),
                 ("Max Gradient Norm", self.optimizer.max_grad_norm),
             ],
-            "Federated Parameters (FederatedConfig)": fed_params,
         }
+
+        if not is_centralized and fed_params:
+            groups["Federated Parameters (FederatedConfig)"] = fed_params
+        elif is_centralized:
+            groups["Training Execution Mode"] = [
+                ("Mode", "Centralized Benchmark (Scenario E1)"),
+                ("Architecture", "Single Central Server (No Edge Partitions)"),
+                ("Upper Bound Role", "Empirical Performance Upper Bound Ceiling"),
+            ]
 
         for group_name, params in groups.items():
             print(f"\n📂 {group_name}:")
