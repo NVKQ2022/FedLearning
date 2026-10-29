@@ -1,0 +1,57 @@
+{
+  "experiment_name": "centralized_e1_baseline",
+  "seed": 42,
+  "device": "auto",
+  "data": {
+    "gdrive_csv": "/content/drive/MyDrive/FedLearning/datasets/CICIOT2023/merged_CICIOT2023_data.csv",
+    "alt_gdrive_csv": "/content/drive/MyDrive/FedLearning/merged_CICIOT2023_data.csv",
+    "target_csv_path": "/content/FedLearning/datasets/CICIOT2023/merged_CICIOT2023_data.csv",
+    "checkpoints_dir": "/content/drive/MyDrive/NguyenVietKyQuanKLTN/checkpoints",
+    "reports_dir": "/content/drive/MyDrive/NguyenVietKyQuanKLTN/reports",
+    "sample_size": 100000,
+    "test_size": 0.3,
+    "val_size": 0.1,
+    "scaler_type": "robust",
+    "batch_size": 64
+  },
+  "model": {
+    "input_dim": 39,
+    "hidden_dims": [
+      128,
+      64
+    ],
+    "num_classes": 8,
+    "dropout_rate": 0.2
+  },
+  "loss": {
+    "loss_type": "focal_loss",
+    "class_weight_strategy": "balanced",
+    "focal_gamma": 2.0,
+    "use_class_weights": true
+  },
+  "optimizer": {
+    "optimizer_type": "adamw",
+    "learning_rate": 0.001,
+    "lr": 0.001,
+    "weight_decay": 0.0001,
+    "epochs": 12,
+    "patience": 3,
+    "max_grad_norm": 5.0,
+    "monitor_metric": "val_loss",
+    "save_top_k": 3,
+    "verbose": true
+  },
+  "centralized": {
+    "scenario_name": "centralized_e1_baseline",
+    "epochs": 12,
+    "patience": 3,
+    "monitor_metric": "val_loss",
+    "save_top_k": 3,
+    "val_ratio": 0.2,
+    "test_ratio": 0.2,
+    "batch_size": null,
+    "verbose": true
+  },
+  "scenario_name": "centralized_e1_baseline",
+  "mode": "centralized"
+}

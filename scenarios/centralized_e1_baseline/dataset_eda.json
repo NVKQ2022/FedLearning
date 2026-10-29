@@ -1,0 +1,77 @@
+{
+  "data_quality": {
+    "total_records": 59999,
+    "total_features": 39,
+    "has_missing_values": false,
+    "columns_with_nans": {},
+    "has_infinite_values": false,
+    "columns_with_infs": {},
+    "zero_variance_columns": [],
+    "columns_with_negatives": [
+      "feat_0",
+      "feat_1",
+      "feat_2",
+      "feat_3",
+      "feat_8",
+      "feat_11",
+      "feat_22",
+      "feat_28",
+      "feat_29",
+      "feat_30",
+      "feat_31",
+      "feat_32",
+      "feat_33",
+      "feat_34",
+      "feat_35",
+      "feat_36",
+      "feat_37",
+      "feat_38"
+    ],
+    "is_training_safe": true
+  },
+  "target_distribution": {
+    "client_id": null,
+    "total_samples": 59999,
+    "num_classes": 8,
+    "dominant_class": "DDoS",
+    "dominant_class_pct": 37.57,
+    "shannon_entropy": 1.6259,
+    "normalized_entropy": 0.7819,
+    "imbalance_ratio": 147.31,
+    "present_classes_count": 8,
+    "missing_classes": [],
+    "class_counts": {
+      "Benign": 12878,
+      "Brute-force": 153,
+      "DDoS": 22539,
+      "DoS": 8565,
+      "Mirai": 2473,
+      "Recon": 8097,
+      "Spoof": 5003,
+      "Web-based": 291
+    },
+    "class_percentages": {
+      "Benign": 21.46,
+      "Brute-force": 0.26,
+      "DDoS": 37.57,
+      "DoS": 14.28,
+      "Mirai": 4.12,
+      "Recon": 13.5,
+      "Spoof": 8.34,
+      "Web-based": 0.49
+    }
+  },
+  "num_heavy_tailed_features": 24,
+  "heavy_tailed_features": [
+    "feat_1",
+    "feat_2",
+    "feat_4",
+    "feat_6",
+    "feat_7",
+    "feat_9",
+    "feat_10",
+    "feat_11",
+    "feat_13",
+    "feat_14"
+  ]
+}
