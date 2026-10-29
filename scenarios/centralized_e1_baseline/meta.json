@@ -13,7 +13,7 @@
     "Spoof",
     "Web-based"
   ],
-  "total_train_samples": 59999,
-  "total_val_samples": 10001,
-  "total_test_samples": 30000
+  "total_train_samples": 3069833,
+  "total_val_samples": 511640,
+  "total_test_samples": 1534918
 }

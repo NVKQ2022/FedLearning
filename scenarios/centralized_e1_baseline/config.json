@@ -8,7 +8,7 @@
     "target_csv_path": "/content/FedLearning/datasets/CICIOT2023/merged_CICIOT2023_data.csv",
     "checkpoints_dir": "/content/drive/MyDrive/NguyenVietKyQuanKLTN/checkpoints",
     "reports_dir": "/content/drive/MyDrive/NguyenVietKyQuanKLTN/reports",
-    "sample_size": 100000,
+    "sample_size": null,
     "test_size": 0.3,
     "val_size": 0.1,
     "scaler_type": "robust",
@@ -49,7 +49,6 @@
     "save_top_k": 3,
     "val_ratio": 0.2,
     "test_ratio": 0.2,
-    "batch_size": null,
     "verbose": true
   },
   "scenario_name": "centralized_e1_baseline",
