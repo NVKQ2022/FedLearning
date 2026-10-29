@@ -1,6 +1,7 @@
-\documentclass[12pt,a4paper]{article}
+\documentclass[12pt,a4paper,oneside]{report}
 
-\usepackage[utf8]{inputenc}
+\usepackage{fontspec}
+\setmainfont{Liberation Serif}
 \usepackage[vietnamese]{babel}
 \usepackage{amsmath, amssymb, amsfonts}
 \usepackage{graphicx}
@@ -31,252 +32,550 @@
     urlcolor=blue!80!black
 }
 
-\title{
-    \Large \textbf{ĐẠI HỌC QUỐC GIA TP. HỒ CHÍ MINH} \\
-    \textbf{TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN} \\
-    \textbf{KHOA MẠNG MÁY TÍNH VÀ TRUYỀN THÔNG} \\[1.5cm]
-    \LARGE \textbf{BÁO CÁO TIẾN ĐỘ \& KẾT QUẢ THỰC NGHIỆM KHÓA LUẬN TỐT NGHIỆP} \\[0.5cm]
-    \Large \textbf{XÂY DỰNG VÀ ĐÁNH GIÁ PROTOTYPE HỆ THỐNG PHÁT HIỆN XÂM NHẬP IOT SỬ DỤNG FEDERATED LEARNING TRONG MÔI TRƯỜNG DỮ LIỆU NON-IID}
-}
-
-\author{
-    \textbf{Sinh viên thực hiện:} Nguyễn Việt Kỳ Quân -- 23521267 \\
-    \textbf{Cán bộ hướng dẫn:} PGS. TS. Lê Trung Quân \\[0.5cm]
-    \textit{Chuyên ngành: Mạng máy tính và An toàn thông tin}
-}
-
-\date{\today}
+% Định nghĩa môi trường cho danh mục viết tắt
+\newenvironment{acronyms}
+{\begin{list}{}{\setlength{\labelwidth}{2.5cm}\setlength{\leftmargin}{3cm}\setlength{\labelsep}{0.5cm}\renewcommand{\makelabel}[1]{\textbf{##1}\hfill}}}
+{\end{list}}
 
 \begin{document}
 
-\maketitle
-\thispagestyle{empty}
-\newpage
+% ==============================================================================
+% 1. COVER PAGE (TRANG BÌA)
+% ==============================================================================
+\begin{titlepage}
+    \centering
+    \Large \textbf{ĐẠI HỌC QUỐC GIA TP. HỒ CHÍ MINH} \\
+    \textbf{TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN} \\
+    \textbf{KHOA MẠNG MÁY TÍNH VÀ TRUYỀN THÔNG} \\[1.5cm]
 
-\begin{abstract}
-Sự phát triển mạnh mẽ của Internet vạn vật (IoT) đã mở rộng đáng kể bề mặt tấn công mạng, đòi hỏi các giải pháp Phát hiện Xâm nhập Mạng (NIDS) hiệu quả và bảo toàn quyền riêng tư. Học liên đoàn (Federated Learning -- FL) nổi lên như một hướng tiếp cận đầy triển vọng cho phép huấn luyện mô hình phân tán mà không cần tập trung hóa dữ liệu thô. Tuy nhiên, sự phi đồng nhất về mặt thống kê (Non-IID) và hiện tượng mất cân bằng lớp cực đoan giữa các trạm mạng IoT biên đặt ra rào cản kỹ thuật nghiêm trọng đối với quá trình hội tụ mô hình. 
+    \rule{0.85\textwidth}{1.2pt} \\[0.8cm]
 
-Báo cáo này thực hiện một nghiên cứu thực nghiệm và đo kiểm khoa học (Empirical Benchmarking Study) về hiệu năng của Học liên đoàn (Federated Learning -- FL) đối với bài toán Phát hiện Xâm nhập IoT trên tập dữ liệu chuẩn CICIoT2023 trong điều kiện dữ liệu phi đồng nhất (Non-IID) và mất cân bằng lớp cực đoan. Thông qua chuỗi 10 kịch bản thực nghiệm đối chứng có kiểm soát (từ E1 đến E6) bao gồm chuẩn đối chứng tập trung (Centralized Baseline), dữ liệu IID, và chuỗi phân phối Dirichlet Non-IID ($\alpha \in \{1.0, 0.5, 0.1\}$), nghiên cứu cung cấp các bằng chứng thực nghiệm phản biện định lượng mang giá trị học thuật cao:
+    \LARGE \textbf{BÁO CÁO TIẾN ĐỘ \& KẾT QUẢ THỰC NGHIỆM}\\
+    \textbf{KHÓA LUẬN TỐT NGHIỆP ĐẠI HỌC} \\[0.8cm]
+
+    \huge \textbf{XÂY DỰNG VÀ ĐÁNH GIÁ PROTOTYPE HỆ THỐNG PHÁT HIỆN XÂM NHẬP IOT SỬ DỤNG FEDERATED LEARNING TRONG MÔI TRƯỜNG DỮ LIỆU NON-IID} \\[1.5cm]
+
+    \Large
+    \begin{tabular}{ll}
+        \textbf{Sinh viên thực hiện:} & Nguyễn Việt Kỳ Quân -- 23521267 \\
+        \textbf{Cán bộ hướng dẫn:}   & PGS. TS. Lê Trung Quân \\
+        \textbf{Ngành đào tạo:}      & Mạng máy tính và An toàn thông tin \\
+        \textbf{Khóa học:}           & 2022 -- 2026 \\
+    \end{tabular}
+
+    \vfill
+    \rule{0.85\textwidth}{1.2pt} \\[0.4cm]
+    \large \textbf{TP. HỒ CHÍ MINH, NĂM 2026}
+\end{titlepage}
+
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+% ==============================================================================
+% 2. ABSTRACT (TÓM TẮT KHÓA LUẬN)
+% ==============================================================================
+\chapter*{Tóm tắt Khóa luận}
+\addcontentsline{toc}{chapter}{Tóm tắt Khóa luận}
+
+Sự bùng nổ của mạng lưới Internet vạn vật (IoT) đã mở rộng đáng kể bề mặt tấn công mạng, đòi hỏi các giải pháp Phát hiện Xâm nhập Mạng (NIDS) hiệu quả và bảo toàn quyền riêng tư. Học liên đoàn (Federated Learning -- FL) nổi lên như một hướng tiếp cận đầy triển vọng cho phép các thiết bị biên phối hợp huấn luyện mô hình phân tán mà không cần tập trung hóa dữ liệu lưu lượng thô. Tuy nhiên, tính phi đồng nhất về mặt thống kê (Non-IID) và hiện tượng mất cân bằng lớp cấu trúc cực đoan giữa các trạm mạng IoT biên đặt ra rào cản kỹ thuật nghiêm trọng đối với quá trình hội tụ và độ chính xác của mô hình.
+
+Báo cáo này trình bày kết quả thực nghiệm của đề tài Khóa luận Tốt nghiệp, định vị bản chất là một \textbf{Nghiên cứu Thực nghiệm và Đo kiểm Hệ thống (Empirical Benchmarking Study)}. Nghiên cứu khảo sát hiệu năng phân loại của mô hình học máy nhẹ \texttt{TabularIoTMLP} ($14,024$ tham số, dung lượng $\approx 54.28\text{ KB}$) trên tập dữ liệu chuẩn CICIoT2023 với hơn 5.1 triệu dòng dữ liệu luồng mạng và tỷ lệ mất cân bằng lên tới $147.11:1$. Thông qua chuỗi 10 kịch bản thực nghiệm đối chứng có kiểm soát (từ E1 đến E6) được phân tách thành mô hình tập trung (Centralized Baseline), dữ liệu đồng nhất (IID), chuỗi lệch phân phối Dirichlet Non-IID ($\alpha \in \{1.0, 0.5, 0.1\}$), và kiểm tra tính mở rộng quy mô ($K \in \{5, 7, 10\}$ clients), nghiên cứu mang lại 3 đóng góp khoa học thực chất:
 \begin{enumerate}
-    \item \textbf{Phát hiện phản nghiệm (Empirical Counter-Evidence):} Trong khi mô hình tập trung (E1) đạt tỷ lệ phát hiện (Recall) lớp \texttt{Web-based} là $52.41\%$ và \texttt{Brute-force} là $53.36\%$, việc phân tán qua FedAvg làm tỷ lệ này sụp đổ xuống $1.66\%$ ($K=5$) và $0.39\%$ ($K=10$), và bị dập tắt hoàn toàn về $0.00\%$ ở FedProx do cơ chế phạt proximal ghìm chết gradient. Điều này chứng minh sự sụp đổ lớp thiểu số không phải do khiếm khuyết kiến trúc MLP mà do hạn chế toán học của cơ chế tổng hợp tham số phân tán.
-    \item \textbf{Hiệu năng vượt trội ở các lớp lưu lượng thể tích lớn:} Hệ thống đạt khả năng phát hiện xuất sắc trên các cuộc tấn công hạ tầng nguy hiểm: Mirai Botnet đạt F1-score $98.78\%$ (Recall $99.88\%$), DDoS đạt F1-score $88.38\%$ (Precision $90.45\%$), và Spoofing đạt F1-score $83.98\%$.
-    \item \textbf{Vạch ra đường cong suy thoái Dirichlet định lượng:} Xác định ngưỡng gãy đổ $\alpha \le 0.5$ và hiện tượng nhiễu loạn triệt tiêu tại $\alpha = 0.1$ (Macro-F1 sụt giảm từ $68.00\%$ xuống $43.01\%$).
-    \item \textbf{Đề xuất giải pháp thuật toán đột phá:} Xây dựng cơ sở lý thuyết cho kiến trúc Decoupled Federated Learning (FedPer/FedRep) nhằm tách biệt tầng biểu diễn đặc trưng và tầng phân loại cá nhân hóa, mở đường cho việc khắc phục triệt để sự suy thoái Non-IID cực đoan.
+    \item \textbf{Bằng chứng thực nghiệm phản biện (Empirical Counter-Evidence / Negative Finding):} Trong khi mô hình tập trung (E1) nhận diện tốt các lớp tấn công thiểu số (đạt tỷ lệ Recall lớp \texttt{Web-based} là $52.41\%$ và \texttt{Brute-force} là $53.36\%$), việc phân tán qua FedAvg làm tỷ lệ phát hiện \texttt{Web-based} sụp đổ xuống $1.66\%$ ($K=5$) và $0.39\%$ ($K=10$), và bị dập tắt hoàn toàn về $0.00\%$ ở FedProx. Điều này chứng minh sự thất bại của các lớp thiểu số là hệ quả toán học của phép lấy trung bình gia quyền $n_k/N$ và hiện tượng triệt tiêu tính dẻo cục bộ (Loss of Local Plasticity) của số hạng phạt proximal, chứ không phải do khiếm khuyết dung lượng biểu diễn của mô hình.
+    \item \textbf{Hiệu năng vượt trội ở các lớp tấn công thể tích lớn:} Hệ thống liên đoàn đạt tỷ lệ nhận diện xuất sắc đối với các mối đe dọa hạ tầng nghiêm trọng: Mirai Botnet đạt F1-score $98.78\%$ (Recall $99.88\%$), DDoS đạt F1-score $88.38\%$ (Precision $90.45\%$), Spoofing đạt F1-score $83.98\%$, và lưu lượng hợp lệ (Benign) đạt F1-score $80.31\%$.
+    \item \textbf{Vạch ra đường cong suy thoái Dirichlet định lượng và Đánh đổi đa chiều:} Xác định chính xác ngưỡng gãy đổ $\alpha \le 0.5$ và sự sụp đổ nghiêm trọng tại $\alpha = 0.1$ (Macro-F1 sụt giảm từ $68.00\%$ xuống $43.01\%$, mất tới $25\%$ hiệu năng). Đồng thời, chứng minh chi phí truyền thông tăng tuyến tính hoàn hảo theo quy mô client ($5.30\text{ MB} \to 7.42\text{ MB} \to 10.60\text{ MB}$) với độ ổn định F1 cao trong môi trường IID.
 \end{enumerate}
-\end{abstract}
 
-\textbf{Từ khóa:} Học liên đoàn, Phát hiện xâm nhập IoT, Non-IID, Phân phối Dirichlet, FedAvg, FedProx, Decoupled FL, CICIoT2023, Flower gRPC.
+Trên cơ sở đó, đề tài xây dựng đề xuất thuật toán \textbf{Decoupled Federated Learning (FedPer/FedRep)} tách biệt tầng trích xuất đặc trưng chung và tầng phân loại cá nhân hóa, định hình lộ trình nghiên cứu tiếp theo nhằm giải quyết triệt để sự suy thoái Non-IID cực đoan trong an ninh mạng IoT.
+
+\textbf{Từ khóa:} Học liên đoàn, Phát hiện xâm nhập IoT, Dữ liệu Non-IID, Phân phối Dirichlet, FedAvg, FedProx, Decoupled FL, CICIoT2023, Flower gRPC.
 
 \newpage
+
+% ==============================================================================
+% 3. TABLE OF CONTENTS, FIGURES, TABLES, ACRONYMS
+% ==============================================================================
 \tableofcontents
 \newpage
 
-% ==============================================================================
-% CHƯƠNG 1
-% ==============================================================================
-\section{Giới thiệu và Đặt vấn đề}
-\label{sec:intro}
+\listoffigures
+\newpage
 
-\subsection{Bối cảnh và Động lực Nghiên cứu}
-Sự bùng nổ của các thiết bị Internet of Things (IoT) đã tạo ra một hệ sinh thái mạng phức tạp với hàng tỷ kết nối thông minh. Mặc dù mang lại tiện ích to lớn, phần lớn các thiết bị IoT biên (Edge IoT) đều có tài nguyên tính toán hạn chế, khả năng bảo mật yếu và thường xuyên trở thành mục tiêu của các chiến dịch tấn công diện rộng như từ chối dịch vụ phân tán (DDoS/DoS), mạng máy tính ma Mirai, hay dò quét mật khẩu (Brute-force) \cite{neto2023ciciot2023}. Để bảo vệ hạ tầng mạng IoT, các Hệ thống Phát hiện Xâm nhập Mạng (NIDS) ứng dụng Học máy (ML) và Học sâu (DL) đóng vai trò then chốt \cite{huang2022federated}.
+\listoftables
+\newpage
 
-Trong mô hình học máy tập trung truyền thống (Centralized ML), toàn bộ lưu lượng mạng từ các thiết bị phân tán bắt buộc phải gửi về một máy chủ trung tâm để huấn luyện. Cách tiếp cận này bộc lộ hai yếu điểm chí mạng:
+\chapter*{Danh mục các Từ viết tắt}
+\addcontentsline{toc}{chapter}{Danh mục các Từ viết tắt}
+
+\begin{acronyms}
+    \item[AI] Artificial Intelligence (Trí tuệ nhân tạo)
+    \item[CIC] Canadian Institute for Cybersecurity (Viện An ninh mạng Canada)
+    \item[CNN] Convolutional Neural Network (Mạng nơ-ron tích chập)
+    \item[CPU] Central Processing Unit (Bộ xử lý trung tâm)
+    \item[DDoS] Distributed Denial of Service (Tấn công từ chối dịch vụ phân tán)
+    \item[DL] Deep Learning (Học sâu)
+    \item[DoS] Denial of Service (Tấn công từ chối dịch vụ)
+    \item[FedAvg] Federated Averaging (Thuật toán lấy trung bình liên đoàn)
+    \item[FedProx] Federated Proximal (Thuật toán liên đoàn có số hạng phạt điều hòa)
+    \item[FL] Federated Learning (Học liên đoàn)
+    \item[gRPC] Google Remote Procedure Call (Giao thức gọi thủ tục từ xa)
+    \item[IDS] Intrusion Detection System (Hệ thống phát hiện xâm nhập)
+    \item[IID] Independent and Identically Distributed (Độc lập và phân phối đồng nhất)
+    \item[IoT] Internet of Things (Internet vạn vật)
+    \item[ML] Machine Learning (Học máy)
+    \item[MLP] Multi-Layer Perceptron (Mạng nơ-ron truyền thẳng đa tầng)
+    \item[NIDS] Network Intrusion Detection System (Hệ thống phát hiện xâm nhập mạng)
+    \item[Non-IID] Non-Independent and Identically Distributed (Phi đồng nhất về mặt thống kê)
+    \item[OOM] Out Of Memory (Tràn bộ nhớ)
+    \item[RAM] Random Access Memory (Bộ nhớ truy xuất ngẫu nhiên)
+    \item[ReLU] Rectified Linear Unit (Hàm kích hoạt tuyến tính chỉnh lưu)
+    \item[SOTA] State-Of-The-Art (Hiện đại nhất)
+    \item[TCP/IP] Transmission Control Protocol / Internet Protocol (Bộ giao thức TCP/IP)
+    \item[UIT] University of Information Technology (Trường Đại học Công nghệ Thông tin)
+    \item[WAF] Web Application Firewall (Tường lửa ứng dụng web)
+\end{acronyms}
+\newpage
+
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+% ==============================================================================
+% CHAPTER I: INTRODUCTION
+% ==============================================================================
+\chapter{Giới thiệu và Đặt vấn đề}
+\label{chap:intro}
+
+\section{Bối cảnh và Động lực Nghiên cứu}
+Sự phát triển vượt bậc của công nghệ vi điện tử và truyền thông không dây đã thúc đẩy làn sóng bùng nổ của mạng lưới Internet vạn vật (Internet of Things -- IoT). Từ các hạ tầng đô thị thông minh, hệ thống giám sát y tế, đến các dây chuyền sản xuất tự động hóa công nghiệp (IIoT), hàng tỷ thiết bị thông minh đang liên tục kết nối và trao đổi dữ liệu qua mạng viễn thông toàn cầu. Tuy nhiên, sự tiện ích này đi kèm với sự mở rộng nghiêm trọng của bề mặt tấn công mạng (attack surface). Hầu hết các thiết bị IoT biên (Edge IoT) được thiết kế với ngân sách năng lượng và năng lực tính toán hạn chế, thiếu vắng các cơ chế bảo mật phần cứng nghiêm ngặt, biến chúng thành những mắt xích yếu nhất trong chuỗi an ninh mạng và mục tiêu hấp dẫn cho các cuộc tấn công diện rộng như từ chối dịch vụ phân tán (DDoS), mạng máy tính ma (Botnet Mirai), hay xâm nhập đánh cắp dữ liệu \cite{neto2023ciciot2023}.
+
+Để chủ động phát hiện và ngăn chặn các nguy cơ an ninh, các Hệ thống Phát hiện Xâm nhập Mạng (Network Intrusion Detection System -- NIDS) dựa trên Học máy (Machine Learning -- ML) và Học sâu (Deep Learning -- DL) đã được triển khai rộng rãi \cite{huang2022federated}. Trong mô hình học máy tập trung truyền thống (Centralized ML), toàn bộ dữ liệu lưu lượng mạng thô (raw packet captures hoặc network flow records) từ các trạm biên phải được tổng hợp về một trung tâm dữ liệu hoặc máy chủ đám mây (Cloud Datacenter) để phân tích và huấn luyện mô hình. Phương thức tiếp cận này hiện bộc lộ hai rào cản kỹ thuật cốt tử:
+\begin{enumerate}
+    \item \textbf{Vi phạm quyền riêng tư và quy định bảo vệ dữ liệu:} Lưu lượng mạng biên chứa đựng các thông tin định danh cá nhân nhạy cảm, topology nội bộ của hạ tầng mạng doanh nghiệp, và thói quen sinh hoạt của người dùng. Việc truyền tải tập trung dữ liệu thô đối mặt với nguy cơ rò rỉ dữ liệu và vi phạm nghiêm trọng các quy định pháp lý an toàn thông tin quốc tế (như GDPR, ISO/IEC 27701) \cite{yang2019federated}.
+    \item \textbf{Nghẽn cổ chai băng thông truyền thông:} Hàng triệu thiết bị IoT liên tục phát sinh hàng terabyte dữ liệu mỗi ngày. Việc đẩy toàn bộ luồng mạng qua đường truyền Internet diện rộng (WAN) dẫn đến tắc nghẽn băng thông, độ trễ truyền dữ liệu cao, và chi phí hạ tầng mạng vượt quá khả năng chịu tải của các nút mạng biên.
+\end{enumerate}
+
+\section{Các Thách thức Cốt lõi của Mạng IoT Phân tán}
+Học liên đoàn (Federated Learning -- FL) do McMahan et al. \cite{mcmahan2017communication} khởi xướng đã mang lại lời giải đột phá cho bài toán bảo vệ quyền riêng tư: các nút mạng biên giữ lại toàn bộ dữ liệu cục bộ, chỉ huấn luyện mô hình tại chỗ và định kỳ gửi các tham số trọng số ($\mathbf{w}$) về máy chủ trung tâm để tổng hợp thành mô hình toàn cục. Tuy vậy, khi ứng dụng mô hình học liên đoàn vào bài toán NIDS trên mạng IoT thực tế, các nhà nghiên cứu phải đối mặt với ba thách thức kỹ thuật lớn:
+\begin{enumerate}
+    \item \textbf{Dữ liệu phi đồng nhất (Non-IID Statistical Heterogeneity):} Trong thế giới thực, mỗi gateway hoặc thiết bị IoT chỉ quan sát một góc nhìn hạn chế về lưu lượng mạng tùy thuộc vào vị trí địa lý, chức năng nghiệp vụ và các loại thiết bị kết nối đằng sau nó. Phân phối dữ liệu giữa các client có sự dị biệt sâu sắc (khác biệt phân phối nhãn $P_k(y)$ và phân phối có điều kiện $P_k(x|y)$). Sự phi đồng nhất này dẫn tới hiện tượng trôi dạt tham số cục bộ (\textit{Client Drift}), làm chệch hướng hội tụ của thuật toán Federated Averaging (FedAvg) và suy giảm nghiêm trọng độ chính xác toàn cục \cite{li2020federated, hsu2019measuring}.
+    \item \textbf{Mất cân bằng lớp cấu trúc cực đoan (Severe Structural Class Imbalance):} Trong môi trường mạng viễn thông thực tế (như phản ánh trong tập dữ liệu chuẩn CICIoT2023), lưu lượng tấn công thể tích lớn (DDoS, DoS) chiếm hơn $70\%$ tổng lưu lượng, trong khi các cuộc tấn công tinh vi, nguy hiểm cao như Web-based (SQL Injection, XSS) hay Brute-force chỉ chiếm dưới $0.5\%$. Khi dữ liệu bị phân tán qua nhiều nút, các lớp đa số áp đảo hoàn toàn tín hiệu cập nhật gradient, khiến mô hình phân tán có nguy cơ mù hoàn toàn trước các mối đe dọa hiếm gặp \cite{alahmari2025enhancing}.
+    \item \textbf{Giới hạn tài nguyên phần cứng thiết bị biên (Resource Constraints):} Các trạm mạng IoT biên có bộ nhớ RAM và năng lực CPU hạn chế, không thể vận hành các mô hình cồng kềnh (như Transformer hay CNN-LSTM phức tạp) vốn đòi hỏi dung lượng tải trọng trao đổi lên đến hàng chục megabyte mỗi vòng liên đoàn \cite{albanbay2025federated}.
+\end{enumerate}
+
+\section{Mục tiêu và Phạm vi Nghiên cứu}
+Đề tài Khóa luận Tốt nghiệp tập trung giải quyết các mục tiêu khoa học cụ thể sau:
 \begin{itemize}
-    \item \textbf{Vi phạm quyền riêng tư và quy định dữ liệu:} Lưu lượng mạng biên chứa thông tin định danh, cấu hình thiết bị và hành vi người dùng nhạy cảm; việc truyền tải dữ liệu thô vi phạm các tiêu chuẩn an toàn thông tin hiện đại (GDPR, ISO/IEC 27701) \cite{yang2019federated}.
-    \item \textbf{Nghẽn cổ chai băng thông truyền thông:} Hàng triệu thiết bị IoT liên tục truyền hàng terabyte dữ liệu luồng mạng (network flows) về trung tâm sẽ gây tắc nghẽn đường truyền đường dài và quá tải hạ tầng mạng lõi.
+    \item Khảo sát, chuẩn hóa và phân vùng tập dữ liệu chuẩn an ninh mạng IoT CICIoT2023 theo các mức độ dị biệt thống kê có kiểm soát bằng phân phối Dirichlet ($\alpha \in \{1.0, 0.5, 0.1\}$) và chuẩn đồng nhất IID.
+    \item Thiết kế và hiện thực mô hình nơ-ron nhẹ \texttt{TabularIoTMLP} tối ưu cho dữ liệu bảng 39 đặc trưng dòng mạng, bảo đảm kích thước tham số nhỏ gọn ($\approx 54\text{ KB}$) phù hợp với ràng buộc phần cứng IoT biên.
+    \item Triển khai hệ thống đo kiểm phân tán sử dụng Flower framework qua giao thức gRPC socket thực, đánh giá trực tiếp hai giải thuật tổng hợp nền tảng là FedAvg và FedProx.
+    \item Xây dựng chuẩn đối chứng tập trung (Centralized Upper-bound) trên cùng một kiến trúc mạng và tập dữ liệu để phân tách rõ ràng ảnh hưởng của năng lực mô hình với ảnh hưởng của cơ chế tổng hợp phân tán.
+    \item Định lượng hóa toàn diện tam giác đánh đổi giữa: Hiệu năng phân loại (Utility -- Macro-F1, Minority Recall), Chi phí tài nguyên (Cost -- Communication payload), và Khả năng mở rộng quy mô (Scalability -- số lượng trạm $K \in \{5, 7, 10\}$).
 \end{itemize}
 
-\subsection{Các Thách thức Cốt lõi của Mạng IoT}
-Học liên đoàn (Federated Learning -- FL) do McMahan et al. \cite{mcmahan2017communication} đề xuất đã mở ra hướng đi mới: các trạm biên tự huấn luyện mô hình trên dữ liệu cục bộ và chỉ chia sẻ các tham số trọng số ($\mathbf{w}$) về máy chủ điều phối. Tuy nhiên, việc áp dụng FL vào bài toán an ninh mạng IoT gặp phải ba rào cản kỹ thuật nghiêm trọng:
+\section{Định vị và Đóng góp Khoa học của Đề tài}
+\label{sec:contributions}
+
+\begin{quote}
+\textbf{Tuyên bố Định vị Bản chất Công trình:} Đề tài này được định vị là một \textbf{Nghiên cứu Thực nghiệm và Đo kiểm Hệ thống (Empirical Benchmarking Study)}. Mục tiêu của khóa luận là cung cấp các bằng chứng đo kiểm thực nghiệm có kiểm soát, trung thực và chính xác về mặt định lượng, vạch ra ranh giới kỹ thuật và bản chất toán học của các thuật toán FL hiện hành khi ứng dụng vào an ninh mạng IoT.
+\end{quote}
+
+\textbf{Lưu ý miễn trừ về mặt đóng góp kỹ thuật (Engineering Disclaimer):}
+Đề tài khẳng định rõ ràng rằng: \textit{Việc xây dựng hệ thống mô phỏng phân tán Flower gRPC, thiết lập đường truyền socket mạng đa tiến trình, hay tối ưu hóa bộ nhớ dữ liệu chỉ là cơ sở hạ tầng thực nghiệm và phương tiện kỹ thuật (experimental plumbing) nhằm thu thập số liệu đo kiểm khách quan. Toàn bộ các công tác kỹ thuật này KHÔNG cấu thành đóng góp khoa học của đề tài.}
+
+Bỏ qua các hình thức kỹ thuật bề nổi, giá trị khoa học thực chất của khóa luận bao gồm 3 đóng góp sau:
 \begin{enumerate}
-    \item \textbf{Dữ liệu phi đồng nhất (Non-IID Data Heterogeneity):} Trong thế giới thực, các trạm IoT biên quan sát lưu lượng mạng rất khác biệt tùy thuộc vào vị trí vật lý và chức năng thiết bị. Sự khác biệt phân phối nhãn dẫn đến hiện tượng trôi dạt trọng số cục bộ (\textit{Client Drift}), khiến thuật toán Federated Averaging (FedAvg) suy thoái nặng nề hoặc không thể hội tụ \cite{li2020federated, hsu2019measuring}.
-    \item \textbf{Mất cân bằng lớp cấu trúc cực đoan (Severe Structural Class Imbalance):} Trong các tập dữ liệu lưu lượng mạng như CICIoT2023, các cuộc tấn công DDoS/DoS chiếm hơn $70\%$ lưu lượng, trong khi các cuộc tấn công tinh vi nguy hiểm như Web-based (SQL Injection, XSS) hay Brute-force chỉ chiếm dưới $0.5\%$. Khi huấn luyện phân tán, các lớp đa số áp đảo hoàn toàn tín hiệu gradient, khiến mô hình gần như mất khả năng nhận diện các mối đe dọa thiểu số \cite{alahmari2025enhancing}.
-    \item \textbf{Giới hạn tài nguyên phần cứng thiết bị biên (Resource Constraints):} Các gateway biên chỉ sở hữu năng lực CPU khiêm tốn và bộ nhớ hạn hẹp, không thể gánh vác các kiến trúc học sâu cồng kềnh (CNN-LSTM, Transformer) vốn đòi hỏi hàng chục megabytes payload cho mỗi vòng giao tiếp \cite{albanbay2025federated}.
+    \item \textbf{Bằng chứng thực nghiệm phản biện về giới hạn nhận diện lớp thiểu số (Empirical Counter-Evidence / Negative Finding):}
+    Bằng việc thiết lập đối chứng trực diện giữa mô hình tập trung (E1) và mô hình liên đoàn (E2--E6) trên cùng một không gian kiến trúc \texttt{TabularIoTMLP}, nghiên cứu chỉ ra rằng: khi huấn luyện tập trung, mô hình MLP đạt tỷ lệ Recall trên lớp \texttt{Web-based} là $52.41\%$ và \texttt{Brute-force} là $53.36\%$. Tuy nhiên, khi chuyển sang môi trường học liên đoàn, tỷ lệ này sụp đổ xuống $1.66\%$ ($K=5$) và $0.39\%$ ($K=10$) ở FedAvg, và bị dập tắt hoàn toàn về $0.00\%$ ở tất cả các kịch bản FedProx. Kết quả thực nghiệm này cung cấp bằng chứng đanh thép bác bỏ giả định lạc quan trong nhiều công bố lý thuyết, chứng minh rằng sự thất bại với lớp thiểu số là hệ quả toán học tất yếu của cơ chế trung bình trọng số mẫu $n_k/N$ và hiện tượng triệt tiêu tính dẻo cục bộ (\textit{Loss of Local Plasticity}) của số hạng phạt proximal.
+    \item \textbf{Xác lập đường cong suy thoái định lượng theo phân phối Dirichlet:}
+    Khác với phần lớn các công trình công bố chỉ thử nghiệm tại một điểm dữ liệu duy nhất ($\alpha=0.5$), nghiên cứu này thiết lập chuỗi đối chứng bậc thang có kiểm soát: $\text{IID} \to \alpha=1.0 \to \alpha=0.5 \to \alpha=0.1$. Nghiên cứu cung cấp số liệu định lượng chính xác: khi độ phi đồng nhất vượt qua ngưỡng $\alpha \le 0.5$, quá trình hội tụ gãy đổ nghiêm trọng, và tại $\alpha=0.1$, hiện tượng nhiễu loạn triệt tiêu làm Macro-F1 sụt giảm tới $25\%$ (từ $68.00\%$ xuống $43.01\%$).
+    \item \textbf{Khung đánh giá đánh đổi đa chiều và Đề xuất giải pháp thuật toán cải tiến:}
+    Đo lường toàn diện chi phí truyền thông thực tế (chỉ tiêu tốn $5.30\text{ MB} \to 10.60\text{ MB}$ cho toàn bộ 10 rounds huấn luyện), chứng minh tính ổn định tuyệt đối khi mở rộng quy mô $K=5 \to 7 \to 10$ trong môi trường IID (biến thiên Macro-F1 $<0.72\%$). Trên nền tảng các phát hiện thực nghiệm, đề tài đề xuất hướng giải pháp thuật toán \textbf{Decoupled Federated Learning (FedPer/FedRep)} phân tách tầng trích xuất đặc trưng chung và tầng phân loại cá nhân hóa để khắc phục triệt để hiện tượng trôi dạt tham số trong Non-IID cực đoan.
 \end{enumerate}
 
-\subsection{Mục tiêu và Định vị Đóng góp Khoa học của Đề tài}
-Đề tài được định vị là một \textbf{Nghiên cứu Thực nghiệm và Đo kiểm Hệ thống (Empirical Benchmarking Study)}. Nghiên cứu phân định rạch ròi giữa phương tiện kỹ thuật (việc thiết lập môi trường thử nghiệm đa tiến trình gRPC chỉ đóng vai trò công cụ thu thập số liệu khách quan) và giá trị học thuật thực chất. Đề tài tập trung vào ba đóng góp khoa học chính:
+\section{Cấu trúc Báo cáo Khóa luận}
+Báo cáo khóa luận được cấu trúc thành 6 chương chính theo đúng chuẩn mực khoa học:
+\begin{itemize}
+    \item \textbf{Chương I: Giới thiệu và Đặt vấn đề:} Trình bày bối cảnh, động lực, các thách thức kỹ thuật, mục tiêu nghiên cứu, và định vị đóng góp khoa học của đề tài.
+    \item \textbf{Chương II: Cơ sở Lý thuyết và Tổng quan Nghiên cứu Liên quan:} Trình bày chi tiết về tập dữ liệu CICIoT2023, nền tảng toán học của FedAvg, FedProx, phân phối Dirichlet, đối sánh với các công trình 2024--2026 và chỉ ra các khoảng trống nghiên cứu.
+    \item \textbf{Chương III: Phương pháp luận và Giải pháp Đề xuất:} Trình bày phương pháp luận nghiên cứu thực nghiệm đối chứng, chiến lược phân vùng dữ liệu, kiến trúc mô hình \texttt{TabularIoTMLP}, hệ tiêu chí đánh giá đa chiều, và cơ sở lý thuyết cho giải pháp Decoupled FL đề xuất.
+    \item \textbf{Chương IV: Hiện thực hóa Hệ thống:} Trình bày chi tiết về kiến trúc hạ tầng thử nghiệm (testbed plumbing), cơ chế giao tiếp gRPC giữa Client và Server trên nền tảng Flower, pipeline xử lý dữ liệu và quy trình huấn luyện cục bộ.
+    \item \textbf{Chương V: Kịch bản Thử nghiệm, Kết quả và Thảo luận:} Trình bày ma trận benchmark 10 kịch bản thực nghiệm, số liệu kết quả, phân tích sâu 3 phát hiện khoa học, thảo luận hạn chế kỹ thuật và định vị hệ thống trong mô hình Phòng thủ chiều sâu (Defense-in-Depth).
+    \item \textbf{Chương VI: Kết luận và Hướng phát triển:} Tổng kết các kết quả đạt được, trình bày lộ trình hoàn thiện các kịch bản thực nghiệm còn lại và định hướng mở rộng nghiên cứu trong tương lai.
+\end{itemize}
+
+% ==============================================================================
+% CHAPTER II: LITERATURE REVIEW
+% ==============================================================================
+\chapter{Cơ sở Lý thuyết và Tổng quan Nghiên cứu Liên quan}
+\label{chap:literature}
+
+\section{Tập Dữ liệu Chuẩn An ninh Mạng IoT CICIoT2023}
+Tập dữ liệu CICIoT2023 \cite{neto2023ciciot2023} là một trong những chuẩn đánh giá (benchmark dataset) quy mô lớn và chân thực nhất hiện nay cho các hệ thống NIDS trong môi trường IoT. Bộ dữ liệu được xây dựng bởi Viện An ninh mạng Canada (CIC) dựa trên mô hình thử nghiệm vật lý gồm 105 thiết bị IoT thực tế (bao gồm camera an ninh, bóng đèn thông minh, cảm biến gia dụng, gateway và thiết bị trung tâm điều khiển), kết nối qua các giao thức mạng phổ biến như Wi-Fi, Zigbee, và Z-Wave.
+
+Bộ dữ liệu chứa hơn 47 triệu bản ghi dòng dữ liệu mạng (network flows). Mỗi bản ghi bao gồm 39 đặc trưng số (numerical statistical flow features) mô tả các thuộc tính thống kê của gói tin như: độ dài gói tin trung bình, phương sai độ dài, thời gian giữa các gói tin (Inter-Arrival Time -- IAT), các cờ điều khiển giao thức TCP/UDP, và tốc độ truyền luồng \cite{dadkhah2024ciciomt2024}. Toàn bộ các cuộc tấn công bao gồm 33 biến thể tấn công chi tiết, được chuẩn hóa và gom nhóm thành 8 phân lớp lớn:
 \begin{enumerate}
-    \item \textbf{Phát hiện phản nghiệm thực nghiệm (Empirical Counter-Evidence):} Đối chứng trực diện giữa mô hình tập trung (E1) và mô hình liên đoàn (E2--E6) để chứng minh rằng sự sụp đổ của các lớp tấn công thiểu số ($<0.5\%$) không xuất phát từ năng lực biểu diễn của mô hình MLP, mà là hệ quả toán học tất yếu của cơ chế trung bình trọng số $n_k/N$ trong FedAvg và số hạng phạt proximal trong FedProx làm dập tắt tính dẻo cục bộ.
-    \item \textbf{Xác lập đường cong suy thoái định lượng (Quantified Dirichlet Degradation Curve):} Cung cấp dữ liệu đo kiểm bậc thang có kiểm soát qua các mốc Dirichlet ($\text{IID} \to \alpha=1.0 \to \alpha=0.5 \to \alpha=0.1$), xác định chính xác ngưỡng gãy đổ $\alpha \le 0.5$ và hiện tượng nhiễu loạn triệt tiêu tại $\alpha=0.1$ (Macro-F1 sụt giảm tới $25\%$).
-    \item \textbf{Khung đánh đổi đa chiều và Đề xuất giải pháp cải tiến:} Định lượng hóa tam giác đánh đổi giữa độ chính xác (Utility), chi phí truyền thông (Cost) và tính ổn định quy mô (Scalability $K=5 \to 7 \to 10$); đồng thời đề xuất kiến trúc Decoupled Federated Learning (FedPer/FedRep) nhằm bảo toàn tri thức lớp thiểu số trong môi trường phân cực cực đoan.
+    \item \textbf{Benign (Lưu lượng hợp lệ):} Chiếm $21.46\%$ tổng số mẫu ($1,098,191$ dòng).
+    \item \textbf{DDoS (Từ chối dịch vụ phân tán):} Chiếm $37.57\%$ tổng số mẫu ($1,922,002$ dòng) -- lớp chiếm đa số tuyệt đối.
+    \item \textbf{DoS (Từ chối dịch vụ đơn nguồn):} Chiếm $14.27\%$ tổng số mẫu ($730,344$ dòng).
+    \item \textbf{Reconnaissance (Dò quét mạng):} Chiếm $13.50\%$ tổng số mẫu ($690,534$ dòng).
+    \item \textbf{Spoofing (Giả mạo địa chỉ/ARP):} Chiếm $8.34\%$ tổng số mẫu ($426,604$ dòng).
+    \item \textbf{Mirai (Mã độc mạng botnet IoT):} Chiếm $4.12\%$ tổng số mẫu ($210,823$ dòng).
+    \item \textbf{Web-based (Tấn công tầng ứng dụng web -- SQLi, XSS, Command Injection):} Chiếm $0.49\%$ ($24,829$ dòng).
+    \item \textbf{Brute-force (Dò quét mật khẩu qua từ điển):} Chiếm $0.26\%$ ($13,064$ dòng) -- lớp thiểu số cực đoan.
 \end{enumerate}
 
-% ==============================================================================
-% CHƯƠNG 2
-% ==============================================================================
-\section{Cơ sở Lý thuyết và Tổng quan Nghiên cứu Liên quan}
-\label{sec:literature}
+Tỷ lệ mất cân bằng giữa lớp lớn nhất (DDoS) và lớp nhỏ nhất (Brute-force) lên tới $147.11:1$. Đây chính là đặc trưng thực tế của không gian mạng viễn thông: các cuộc tấn công lũ lụt đường truyền xảy ra với mật độ gói tin dày đặc, trong khi các cuộc tấn công khai thác lỗ hổng tinh vi chỉ phát sinh vài chục gói tin nhưng lại có sức phá hoại mục tiêu vô cùng nghiêm trọng.
 
-\subsection{Tập Dữ liệu Chuẩn CICIoT2023}
-Tập dữ liệu CICIoT2023 \cite{neto2023ciciot2023} được thu thập tại Viện An ninh mạng Canada (CIC), mô phỏng môi trường mạng IoT quy mô lớn với 105 thiết bị phần cứng thật. Bộ dữ liệu chứa hơn 47 triệu bản ghi lưu lượng mạng flow-based với 39 đặc trưng số (statistical network flow features) và 33 phân loại tấn công được gom nhóm thành 8 lớp chính: \textit{Benign, Brute-force, DDoS, DoS, Mirai, Reconnaissance, Spoofing}, và \textit{Web-based}. CICIoT2023 phản ánh chính xác sự mất cân bằng thực tế của lưu lượng mạng IoT hiện đại với tỷ lệ mất cân bằng (imbalance ratio) lên tới $147.11:1$.
+\section{Cơ chế Học liên đoàn và Các Thuật toán Cơ sở}
 
-\subsection{Thuật toán FedAvg và Thách thức Non-IID}
-Thuật toán Federated Averaging (FedAvg) \cite{mcmahan2017communication} thực hiện tổng hợp tham số mô hình toàn cục sau mỗi round $t$ dựa trên tỷ lệ số lượng mẫu dữ liệu cục bộ $n_k$ của $K$ trạm biên tham gia:
+\subsection{Thuật toán Federated Averaging (FedAvg)}
+Thuật toán Federated Averaging (FedAvg) do McMahan et al. \cite{mcmahan2017communication} đề xuất là nền tảng của học liên đoàn. Giả sử hệ thống có $K$ trạm biên tham gia. Mỗi trạm $k$ sở hữu một tập dữ liệu cục bộ $\mathcal{D}_k$ với số lượng mẫu là $n_k$. Tổng số mẫu toàn mạng là $N = \sum_{k=1}^K n_k$. Mục tiêu tối ưu toàn cục là tìm vector trọng số $\mathbf{w}$ tối thiểu hóa hàm mất mát:
 \begin{equation}
-    \mathbf{w}_{t+1} = \sum_{k=1}^K \frac{n_k}{N} \mathbf{w}_{t+1}^{(k)} \quad \text{với} \quad N = \sum_{k=1}^K n_k
-    \label{eq:fedavg}
+    \min_{\mathbf{w}} F(\mathbf{w}) = \sum_{k=1}^K \frac{n_k}{N} F_k(\mathbf{w}) \quad \text{với} \quad F_k(\mathbf{w}) = \frac{1}{n_k} \sum_{i \in \mathcal{D}_k} \ell(f(\mathbf{x}_i; \mathbf{w}), y_i)
+    \label{eq:fl_objective}
 \end{equation}
-Trong môi trường IID, FedAvg hội tụ nhanh chóng. Tuy nhiên, khi dữ liệu phân tán bị lệch phân phối (Non-IID), mục tiêu tối ưu cục bộ $F_k(\mathbf{w})$ của từng client bị phân kỳ so với mục tiêu toàn cục $F(\mathbf{w})$. Khoảng cách giữa các vector nghiệm cục bộ tạo ra hiện tượng trôi dạt tham số (\textit{Client Drift}):
+Trong đó $\ell(\cdot)$ là hàm mất mát (như Cross-Entropy Loss). Tại mỗi vòng giao tiếp $t \in \{1, 2, \dots, T\}$:
+\begin{enumerate}
+    \item Máy chủ trung tâm phát tán vector trọng số toàn cục $\mathbf{w}_t$ xuống tập các client được lựa chọn.
+    \item Mỗi client $k$ khởi tạo mô hình cục bộ bằng $\mathbf{w}_t$, sau đó thực hiện $E$ epochs huấn luyện bằng giải thuật Stochastic Gradient Descent (SGD) hoặc AdamW trên dữ liệu nội bộ $\mathcal{D}_k$, thu được vector trọng số cục bộ mới $\mathbf{w}_{t+1}^{(k)}$.
+    \item Các client gửi vector trọng số $\mathbf{w}_{t+1}^{(k)}$ về máy chủ. Máy chủ thực hiện tổng hợp tham số theo trung bình gia quyền:
+    \begin{equation}
+        \mathbf{w}_{t+1} = \sum_{k=1}^K \frac{n_k}{N} \mathbf{w}_{t+1}^{(k)}
+        \label{eq:fedavg_agg}
+    \end{equation}
+\end{enumerate}
+
+\subsection{Hiện tượng Trôi dạt Tham số (Client Drift)}
+Trong điều kiện dữ liệu phân phối đồng nhất (IID), gradient cục bộ $\nabla F_k(\mathbf{w})$ là ước lượng không chệch của gradient toàn cục $\nabla F(\mathbf{w})$, bảo đảm mô hình hội tụ nhanh chóng. Tuy nhiên, khi dữ liệu phân tán bị lệch phân phối (Non-IID), mục tiêu tối ưu của các client bị phân kỳ: $\arg\min F_k(\mathbf{w}) \ne \arg\min F(\mathbf{w})$.
+Các bước cập nhật cục bộ độc lập sau $E$ epochs sẽ kéo vector trọng số của từng client di chuyển về các hướng cục bộ đối nghịch nhau. Khoảng cách trôi dạt tham số (\textit{Client Drift}) tại vòng $t$ được định lượng bằng chuẩn $L_2$:
 \begin{equation}
     \Delta \mathbf{w}^{(k)} = \|\mathbf{w}_{\text{local}}^{(k)} - \mathbf{w}_{\text{global}}^{(t)}\|_2 = \sqrt{\sum_{l} \|\mathbf{w}_{\text{local}}^{(k, l)} - \mathbf{w}_{\text{global}}^{(t, l)}\|_2^2}
-    \label{eq:drift}
+    \label{eq:client_drift}
 \end{equation}
+Khi $\Delta \mathbf{w}^{(k)}$ quá lớn, phép tính trung bình số học (\ref{eq:fedavg_agg}) tại máy chủ sẽ kéo vector mô hình về một vị trí trung gian không tối ưu cho bất kỳ phân phối cục bộ nào, dẫn đến hiện tượng dao động nghiệm, suy giảm hiệu năng nghiêm trọng, hoặc phân kỳ hoàn toàn \cite{hsu2019measuring}.
 
-\subsection{Thuật toán FedProx và Điều hòa Khoảng cách}
-Để đối phó với hiện tượng trôi dạt tham số do Non-IID, Li et al. \cite{li2020federated} đề xuất thuật toán FedProx, bổ sung một số hạng phạt điều hòa (proximal term) vào hàm mất mát cục bộ của mỗi client:
+\subsection{Thuật toán Federated Proximal (FedProx)}
+Để kiểm soát hiện tượng trôi dạt tham số do tính phi đồng nhất về mặt thống kê, Li et al. \cite{li2020federated} đề xuất thuật toán FedProx. Trong FedProx, bài toán tối ưu cục bộ tại mỗi client $k$ được bổ sung thêm một số hạng phạt điều hòa khoảng cách (proximal term):
 \begin{equation}
     \min_{\mathbf{w}} h_k(\mathbf{w}; \mathbf{w}_t) = F_k(\mathbf{w}) + \frac{\mu}{2} \|\mathbf{w} - \mathbf{w}_t\|_2^2
-    \label{eq:fedprox}
+    \label{eq:fedprox_obj}
 \end{equation}
-Trong đó $\mu \ge 0$ là hệ số điều hòa. Thành phần phạt $\frac{\mu}{2}\|\mathbf{w} - \mathbf{w}_t\|_2^2$ có tác dụng "buộc dây" (anchor) vector trọng số của client không bị trôi dạt quá xa khỏi mô hình toàn cục $\mathbf{w}_t$, giúp quá trình hội tụ ổn định hơn khi dữ liệu giữa các client có sự dị biệt lớn.
+Trong đó $\mu \ge 0$ là siêu tham số phạt điều hòa (proximal parameter). Số hạng $\frac{\mu}{2} \|\mathbf{w} - \mathbf{w}_t\|_2^2$ đóng vai trò như một sợi dây neo đàn hồi (elastic anchor), ngăn không cho vector nghiệm cục bộ dịch chuyển quá xa khỏi mô hình toàn cục $\mathbf{w}_t$ nhận được từ server. Về mặt lý thuyết toán học, số hạng phạt này làm cho hàm mục tiêu cục bộ có tính lồi mạnh hơn (strongly convex), giúp ổn định hóa quá trình hội tụ trong môi trường mạng không đồng nhất.
 
-\subsection{Mô hình hóa Non-IID bằng Phân phối Dirichlet}
-Theo phương pháp luận chuẩn của Hsu et al. \cite{hsu2019measuring}, tính phi đồng nhất về nhãn được mô phỏng thông qua phân phối Dirichlet:
+\section{Mô hình hóa Dữ liệu Non-IID bằng Phân phối Dirichlet}
+Để mô phỏng hiện tượng lệch phân phối nhãn (Label Distribution Skew) một cách có kiểm soát và khoa học, nghiên cứu áp dụng phương pháp phân vùng dữ liệu dựa trên phân phối Dirichlet nhiều chiều theo chuẩn mực của Hsu et al. \cite{hsu2019measuring}.
+
+Với mỗi lớp tấn công $c \in \{1, 2, \dots, C\}$ (với $C=8$), một vector tỷ lệ phân bổ $\mathbf{p}_c = (p_{c, 1}, p_{c, 2}, \dots, p_{c, K})$ được lấy mẫu từ phân phối Dirichlet:
 \begin{equation}
     \mathbf{p}_c \sim \text{Dir}(\alpha \cdot \mathbf{1}_K)
+    \label{eq:dirichlet}
 \end{equation}
-Trong đó $\mathbf{p}_c$ là vector xác suất phân bổ mẫu của lớp tấn công $c$ cho $K$ client, và $\alpha > 0$ là tham số tập trung (concentration parameter). Khi $\alpha \to \infty$, phân phối tiến về IID; khi $\alpha \to 0$, dữ liệu bị phân mảnh cực đoan, mỗi trạm biên chỉ chứa một vài lớp duy nhất.
+Trong đó $\mathbf{1}_K$ là vector gồm $K$ phần tử bằng $1$, và $\alpha > 0$ là tham số tập trung (concentration parameter):
+\begin{itemize}
+    \item Khi $\alpha \to \infty$, vector $\mathbf{p}_c \to (1/K, 1/K, \dots, 1/K)$, dữ liệu của mỗi lớp được chia đều hoàn hảo cho tất cả các client, tương đương với trạng thái phân phối đồng nhất IID.
+    \item Khi $\alpha = 1.0$, dữ liệu bắt đầu xuất hiện sự chênh lệch phân phối vừa phải giữa các nút mạng (Non-IID nhẹ).
+    \item Khi $\alpha = 0.5$, mức độ tập trung tăng cao, một số client bắt đầu thiếu hụt hoàn toàn một số lớp tấn công nhất định (Non-IID trung bình).
+    \item Khi $\alpha \to 0$ (ví dụ $\alpha = 0.1$), phân phối bị phân mảnh cực đoan: hầu hết các mẫu của lớp $c$ sẽ chỉ tập trung vào duy nhất một hoặc hai client, trong khi các client còn lại hoàn toàn không quan sát thấy lớp này.
+\end{itemize}
 
-\subsection{Đối sánh với các Công trình Công bố Gần đây (2024 -- 2026)}
-Bảng \ref{tab:lit_comparison} tổng hợp định vị học thuật của đề tài so với các công trình nghiên cứu tiêu biểu giai đoạn 2024 -- 2026 trên tập dữ liệu CICIoT2023.
+\section{Tổng quan và Phân tích Đối sánh các Công trình Liên quan Gần đây}
+Để làm rõ vị trí học thuật của đề tài, Bảng \ref{tab:lit_review_matrix} tổng hợp phân tích đối sánh chi tiết giữa nghiên cứu này và các công bố khoa học tiêu biểu giai đoạn 2022--2026 trên tập dữ liệu CICIoT2023 và bài toán FL-NIDS.
 
 \begin{table}[H]
 \centering
-\caption{Đối sánh công trình này với các nghiên cứu FL-IoT-IDS giai đoạn 2024 -- 2026.}
-\label{tab:lit_comparison}
+\caption{Đối sánh công trình này với các nghiên cứu FL-IoT-IDS giai đoạn 2022 -- 2026.}
+\label{tab:lit_review_matrix}
 \small
-\begin{tabularx}{\textwidth}{l p{4.0cm} p{4.2cm} X}
+\begin{tabularx}{\textwidth}{p{3.0cm} p{3.2cm} p{3.8cm} X}
 \toprule
-\textbf{Công trình} & \textbf{Mô hình \& Thuật toán} & \textbf{Xử lý Dữ liệu \& Phân vùng} & \textbf{Hạn chế chưa giải quyết} \\
+\textbf{Công trình} & \textbf{Kiến trúc \& Thuật toán} & \textbf{Phân vùng Dữ liệu} & \textbf{Hạn chế chưa giải quyết} \\
 \midrule
-Alahmari et al. (2025) \cite{alahmari2025enhancing} & Deep Neural Network, FedAvg & Sử dụng mạng đối kháng GANs để sinh dữ liệu nhân tạo & Không khả thi trong mạng phân tán thực; không đo Client Drift. \\
-Albanbay et al. (2025) \cite{albanbay2025federated} & CNN / MLP, FedAvg & Khảo sát scaling dữ liệu trên CICIoT2023 & Chỉ thử nghiệm 1 mốc $\alpha$ cố định; bỏ qua chi phí truyền thông. \\
-Huang et al. (2022) \cite{huang2022federated} & MLP / FedAvg & Phân vùng Non-IID trên dataset cũ & Mô hình cũ; không đánh giá tấn công thiểu số. \\
-\textbf{Nghiên cứu này (Empirical Benchmark)} & \textbf{TabularIoTMLP (14k params), FedAvg vs FedProx} & \textbf{Đối chứng Centralized E1, chuỗi đối chứng Dirichlet ($\alpha \in \{1.0, 0.5, 0.1\}$)} & \textbf{Phát hiện phản nghiệm sụp đổ lớp thiểu số, vạch ra ngưỡng gãy đổ $\alpha \le 0.5$, đo tam giác đánh đổi đa chiều.} \\
+Alahmari et al. (2025) \cite{alahmari2025enhancing} & Deep Neural Network, FedAvg & Sử dụng mạng sinh đối kháng (GANs) để tăng cường mẫu nhân tạo & Chi phí sinh dữ liệu GANs không khả thi trên thiết bị IoT biên; không đo lường trôi dạt tham số (Drift). \\
+\addlinespace
+Albanbay et al. (2025) \cite{albanbay2025federated} & CNN / MLP, FedAvg & Khảo sát mở rộng tỷ lệ mẫu trên CICIoT2023 & Chỉ thử nghiệm trên 1 mốc Non-IID cố định; bỏ qua đánh giá chi phí truyền thông tích lũy. \\
+\addlinespace
+Huang et al. (2022) \cite{huang2022federated} & MLP / FedAvg & Phân vùng Non-IID trên các tập dữ liệu cũ & Tập dữ liệu cũ, không đại diện cho lưu lượng IoT hiện đại; không phân tích lớp thiểu số. \\
+\addlinespace
+\textbf{Nghiên cứu này (Empirical Benchmark)} & \textbf{TabularIoTMLP (14k tham số), FedAvg \& FedProx} & \textbf{Đối chứng Centralized E1, chuỗi Dirichlet bậc thang $\alpha \in \{1.0, 0.5, 0.1\}$} & \textbf{Vạch ra bằng chứng phản nghiệm về sự sụp đổ lớp thiểu số; xác lập ngưỡng gãy đổ $\alpha \le 0.5$; đo kiểm toàn diện tam giác Utility -- Cost -- Scalability.} \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-% ==============================================================================
-% CHƯƠNG 3
-% ==============================================================================
-\section{Phương pháp Nghiên cứu và Thiết lập Môi trường Đo kiểm}
-\label{sec:system_design}
-
-\subsection{Cấu trúc Thiết lập Môi trường Thực nghiệm (Experimental Testbed)}
-Để phục vụ việc thu thập số liệu thực nghiệm khách quan và bảo đảm khả năng tái lập khoa học, môi trường đo kiểm phân tán được thiết lập theo cấu trúc 4 lớp có kiểm soát:
+\section{Các Khoảng trống Nghiên cứu (Research Gaps)}
+Từ việc phân tích tổng quan tài liệu, đề tài xác định 3 khoảng trống nghiên cứu cốt lõi mà các công trình trước đây chưa giải quyết thấu đáo:
 \begin{enumerate}
-    \item \textbf{Lớp 1 -- Dữ liệu và Phân vùng (Data \& Partitioning Layer):} Thực hiện chuẩn hóa đặc trưng bằng RobustScaler (chỉ fit trên tập train nhằm triệt tiêu hoàn toàn Data Leakage), phân chia thành $70\%$ dữ liệu huấn luyện và $30\%$ dữ liệu kiểm định tương lai (Global Holdout Test Set gồm 1,534,918 mẫu). Dữ liệu huấn luyện được hỗ trợ hai chế độ:
-    \begin{itemize}
-        \item \textit{Chế độ Tập trung (Centralized Mode -- E1):} Gộp toàn bộ $3,069,833$ mẫu huấn luyện trên một tiến trình duy nhất để thiết lập trần hiệu năng lý thuyết (Upper Bound Benchmark).
-        \item \textit{Chế độ Liên đoàn (Federated Mode -- E2--E6):} Phân chia mẫu cho $K$ client theo Stratified IID hoặc Dirichlet Non-IID ($\alpha \in \{1.0, 0.5, 0.1\}$).
-    \end{itemize}
-    \item \textbf{Lớp 2 -- Trạm Giám sát IoT Biên (Federated Edge Client Layer):} Mỗi client vận hành một mô hình \texttt{TabularIoTMLP} gồm 3 tầng tuyến tính kết hợp hàm kích hoạt ReLU và Dropout ($20\%$):
-    $$\text{Linear}(39, 128) \to \text{ReLU} \to \text{Dropout} \to \text{Linear}(128, 64) \to \text{ReLU} \to \text{Linear}(64, 8)$$
-    Tổng số lượng tham số là $14,024$ tham số, tương đương kích thước lưu trữ $\approx 54.28\text{ KB}$, hoàn toàn tương thích với bộ nhớ RAM dưới 1 MB của thiết bị IoT biên.
-    \item \textbf{Lớp 3 -- Máy chủ Điều phối và Tổng hợp (Federated Server Layer):} Vận hành trên framework Flower kết nối qua gRPC sockets. Máy chủ điều khiển chiến lược tổng hợp (FedAvg hoặc FedProx) và cơ chế lưu trữ trọng số tối ưu \texttt{best\_weights.npz} dựa trên Macro-F1 đánh giá trên tập holdout toàn cục.
-    \item \textbf{Lớp 4 -- Khung Đánh giá và Đo lường Đa chiều (Evaluation \& Monitoring Layer):} Giám sát song song cả chất lượng mô hình (Macro-F1, Minority Recall, Confusion Matrix) và chỉ số mạng phân tán (Chi phí truyền thông $2\sum m_t B$, Client Drift $\Delta \mathbf{w}$).
+    \item \textbf{Khoảng trống về Phân tích Nguyên nhân Thất bại (Negative Finding Gap):} Các bài báo thường chỉ công bố độ chính xác tổng thể (Accuracy $>90\%$), vô tình che giấu việc mô hình hoàn toàn mất khả năng phát hiện các lớp tấn công hiếm ($<0.5\%$). Thiếu vắng các nghiên cứu đối chứng có kiểm soát giữa học tập trung và học phân tán trên cùng một tập dữ liệu để chứng minh cơ chế nào làm sụp đổ lớp thiểu số.
+    \item \textbf{Khoảng trống về Đường cong Suy thoái Định lượng (Dirichlet Spectrum Gap):} Đa số công bố chỉ chọn ngẫu nhiên một giá trị $\alpha$ duy nhất, không cung cấp một phổ suy thoái liên tục để chỉ ra cho các kỹ sư mạng biết: tại ngưỡng $\alpha$ cụ thể nào thì hệ thống FL bắt đầu mất kiểm soát.
+    \item \textbf{Khoảng trống về Đo kiểm Đánh đổi Toàn diện (Multi-dimensional Trade-off Gap):} Các nghiên cứu thường tách rời việc đo độ chính xác với chi phí băng thông truyền thông hai chiều và sự ổn định khi mở rộng quy mô nút biên.
 \end{enumerate}
 
-\subsection{Công thức Ước lượng Chi phí Truyền thông}
-Tổng chi phí truyền thông tích lũy hai chiều qua mạng được xác định bởi công thức:
+% ==============================================================================
+% CHAPTER III: METHODOLOGY
+% ==============================================================================
+\chapter{Phương pháp luận và Giải pháp Đề xuất}
+\label{chap:methodology}
+
+\section{Phương pháp Luận Nghiên cứu Thực nghiệm Đối chứng}
+Nghiên cứu áp dụng phương pháp luận đo kiểm thực nghiệm có kiểm soát nghiêm ngặt (Controlled Empirical Benchmarking). Để bảo đảm tính trung thực khoa học và loại bỏ hoàn toàn hiện tượng rò rỉ dữ liệu (Data Leakage), quy trình phân chia và tiền xử lý dữ liệu được thiết kế theo các nguyên tắc chuẩn mực sau:
+\begin{enumerate}
+    \item \textbf{Phân tách Tập Kiểm định Toàn cục Độc lập (Global Holdout Test Set):} Toàn bộ tập dữ liệu CICIoT2023 ($5,116,391$ mẫu) được phân chia ngẫu nhiên thành $70\%$ tập phát triển ($3,581,473$ mẫu) và $30\%$ tập kiểm định toàn cục tương lai ($1,534,918$ mẫu). Tập kiểm định $30\%$ này được cô lập hoàn toàn, không bao giờ tham gia vào quá trình huấn luyện cục bộ tại các client, và được dùng làm thước đo duy nhất để đánh giá mô hình toàn cục của tất cả các kịch bản thực nghiệm.
+    \item \textbf{Chuẩn hóa không rò rỉ tri thức (Leakage-Free Normalization):} Phép biến đổi chuẩn hóa \texttt{RobustScaler} (sử dụng trung vị và khoảng tứ phân vị IQR để chống nhiễu ngoại lai) chỉ được khớp (\texttt{fit}) trên tập dữ liệu huấn luyện, sau đó áp dụng phép chuyển đổi (\texttt{transform}) một chiều lên tập kiểm định.
+    \item \textbf{Chuẩn đối chứng Tập trung (Centralized Upper-bound Baseline):} Thiết lập kịch bản E1 huấn luyện mô hình trên toàn bộ $70\%$ dữ liệu tập trung với cùng kiến trúc \texttt{TabularIoTMLP} để xác định trần hiệu năng lý thuyết tối đa mà kiến trúc này có thể đạt được khi không có sự cản trở của môi trường phân tán.
+\end{enumerate}
+
+\section{Chiến lược Phân vùng Dữ liệu}
+Tập $70\%$ dữ liệu huấn luyện được phân vùng cho $K$ client theo hai phương thức:
+\begin{itemize}
+    \item \textbf{Phân vùng IID (Stratified Random Sampling):} Dữ liệu của từng lớp được xáo trộn ngẫu nhiên và phân bổ đồng đều theo tỷ lệ mẫu vào $K$ client, bảo đảm phân phối xác suất tiên nghiệm của nhãn $P_k(y)$ tại mọi client là tương đương nhau.
+    \item \textbf{Phân vùng Non-IID Dirichlet:} Sử dụng phân phối Dirichlet $\text{Dir}(\alpha)$ trên từng nhãn với các mức tham số $\alpha \in \{1.0, 0.5, 0.1\}$. Khi $\alpha = 0.1$, hiện tượng phân cực nhãn xảy ra cực đoan, mô phỏng chính xác các mạng con IoT chuyên biệt trong thực tế (ví dụ: phân khúc mạng chỉ toàn camera giám sát bị tấn công Mirai, trong khi phân khúc máy chủ web chỉ gặp tấn công SQLi).
+\end{itemize}
+
+\section{Thiết kế Kiến trúc Mô hình Nhẹ TabularIoTMLP}
+Mô hình \texttt{TabularIoTMLP} được thiết kế tối ưu hóa cho dữ liệu bảng 39 đặc trưng dòng mạng, cân bằng giữa năng lực phi tuyến và tính gọn nhẹ cho thiết bị IoT biên:
+\begin{itemize}
+    \item \textbf{Tầng đầu vào (Input Layer):} Tiếp nhận vector đặc trưng kích thước $39$.
+    \item \textbf{Tầng ẩn 1 (Hidden Layer 1):} Kết nối tuyến tính $\text{Linear}(39, 128)$, hàm kích hoạt phi tuyến $\text{ReLU}$, kết hợp tầng điều hòa $\text{Dropout}(0.2)$ để chống hiện tượng quá khớp (overfitting).
+    \item \textbf{Tầng ẩn 2 (Hidden Layer 2):} Kết nối tuyến tính $\text{Linear}(128, 64)$, hàm kích hoạt $\text{ReLU}$.
+    \item \textbf{Tầng đầu ra (Output Classifier Head):} Kết nối tuyến tính $\text{Linear}(64, 8)$ đưa ra điểm số logit cho 8 phân lớp tấn công.
+\end{itemize}
+Tổng số lượng tham số của mô hình là $14,024$ tham số kiểu số thực $32$-bit (\texttt{float32}), tương đương với kích thước payload chỉ $\approx 54.28\text{ KB}$. Đây là kích thước lý tưởng cho phép lưu trữ trọn vẹn trong bộ nhớ SRAM của các vi điều khiển IoT công nghiệp hoặc router biên mà không gây quá tải tài nguyên phần cứng.
+
+\section{Khung Tiêu chí và Chỉ số Đo lường Đa chiều}
+Nghiên cứu thiết lập hệ thống đo kiểm đa chiều để đánh giá toàn diện hệ thống:
+\begin{enumerate}
+    \item \textbf{Độ chính xác Tổng thể (Accuracy):} Tỷ lệ dự đoán đúng trên tổng số mẫu kiểm định.
+    \item \textbf{Macro-Averaged F1-score (Macro-F1):} Trung bình cộng điểm F1 trên toàn bộ 8 phân lớp:
+    \begin{equation}
+        \text{Macro-F1} = \frac{1}{C} \sum_{c=1}^C F1_c = \frac{1}{C} \sum_{c=1}^C \frac{2 \times \text{Precision}_c \times \text{Recall}_c}{\text{Precision}_c + \text{Recall}_c}
+        \label{eq:macro_f1}
+    \end{equation}
+    Đây là chỉ số quan trọng nhất phản ánh tính công bằng của mô hình đối với tất cả các lớp, ngăn chặn việc chỉ số tổng thể bị làm sai lệch bởi các lớp đa số (DDoS).
+    \item \textbf{Minority Recall (Tỷ lệ Phát hiện Lớp Thiểu số):} Đo lường khả năng bắt trúng các cuộc tấn công hiếm gặp: \texttt{Web-based} ($0.49\%$) và \texttt{Brute-force} ($0.26\%$).
+    \item \textbf{Chi phí Truyền thông Tích lũy (Cumulative Communication Cost):} Tổng dung lượng trao đổi hai chiều giữa Server và $K$ client qua mạng gRPC sau $T$ rounds:
+    \begin{equation}
+        \text{CommCost} = 2 \times \sum_{t=1}^T m_t \cdot B
+        \label{eq:comm_cost_def}
+    \end{equation}
+    Với $m_t$ là số client tham gia tại round $t$, và $B = 54.28\text{ KB}$ là kích thước vector trọng số mô hình.
+    \item \textbf{Độ trôi Tham số Trung bình (Average Client Drift):} Đo khoảng cách Euclidean giữa vector mô hình cục bộ và mô hình toàn cục để định lượng sự phân kỳ thống kê:
+    \begin{equation}
+        \overline{\text{Drift}} = \frac{1}{K} \sum_{k=1}^K \|\mathbf{w}_{\text{local}}^{(k)} - \mathbf{w}_{\text{global}}\|_2
+        \label{eq:drift_avg}
+    \end{equation}
+\end{enumerate}
+
+\section{Đề xuất Giải pháp Thuật toán Cải tiến (Algorithmic Proposals)}
+\label{sec:proposals}
+Dựa trên các phân tích hạn chế của FedAvg và FedProx, đề tài xây dựng 3 đề xuất thuật toán cải tiến nhằm giải quyết sự suy thoái Non-IID cực đoan:
+
+\subsection{Đề xuất 1: Decoupled Federated Learning (FedPer/FedRep) cho IoT-IDS}
+Thay vì cưỡng chế toàn bộ mạng phải hội tụ về một mô hình phẳng duy nhất, đề tài đề xuất tách mạng \texttt{TabularIoTMLP} thành hai thành phần độc lập theo tư tưởng của Arivazhagan et al. \cite{arivazhagan2019federated} và Collins et al. \cite{collins2021exploiting}:
+\begin{itemize}
+    \item \textbf{Tầng Biểu diễn Đặc trưng Chung (Base Feature Extractor -- $39 \to 128 \to 64$):} Được chia sẻ và lấy trung bình toàn cục qua FedAvg. Thành phần này có nhiệm vụ học các quy luật biểu diễn lưu lượng mạng cốt lõi chung của toàn bộ hạ tầng IoT.
+    \item \textbf{Tầng Phân loại Cá nhân hóa Cục bộ (Personalized Classifier Head -- $64 \to 8$):} Được giữ lại hoàn toàn tại từng client (không bao giờ truyền tải qua mạng). Tầng này được huấn luyện tối ưu hóa riêng cho phân phối nhãn cục bộ $P_k(y)$ của từng trạm biên.
+\end{itemize}
+Cơ chế này kỳ vọng sẽ khôi phục tỷ lệ Macro-F1 tại mốc $\alpha=0.1$ từ $43.01\%$ lên trên $75\%$, đồng thời bảo toàn khả năng nhận diện lớp Web-based tại các trạm biên có dữ liệu lớp này mà không bị phép trung bình toàn cục xóa sổ.
+
+\subsection{Đề xuất 2: Phạt Proximal Thích ứng theo Entropy (\texorpdfstring{$\mu$}{mu}-Adaptive FedProx)}
+Thay vì cố định hệ số $\mu = 0.05$ làm triệt tiêu tính dẻo cục bộ của các lớp hiếm, đề xuất công thức điều hòa động theo độ hỗn loạn Shannon Entropy của phân phối nhãn tại client $k$:
 \begin{equation}
-    \text{CommCost} = 2 \times \sum_{t=1}^T m_t \cdot B
-    \label{eq:comm_cost}
+    \mu_k = \mu_0 \cdot \left( \frac{\mathcal{H}(P_k)}{\log_2(C)} \right)^\gamma
+    \label{eq:adaptive_mu}
 \end{equation}
-Trong đó $T$ là tổng số round giao tiếp, $m_t$ là số trạm biên tham gia tại round $t$, $B$ là dung lượng mô hình ($B = 54.28\text{ KB}$), và hệ số $2$ phản ánh chi phí truyền tải hai chiều (server phát tán mô hình toàn cục xuống client và client gửi cập nhật trọng số lên server qua gRPC).
+Các trạm biên có dữ liệu đa dạng (gần IID) sẽ duy trì $\mu_k \approx \mu_0$ để chống trôi dạt tham số; ngược lại, các trạm biên sở hữu các lớp tấn công đặc thù thiểu số sẽ tự động hạ $\mu_k \to 0$, giải phóng tính dẻo để gradient thoải mái thích ứng với các mẫu hiếm.
+
+\subsection{Đề xuất 3: Tổng hợp Nhận biết Mất cân bằng (Imbalance-Aware Aggregation)}
+Tái cân bằng trọng số tổng hợp tại Server dựa trên độ hiếm của lớp $w_c = (N_{\max}/N_c)^\tau$ thay vì số lượng mẫu thô $n_k/N$, nâng cao quyền biểu quyết của các trạm biên đang bảo vệ các phân khúc mạng xuất hiện các cuộc tấn công hiếm.
 
 % ==============================================================================
-% CHƯƠNG 4
+% CHAPTER IV: IMPLEMENTATION
 % ==============================================================================
-\section{Kết quả Thực nghiệm và Phân tích Chuyên sâu}
-\label{sec:experiments}
+\chapter{Hiện thực hóa Hệ thống}
+\label{chap:implementation}
 
-\subsection{Thiết lập Môi trường và Ma trận Benchmark}
-Tất cả các kịch bản thực nghiệm liên đoàn được cấu hình đồng nhất với số vòng giao tiếp $T=10$, số epoch cục bộ $E=2$, kích thước batch $64$, tốc độ học $\eta = 10^{-3}$ với bộ tối ưu AdamW. Kịch bản tập trung (E1) được huấn luyện trong 11 epochs với cùng kiến trúc mạng. Mô hình toàn cục tốt nhất ở mỗi kịch bản được đánh giá trên cùng một tập \textbf{Global Test Set độc lập ($30\%$ Data)} gồm đúng 1,534,918 mẫu kiểm định.
+\section{Cơ sở Hạ tầng Thực nghiệm và Kiểm thử (Testbed Plumbing)}
 
-\subsection{Bảng Tổng hợp Kết quả Thực nghiệm Master Benchmark}
-Bảng \ref{tab:master_benchmark} trình bày toàn bộ số liệu thực nghiệm thu thập từ 10 kịch bản đã hoàn thành trong hệ thống, bao gồm chuẩn đối chứng tập trung E1 và 9 kịch bản phân tán gRPC.
+\begin{quote}
+\textit{Lưu ý miễn trừ trách nhiệm khoa học:} Toàn bộ nội dung trong chương này mô tả cơ sở hạ tầng thực nghiệm và các kỹ thuật hiện thực hóa phần mềm được xây dựng để phục vụ việc thu thập số liệu đo kiểm một cách tự động, ổn định và có khả năng tái lập. Các công tác kỹ thuật này chỉ là phương tiện thực thi (testbed plumbing), hoàn toàn không cấu thành đóng góp khoa học của luận văn.
+\end{quote}
+
+Hệ thống đo kiểm được tổ chức thành 4 phân tầng kỹ thuật có kiểm soát:
+\begin{enumerate}
+    \item \textbf{Phân tầng Quản lý Dữ liệu và Phân vùng (Data \& Partitioning Layer):} Quản lý việc đọc các tệp CSV nén của CICIoT2023, tiền xử lý, lưu trữ bộ nhớ đệm (caching) và chia phân vùng theo file ánh xạ index định sẵn.
+    \item \textbf{Phân tầng Trạm Biên Liên đoàn (Federated Client Layer):} Quản lý các tiến trình client độc lập vận hành mô hình PyTorch \texttt{TabularIoTMLP}.
+    \item \textbf{Phân tầng Máy chủ Điều phối và Tổng hợp (Federated Server Layer):} Vận hành máy chủ Flower Server quản lý vòng đời huấn luyện liên đoàn.
+    \item \textbf{Phân tầng Giám sát và Đo kiểm Đa chiều (Evaluation \& Monitoring Layer):} Tự động ghi nhận log chi tiết, đo thời gian huấn luyện, tính toán độ trôi $L_2$ norm, và xuất các biểu đồ trực quan hóa.
+\end{enumerate}
+
+\section{Hiện thực Hóa Hệ thống Phân tán trên Nền tảng Flower gRPC}
+Hệ thống sử dụng nền tảng Flower (phiên bản $1.13.0$) kết nối qua giao thức Google Remote Procedure Call (gRPC). Mỗi client chạy trên một tiến trình hệ điều hành riêng biệt, thiết lập kết nối TCP/IP socket thực với Server tại địa chỉ cổng chỉ định.
+
+\subsection{Chiến lược Tổng hợp Tùy biến (Custom Aggregation Strategy)}
+Lớp \texttt{AggregateCustomStrategy} được hiện thực hóa bằng cách kế thừa trực tiếp từ chiến lược cơ sở của Flower (\texttt{flwr.server.strategy.FedAvg} và \texttt{FedProx}):
+\begin{itemize}
+    \item \textbf{Tổng hợp tham số:} Thực hiện tính trung bình gia quyền vector trọng số gửi về từ các client hợp lệ sau mỗi round.
+    \item \textbf{Đánh giá toàn cục tập trung (Centralized Evaluation):} Sau mỗi round tổng hợp, máy chủ tự động nạp vector trọng số toàn cục mới nhất vào một mô hình đánh giá độc lập, chạy suy luận trên toàn bộ $1,534,918$ mẫu của tập kiểm định toàn cục $30\%$. Quá trình này bảo đảm kết quả đo lường giữa các vòng là hoàn toàn nhất quán và không phụ thuộc vào dữ liệu phân mảnh của client.
+    \item \textbf{Lưu trữ Checkpoint tối ưu:} Hệ thống tự động theo dõi chỉ số Macro-F1 toàn cục sau mỗi round; trọng số đạt đỉnh cao nhất được lưu trữ vào tệp \texttt{best\_weights.npz} để sử dụng cho việc phân tích ma trận nhầm lẫn cuối cùng.
+\end{itemize}
+
+\section{Pipeline Tiền xử lý Dữ liệu và Kiểm soát Rò rỉ Dữ liệu}
+Module tiền xử lý (\texttt{src/data/preprocess.py}) thực hiện tuần tự các bước:
+\begin{enumerate}
+    \item Loại bỏ các dòng chứa giá trị khuyết thiếu (NaN) hoặc giá trị vô hạn (Inf) phát sinh trong quá trình tính toán thống kê dòng mạng.
+    \item Ánh xạ 33 nhãn tấn công chi tiết về 8 lớp chính theo chuẩn phân loại của bộ dữ liệu CICIoT2023.
+    \item Áp dụng bộ chuẩn hóa \texttt{RobustScaler}: chỉ khớp thông số trung vị và khoảng tứ phân vị trên tập $70\%$ huấn luyện, triệt tiêu nguy cơ rò rỉ phân phối vào tập kiểm tra.
+\end{enumerate}
+
+\section{Quy trình Huấn luyện Cục bộ và Tích hợp FedProx}
+Module huấn luyện (\texttt{src/training/federated\_trainer.py}) điều khiển vòng lặp học sâu PyTorch tại từng client:
+\begin{itemize}
+    \item Sử dụng bộ tối ưu hóa AdamW với tốc độ học $\eta = 10^{-3}$ và trọng số suy giảm (weight decay) $10^{-4}$.
+    \item Đối với FedProx, hàm mất mát được bổ sung trực tiếp số hạng phạt proximal trong mỗi batch:
+    \begin{equation}
+        \mathcal{L}_{\text{total}} = \mathcal{L}_{\text{CE}}(\hat{y}, y) + \frac{\mu}{2} \sum_{p} \|\mathbf{w}_p - \mathbf{w}_{p, \text{global}}\|_2^2
+    \end{equation}
+    Gradient của số hạng phạt được lan truyền ngược tự động thông qua cơ chế Autograd của PyTorch, kéo các tham số của client không đi lệch quỹ đạo toàn cục.
+\end{itemize}
+
+% ==============================================================================
+% CHAPTER V: EXPERIMENTAL RESULTS AND DISCUSSIONS
+% ==============================================================================
+\chapter{Kịch bản Thử nghiệm, Kết quả và Thảo luận}
+\label{chap:results}
+
+\section{Thiết lập Ma trận Kịch bản Thực nghiệm}
+Nghiên cứu triển khai hệ thống 10 kịch bản thực nghiệm đối chứng có kiểm soát chặt chẽ (từ E1 đến E6) trên cùng một môi trường phần cứng và cấu hình siêu tham số đồng nhất:
+\begin{itemize}
+    \item Số vòng giao tiếp liên đoàn: $T = 10$ rounds.
+    \item Số epoch huấn luyện cục bộ: $E = 2$ epochs/round.
+    \item Kích thước batch cục bộ: $B_{\text{size}} = 64$.
+    \item Tốc độ học: $\eta = 10^{-3}$ với bộ tối ưu AdamW.
+    \item Hệ số phạt FedProx: $\mu = 0.05$.
+    \item Tập kiểm định đánh giá: $100\%$ kịch bản đều được đánh giá độc lập trên cùng tập \textbf{Global Holdout Test Set ($30\%$ Data)} gồm đúng $1,534,918$ mẫu.
+\end{itemize}
+
+\section{Bảng Tổng hợp Kết quả Master Benchmark}
+Bảng \ref{tab:master_results} trình bày toàn bộ kết quả đo kiểm thực nghiệm thu được từ 10 kịch bản đã hoàn thành trong hệ sinh thái của đề tài.
 
 \begin{table}[H]
 \centering
-\caption{Bảng Master Benchmark kết quả thực nghiệm hệ thống FL-IoT-IDS trên CICIoT2023.}
-\label{tab:master_benchmark}
+\caption{Bảng Master Benchmark kết quả đo kiểm hệ thống FL-IoT-IDS trên CICIoT2023.}
+\label{tab:master_results}
 \small
-\begin{tabularx}{\textwidth}{l c c c c c c}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X c c c c c c}
 \toprule
 \textbf{Kịch bản Thực nghiệm (Scenario)} & \textbf{Accuracy} & \textbf{Macro-F1} & \textbf{Web-based} & \textbf{Brute-force} & \textbf{Comm Cost} & \textbf{Drift} \\
 & \textbf{(\%)} & \textbf{(\%)} & \textbf{Recall (\%)} & \textbf{Recall (\%)} & \textbf{(MB)} & \textbf{L2 Norm} \\
 \midrule
-\multicolumn{7}{l}{\textit{Nhóm Kịch bản E1: Chuẩn đối chứng Tập trung (Centralized Upper-Bound)}} \\
-\texttt{centralized\_e1\_baseline} & 78.69 & 63.70 & \textbf{52.41} & \textbf{53.36} & 0.00 & 0.00 \\
+\multicolumn{7}{l}{\textit{Kịch bản E1: Chuẩn đối chứng Tập trung (Centralized Upper-Bound Benchmark)}} \\
+E1: Centralized Baseline & 78.69 & 63.70 & \textbf{52.41} & \textbf{53.36} & 0.00 & 0.00 \\
 \midrule
-\multicolumn{7}{l}{\textit{Nhóm Kịch bản E2: Môi trường IID Cơ sở ($K=5$)}} \\
-\texttt{flower\_e2\_fedavg\_iid} & \textbf{84.60} & \textbf{68.00} & \textbf{1.66} & \textbf{20.57} & 5.30 & 10.21 \\
-\texttt{flower\_e2\_fedprox\_mu=0.05\_iid} & 80.09 & 59.06 & 0.00 & 0.00 & 5.30 & \textbf{0.52} \\
+\multicolumn{7}{l}{\textit{Kịch bản E2: Môi trường Phân phối Đồng nhất (IID Benchmark, $K=5$)}} \\
+E2: FedAvg (IID, $K=5$) & \textbf{84.60} & \textbf{68.00} & \textbf{1.66} & \textbf{20.57} & 5.30 & 10.21 \\
+E2: FedProx ($\mu=0.05$, IID, $K=5$) & 80.09 & 59.06 & 0.00 & 0.00 & 5.30 & \textbf{0.52} \\
 \midrule
-\multicolumn{7}{l}{\textit{Nhóm Kịch bản E3: Non-IID Nhẹ ($\alpha=1.0, K=5$)}} \\
-\texttt{flower\_e3\_fedavg\_dirichlet\_1.0} & 84.42 & 67.62 & 0.39 & 21.54 & 5.30 & 10.75 \\
-\texttt{flower\_e3\_fedprox\_mu=0.05\_1.0} & 77.41 & 55.45 & 0.00 & 0.00 & 5.30 & 0.56 \\
+\multicolumn{7}{l}{\textit{Kịch bản E3: Môi trường Non-IID Lệch Nhẹ ($\alpha=1.0, K=5$)}} \\
+E3: FedAvg ($\alpha=1.0, K=5$) & 84.42 & 67.62 & 0.39 & 21.54 & 5.30 & 10.75 \\
+E3: FedProx ($\mu=0.05, \alpha=1.0, K=5$) & 77.41 & 55.45 & 0.00 & 0.00 & 5.30 & 0.56 \\
 \midrule
-\multicolumn{7}{l}{\textit{Nhóm Kịch bản E4: Non-IID Trung bình ($\alpha=0.5, K=5$)}} \\
-\texttt{flower\_e4\_fedavg\_dirichlet\_0.5} & 81.94 & 64.73 & 1.44 & 18.37 & 5.30 & 13.30 \\
-\texttt{flower\_e4\_fedprox\_mu=0.05\_0.5} & 75.99 & 53.01 & 0.00 & 0.00 & 5.30 & 0.60 \\
+\multicolumn{7}{l}{\textit{Kịch bản E4: Môi trường Non-IID Lệch Trung bình ($\alpha=0.5, K=5$)}} \\
+E4: FedAvg ($\alpha=0.5, K=5$) & 81.94 & 64.73 & 1.44 & 18.37 & 5.30 & 13.30 \\
+E4: FedProx ($\mu=0.05, \alpha=0.5, K=5$) & 75.99 & 53.01 & 0.00 & 0.00 & 5.30 & 0.60 \\
 \midrule
-\multicolumn{7}{l}{\textit{Nhóm Kịch bản E5: Non-IID Khắc nghiệt ($\alpha=0.1, K=5$)}} \\
-\texttt{flower\_e5\_fedprox\_mu=0.05\_0.1} & 70.12 & 43.01 & 0.00 & 0.00 & 5.30 & 0.65 \\
+\multicolumn{7}{l}{\textit{Kịch bản E5: Môi trường Non-IID Phân cực Cực đoan ($\alpha=0.1, K=5$)}} \\
+E5: FedProx ($\mu=0.05, \alpha=0.1, K=5$) & 70.12 & 43.01 & 0.00 & 0.00 & 5.30 & 0.65 \\
 \midrule
-\multicolumn{7}{l}{\textit{Nhóm Kịch bản E6: Đánh giá Tính Mở rộng Quy mô (Scalability)}} \\
-\texttt{flower\_e6\_fedavg\_iid\_client=7} & 84.54 & 67.82 & 0.63 & 21.10 & 7.42 & 8.42 \\
-\texttt{flower\_e6\_fedavg\_iid\_client=10} & 84.41 & 67.28 & 0.39 & 19.21 & \textbf{10.60} & 7.25 \\
+\multicolumn{7}{l}{\textit{Kịch bản E6: Đánh giá Tính Mở rộng Quy mô (Scalability Analysis, IID)}} \\
+E6: FedAvg (IID, $K=7$) & 84.54 & 67.82 & 0.63 & 21.10 & 7.42 & 8.42 \\
+E6: FedAvg (IID, $K=10$) & 84.41 & 67.28 & 0.39 & 19.21 & \textbf{10.60} & 7.25 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\subsection{Phân tích Ba Phát hiện Khoa học Thực chất}
+\section{Phân tích Chuyên sâu Ba Phát hiện Khoa học Thực chất}
 
-\subsubsection{Phát hiện 1: Bằng chứng Thực nghiệm Phản biện về Giới hạn Nhận diện Lớp Thiểu số (Negative Finding)}
+\subsection{Phát hiện 1: Bằng chứng Thực nghiệm Phản biện về Giới hạn Nhận diện Lớp Thiểu số (Negative Finding)}
 Đối chiếu trực diện giữa kịch bản tập trung (E1) và các kịch bản phân tán (E2--E6) mang lại một phát hiện khoa học mang tính bước ngoặt:
 \begin{itemize}
-    \item \textbf{Khả năng nội tại của mô hình:} Khi huấn luyện tập trung (E1) trên toàn bộ dữ liệu, mô hình MLP đạt tỷ lệ phát hiện (Recall) lên tới $\mathbf{52.41\%}$ đối với lớp \texttt{Web-based} và $\mathbf{53.36\%}$ đối với \texttt{Brute-force}. Điều này chứng minh rằng kiến trúc mạng MLP 3 tầng hoàn toàn có đủ năng lực biểu diễn và phân tách các đặc trưng của các lớp tấn công thiểu số.
-    \item \textbf{Sự sụp đổ do tổng hợp phân tán (FedAvg):} Khi chuyển sang môi trường học liên đoàn, tỷ lệ Recall của \texttt{Web-based} sụt giảm thảm hại xuống $1.66\%$ ($K=5$) và tiếp tục rơi xuống $0.39\%$ khi mở rộng lên $K=10$ clients. Nguyên nhân toán học nằm ở công thức (\ref{eq:fedavg}): lớp Web-based chỉ chiếm $0.49\%$ dữ liệu, khiến gradient của các trạm chứa lớp này bị "pha loãng" và triệt tiêu hoàn toàn bởi hàng trăm nghìn mẫu của các lớp DDoS/DoS khi tính trung bình gia quyền $n_k/N$.
-    \item \textbf{Hiệu ứng phong tỏa tính dẻo của FedProx:} Đáng chú ý, ở tất cả các kịch bản sử dụng FedProx với $\mu=0.05$, Recall của cả Web-based và Brute-force đều rơi thẳng về $\mathbf{0.00\%}$. Số hạng phạt $\frac{\mu}{2}\|\mathbf{w} - \mathbf{w}_t\|_2^2$ đã cưỡng chế vector tham số client không được dịch chuyển xa khỏi mô hình toàn cục, vô tình dập tắt nỗ lực di chuyển gradient để học các mẫu hiếm (Loss of Local Plasticity).
+    \item \textbf{Năng lực nội tại của kiến trúc mô hình:} Khi huấn luyện tập trung (E1) với toàn bộ dữ liệu, mô hình \texttt{TabularIoTMLP} đạt tỷ lệ phát hiện (Recall) lên tới $\mathbf{52.41\%}$ trên lớp \texttt{Web-based} và $\mathbf{53.36\%}$ trên lớp \texttt{Brute-force} (xem Hình \ref{fig:recall_e1_centralized}). Điều này chứng minh rằng kiến trúc nơ-ron MLP 3 tầng hoàn toàn có đủ dung lượng biểu diễn để trích xuất các đặc trưng phân loại của các lớp tấn công thiểu số.
+    \item \textbf{Sự sụp đổ do cơ chế tổng hợp phân tán (FedAvg):} Khi phân tán sang môi trường liên đoàn FedAvg, tỷ lệ Recall của \texttt{Web-based} sụt giảm thảm hại xuống $1.66\%$ ($K=5$) và tiếp tục rơi xuống $0.39\%$ khi mở rộng lên $K=10$ clients. Nguyên nhân toán học nằm ở công thức (\ref{eq:fedavg_agg}): lớp Web-based chỉ chiếm $0.49\%$ dữ liệu, khiến gradient của các trạm chứa lớp này bị "pha loãng" và triệt tiêu hoàn toàn bởi hàng trăm nghìn mẫu của các lớp DDoS/DoS khi tính trung bình gia quyền $n_k/N$.
+    \item \textbf{Hiệu ứng phong tỏa tính dẻo của FedProx (Loss of Local Plasticity):} Đáng chú ý, ở tất cả các kịch bản sử dụng FedProx với $\mu=0.05$, Recall của cả Web-based và Brute-force đều rơi thẳng về $\mathbf{0.00\%}$. Số hạng phạt $\frac{\mu}{2}\|\mathbf{w} - \mathbf{w}_t\|_2^2$ đã cưỡng chế vector tham số client không được dịch chuyển xa khỏi mô hình toàn cục, vô tình dập tắt nỗ lực di chuyển gradient để học các mẫu hiếm.
 \end{itemize}
 
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.48\textwidth}
         \centering
+        \includegraphics[width=\textwidth]{figures/cm_e1_centralized.png}
+        \caption{Ma trận nhầm lẫn E1 (Học tập trung).}
+        \label{fig:cm_e1_centralized}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
         \includegraphics[width=\textwidth]{figures/cm_e2_fedavg.png}
-        \caption{Ma trận nhầm lẫn 8x8 (E2 FedAvg IID).}
-        \label{fig:cm_e2}
+        \caption{Ma trận nhầm lẫn E2 (FedAvg IID).}
+        \label{fig:cm_e2_fedavg}
+    \end{subfigure}
+    \caption{So sánh ma trận nhầm lẫn chuẩn hóa giữa mô hình tập trung E1 và mô hình liên đoàn FedAvg E2.}
+    \label{fig:confusion_comparison}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/recall_e1_centralized.png}
+        \caption{Tỷ lệ Recall theo lớp E1 (Học tập trung).}
+        \label{fig:recall_e1_centralized}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.48\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/recall_e2_fedavg.png}
-        \caption{Tỷ lệ Recall theo lớp (E2 FedAvg IID).}
-        \label{fig:recall_e2}
+        \caption{Tỷ lệ Recall theo lớp E2 (FedAvg IID).}
+        \label{fig:recall_e2_fedavg}
     \end{subfigure}
-    \caption{Trực quan hóa ma trận nhầm lẫn chuẩn hóa và tỷ lệ Recall theo từng lớp tấn công.}
-    \label{fig:cm_recall}
+    \caption{Trực quan hóa tỷ lệ Recall theo từng phân lớp, minh chứng cho sự sụp đổ của lớp thiểu số trong môi trường liên đoàn.}
+    \label{fig:recall_comparison}
 \end{figure}
 
-\subsubsection{Phát hiện 2: Năng lực Vượt trội đối với các Lớp Tấn công Hạ tầng Thể tích Lớn}
-Mặc dù gặp khó khăn ở các lớp thiểu số, hệ thống FL-IoT-IDS thể hiện năng lực bảo vệ xuất sắc đối với các mối đe dọa an ninh mạng nghiêm trọng nhất về mặt hạ tầng IoT:
+\subsection{Phát hiện 2: Năng lực Vượt trội đối với các Lớp Tấn công Hạ tầng Thể tích Lớn}
+Bảng \ref{tab:per_class_e2} chi tiết hóa hiệu năng phân loại theo từng lớp của kịch bản E2 FedAvg trên tập kiểm định toàn cục $1,534,918$ mẫu.
+
+\begin{table}[H]
+\centering
+\caption{Hiệu năng phân loại chi tiết theo từng lớp của hệ thống FL-IoT-IDS (Kịch bản E2 FedAvg IID).}
+\label{tab:per_class_e2}
+\small
+\begin{tabular}{l c c c r}
+\toprule
+\textbf{Phân lớp Tấn công} & \textbf{Precision (\%)} & \textbf{Recall (\%)} & \textbf{F1-score (\%)} & \textbf{Số mẫu Kiểm định} \\
+\midrule
+\texttt{Mirai Botnet} & \textbf{99.85} & \textbf{99.54} & \textbf{99.70} & 63,247 \\
+\texttt{DDoS Attack} & 86.88 & \textbf{96.20} & \textbf{91.30} & 576,601 \\
+\texttt{Spoofing} & 89.04 & 82.12 & 85.44 & 127,981 \\
+\texttt{Benign (Hợp lệ)} & 80.60 & 86.68 & 83.53 & 329,458 \\
+\texttt{Reconnaissance} & 75.82 & 74.18 & 74.99 & 207,160 \\
+\texttt{DoS Attack} & 86.14 & 61.86 & 72.01 & 219,103 \\
+\texttt{Brute-force} & 94.60 & 20.57 & 33.79 & 3,919 \\
+\texttt{Web-based} & 70.06 & \textbf{1.66} & \textbf{3.25} & 7,449 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Số liệu chứng minh hệ thống đạt khả năng phòng thủ tuyệt đối trước các mối nguy hại hạ tầng nguy hiểm nhất của thế giới IoT:
 \begin{itemize}
-    \item \textbf{Mirai Botnet:} Đạt F1-score $\mathbf{98.78\%}$, Precision $97.71\%$, và Recall lên tới $\mathbf{99.88\%}$ trên 63,247 mẫu kiểm định.
-    \item \textbf{Tấn công DDoS:} Đạt F1-score $\mathbf{88.38\%}$, Precision $90.45\%$, và Recall $86.41\%$ trên hơn 576,601 gói tin kiểm định.
-    \item \textbf{Tấn công Giả mạo (Spoofing):} Đạt F1-score $\mathbf{83.98\%}$ và Recall $82.58\%$.
-    \item \textbf{Lưu lượng Hợp lệ (Benign):} Đạt F1-score $\mathbf{80.31\%}$ và Precision $84.35\%$, bảo đảm tỷ lệ báo động giả (False Alarm Rate) ở mức kiểm soát được.
+    \item \textbf{Mã độc Mirai Botnet:} Đạt F1-score $\mathbf{99.70\%}$ với tỷ lệ Recall bắt trúng lên tới $\mathbf{99.54\%}$ trên $63,247$ mẫu kiểm định.
+    \item \textbf{Tấn công DDoS:} Đạt F1-score $\mathbf{91.30\%}$ và Recall $\mathbf{96.20\%}$ trên hơn nửa triệu gói tin kiểm định.
+    \item \textbf{Lưu lượng Hợp lệ (Benign):} Đạt F1-score $83.53\%$ và Precision $80.60\%$, bảo đảm tỷ lệ cảnh báo giả (False Positive Rate) ở mức chấp nhận được trong vận hành mạng.
 \end{itemize}
 
-\subsubsection{Phát hiện 3: Đường cong Suy thoái Định lượng Dirichlet và Tính Bền vững Mở rộng}
+\subsection{Phát hiện 3: Vạch ra Đường cong Suy thoái Định lượng Dirichlet và Tính Bền vững Mở rộng}
 \begin{itemize}
-    \item \textbf{Độ trôi tham số (Drift L2 Norm):} Ở FedAvg, khi $\alpha$ giảm từ $1.0$ xuống $0.5$, độ trôi tăng từ $10.75$ lên $13.30$ ($+23.7\%$). Ngược lại, FedProx kiểm soát độ trôi cực kỳ nghiêm ngặt, luôn duy trì L2 norm dưới $0.65$ (giảm hơn $95\%$ so với FedAvg).
-    \item \textbf{Ngưỡng gãy đổ $\alpha = 0.5$:} Khi $\alpha$ vượt qua ngưỡng $0.5$ xuống $0.1$, Macro-F1 sụt giảm nghiêm trọng từ $68.00\%$ xuống $43.01\%$. Tại $\alpha = 0.1$, sự phân cực quá lớn biến quá trình tổng hợp trọng số thành nhiễu loạn triệt tiêu (Destructive Interference).
-    \item \textbf{Tính tuyến tính khi mở rộng quy mô ($K=5 \to 7 \to 10$):} Trong điều kiện IID, khi số trạm biên tăng gấp đôi, Macro-F1 duy trì độ ổn định cao ($68.00\% \to 67.82\% \to 67.28\%$, biến thiên $<0.72\%$) và chi phí truyền thông tăng tuyến tính hoàn hảo ($5.30\text{ MB} \to 7.42\text{ MB} \to 10.60\text{ MB}$).
+    \item \textbf{Kiểm soát độ trôi tham số (Drift L2 Norm):} Ở FedAvg, khi mức độ phân tán Non-IID tăng từ $\alpha=1.0$ lên $\alpha=0.5$, độ trôi tăng từ $10.75$ lên $13.30$ ($+23.7\%$). Ngược lại, FedProx kiểm soát trôi dạt cực kỳ nghiêm ngặt, luôn duy trì chuẩn $L_2$ dưới $0.65$ (giảm hơn $95\%$ so với FedAvg), minh chứng số hạng phạt proximal hoạt động đúng chức năng toán học của nó.
+    \item \textbf{Ngưỡng gãy đổ $\alpha = 0.5$ và sụp đổ tại $\alpha = 0.1$:} Từ IID ($68.00\%$) sang $\alpha=1.0$ ($67.62\%$), hiệu năng suy giảm không đáng kể ($-0.38\%$). Tuy nhiên, khi vượt qua ngưỡng $\alpha = 0.5$, Macro-F1 bắt đầu suy giảm nhanh ($64.73\%$), và tại $\alpha = 0.1$, hệ thống rơi vào vùng suy thoái nghiêm trọng với Macro-F1 chỉ còn $43.01\%$ (mất tới gần $25\%$ hiệu năng).
+    \item \textbf{Tính tuyến tính khi mở rộng quy mô ($K=5 \to 7 \to 10$):} Trong điều kiện IID, khi số lượng client tăng gấp đôi, Macro-F1 duy trì độ ổn định cao ($68.00\% \to 67.82\% \to 67.28\%$, mức biến thiên $<0.72\%$), trong khi chi phí truyền thông tích lũy tăng tuyến tính hoàn hảo ($5.30\text{ MB} \to 7.42\text{ MB} \to 10.60\text{ MB}$).
 \end{itemize}
 
 \begin{figure}[H]
@@ -284,72 +583,129 @@ Mặc dù gặp khó khăn ở các lớp thiểu số, hệ thống FL-IoT-IDS 
     \begin{subfigure}[b]{0.48\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/conv_e2_fedavg.png}
-        \caption{Quỹ đạo hội tụ $K=5$ (E2 FedAvg).}
-        \label{fig:conv_e2}
+        \caption{Quỹ đạo hội tụ $K=5$ (E2 FedAvg IID).}
+        \label{fig:conv_e2_fedavg}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.48\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/conv_e6_10clients.png}
-        \caption{Quỹ đạo hội tụ $K=10$ (E6 FedAvg).}
-        \label{fig:conv_e6}
+        \caption{Quỹ đạo hội tụ $K=10$ (E6 FedAvg IID).}
+        \label{fig:conv_e6_10clients}
     \end{subfigure}
-    \caption{Quỹ đạo hội tụ Macro-F1 và chi phí truyền thông tích lũy qua 10 rounds.}
-    \label{fig:convergence}
+    \caption{Quỹ đạo hội tụ Macro-F1 toàn cục qua 10 rounds huấn luyện.}
+    \label{fig:convergence_comparison}
 \end{figure}
 
-% ==============================================================================
-% CHƯƠNG 5
-% ==============================================================================
-\section{Thảo luận, Hạn chế và Đề xuất Hướng đi Đột phá}
-\label{sec:discussion}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.65\textwidth]{figures/conv_e5_fedprox.png}
+    \caption{Quỹ đạo hội tụ trong môi trường phân cực cực đoan $\alpha=0.1$ (E5 FedProx).}
+    \label{fig:conv_e5_fedprox}
+\end{figure}
 
-\subsection{Nhìn nhận Khách quan về các Hạn chế Kỹ thuật}
-Dưới góc nhìn phản biện khoa học độc lập, đề tài xác định 4 hạn chế chính và lập luận định vị hệ thống:
+\section{Nhìn nhận Khách quan về các Hạn chế Kỹ thuật và Định vị Phòng thủ Chiều sâu}
+Dưới góc nhìn phản biện khoa học khách quan, nghiên cứu thẳng thắn nhìn nhận 4 hạn chế kỹ thuật của hệ thống prototype hiện tại:
 \begin{enumerate}
-    \item \textbf{Điểm mù thực tế đối với tấn công Web-based và Kiến trúc Phòng thủ Chiều sâu (Defense-in-Depth):} Tỷ lệ bỏ lọt $98\% - 99\%$ các cuộc tấn công Web-based khẳng định rằng mô hình FL-NIDS không thể hoạt động như một giải pháp đơn lẻ (Stand-alone Solution). Thay vào đó, hệ thống được định vị trong mô hình an ninh đa tầng:
+    \item \textbf{Điểm mù thực tế đối với tấn công Web-based và Định vị Phòng thủ Chiều sâu (Defense-in-Depth):} Một hệ thống NIDS bỏ lọt $98\% - 99\%$ các cuộc tấn công Web-based không thể hoạt động như một giải pháp độc lập (Stand-alone Solution). Do đó, mô hình FL-IoT-IDS được định vị trong kiến trúc an ninh mạng đa tầng:
     \begin{itemize}
-        \item \textit{Tầng Ứng dụng (L7):} Các cuộc tấn công Web (SQL Injection, XSS) đòi hỏi phân tích sâu chuỗi payload HTTP/HTTPS, bắt buộc phải do Web Application Firewall (WAF) hoặc Signature IDS (Suricata/Snort) đảm nhiệm.
-        \item \textit{Tầng Mạng/Giao vận (L3/L4 -- Phạm vi Đề tài):} Mô hình FL-IoT-IDS tập trung phát hiện tối ưu các cuộc tấn công lưu lượng lớn (DDoS, DoS, Botnet, Reconnaissance, Spoofing) với độ chính xác và Recall vượt trội ($>88\% - 99\%$).
+        \item \textit{Tầng Ứng dụng (Layer 7):} Các cuộc tấn công Web (SQL Injection, XSS) đòi hỏi giải mã và phân tích sâu nội dung payload HTTP/HTTPS, bắt buộc phải do Tường lửa ứng dụng web (WAF) hoặc Signature-based IDS (như Suricata, Snort) đảm nhiệm.
+        \item \textit{Tầng Mạng/Giao vận (Layer 3/Layer 4 -- Phạm vi Đề tài):} Mô hình FL-IoT-IDS tập trung phát hiện tối ưu các cuộc tấn công lưu lượng lớn (DDoS, DoS, Botnet Mirai, Reconnaissance, Spoofing) với độ chính xác và Recall vượt trội ($>85\% - 99\%$), giải phóng tải tính toán cho các thiết bị phân tích tầng trên.
     \end{itemize}
-    \item \textbf{Khoảng cách giữa mô phỏng đa tiến trình gRPC và mạng IoT vật lý:} Mặc dù sử dụng socket TCP/IP gRPC thực thụ, môi trường thử nghiệm trên một máy chủ chưa tái hiện được các yếu tố ngẫu nhiên của sóng vô tuyến: mất gói tin (packet loss), trễ biến thiên (jitter), thiết bị ngắt kết nối đột ngột (client dropouts), và phần cứng không đồng nhất (Straggler problem).
-    \item \textbf{Thiên kiến đơn dữ liệu (Single-Dataset Bias):} Nghiên cứu thực hiện trên CICIoT2023. Để nâng cao tính tổng quát hóa cho bài báo quốc tế, mô hình cần được kiểm chứng chéo trên các bộ dữ liệu khác như Edge-IIoTset hoặc TON\_IoT.
-    \item \textbf{Nguy cơ từ tấn công đầu độc trọng số (No Byzantine Robustness):} FedAvg và FedProx giả định toàn bộ client đều trung thực. Nếu một trạm IoT biên bị chiếm quyền và gửi trọng số độc hại (Poisoning/Backdoor attack), mô hình toàn cục sẽ bị phá hủy \cite{blanchard2017machine, yin2018byzantine}. Khung mã nguồn của đề tài đã chuẩn bị sẵn các mô-đun mở rộng cho \texttt{FedMedian} và \texttt{FedTrimmedMean} để nghiên cứu sâu hơn.
+    \item \textbf{Khoảng cách giữa mô phỏng đa tiến trình gRPC và mạng IoT vật lý:} Dù đã sử dụng giao thức socket TCP/IP gRPC thực thụ, môi trường thử nghiệm trên một máy chủ chưa thể tái hiện đầy đủ các yếu tố ngẫu nhiên của sóng vô tuyến: mất gói tin (packet loss), trễ biến thiên (jitter), thiết bị ngắt kết nối đột ngột (client dropouts), và sự không đồng nhất về phần cứng (thiết bị chạy nhanh, thiết bị chạy chậm -- Straggler problem).
+    \item \textbf{Thiên kiến tập dữ liệu đơn (Single-Dataset Bias):} Toàn bộ các kết luận thực nghiệm mới được kiểm chứng trên CICIoT2023. Để nâng cao tính tổng quát hóa, mô hình cần được thử nghiệm chéo trên các tập dữ liệu khác như Edge-IIoTset hoặc TON\_IoT.
+    \item \textbf{Nguy cơ từ tấn công đầu độc trọng số (No Byzantine Robustness):} FedAvg và FedProx mặc định toàn bộ các nút tham gia đều trung thực. Trong thực tế, chỉ cần 1 client bị chiếm quyền điều khiển và gửi các vector trọng số độc hại (Poisoning/Backdoor attack), mô hình toàn cục có thể bị vô hiệu hóa hoàn toàn \cite{blanchard2017machine, yin2018byzantine}. Khung mã nguồn của đề tài đã chuẩn bị sẵn các mô-đun mở rộng cho \texttt{FedMedian} và \texttt{FedTrimmedMean} để nghiên cứu sâu hơn.
 \end{enumerate}
 
-\subsection{Ba Đề xuất Thuật toán Nâng tầm Giá trị Khoa học (Algorithmic Proposals)}
-Để chuyển hóa từ một nghiên cứu chẩn đoán thực nghiệm thành một công trình có đóng góp giải pháp học thuật đột phá, đề tài đề xuất 3 hướng cải tiến giải thuật trọng điểm:
+% ==============================================================================
+% CHAPTER VI: CONCLUSIONS AND FUTURE WORK
+% ==============================================================================
+\chapter{Kết luận và Hướng phát triển}
+\label{chap:conclusions}
 
-\subsubsection{Đề xuất 1 (Khuyên dùng): Decoupled Federated Learning (FedPer/FedRep) cho IoT-IDS}
-Thay vì ép toàn bộ mạng phải học một mô hình phẳng duy nhất, đề tài đề xuất tách mạng MLP ($43 \to 128 \to 64 \to 8$) thành 2 thành phần độc lập theo tư tưởng của Arivazhagan et al. \cite{arivazhagan2019federated} và Collins et al. \cite{collins2021exploiting}:
+\section{Tổng kết Kết quả Đạt được}
+Báo cáo tiến độ khóa luận đã hoàn thành các mục tiêu khoa học đề ra:
+\begin{enumerate}
+    \item Xây dựng thành công hệ thống đo kiểm thực nghiệm phân tán gRPC trên tập dữ liệu chuẩn CICIoT2023 với hơn 5.1 triệu dòng dữ liệu mạng và quy trình kiểm thử không rò rỉ tri thức (Leakage-free).
+    \item Hoàn thành 10 kịch bản thực nghiệm đối chứng từ E1 đến E6, cung cấp bằng chứng thực nghiệm phản biện định lượng bác bỏ giả định rằng cơ chế tính trung bình trọng số thông thường có thể bảo vệ được các lớp tấn công thiểu số trong môi trường phân tán.
+    \item Vạch ra đường cong suy thoái định lượng theo phân phối Dirichlet với ngưỡng gãy đổ $\alpha \le 0.5$, và đo kiểm toàn diện chi phí truyền thông mạng hai chiều siêu nhẹ ($5.30\text{ MB} \to 10.60\text{ MB}$).
+\end{enumerate}
+
+\section{Kế hoạch Hoàn thiện các Kịch bản Chưa thực hiện}
+Vì khóa luận đang trong giai đoạn hoàn thiện, các công việc trước mắt bao gồm:
 \begin{itemize}
-    \item \textbf{Tầng Biểu diễn Cơ sở (Base Feature Extractor -- $43 \to 128 \to 64$):} Được chia sẻ và lấy trung bình toàn cục qua FedAvg để học các quy luật lưu lượng mạng chung của toàn hệ sinh thái IoT.
-    \item \textbf{Tầng Phân loại Cá nhân hóa (Personalized Classifier Head -- $64 \to 8$):} Được giữ lại hoàn toàn tại client (không bao giờ gửi lên server), được tối ưu hóa riêng cho phân phối nhãn cục bộ của từng trạm biên.
+    \item \textbf{Thực hiện kịch bản đối chứng E5 FedAvg $\alpha=0.1$:} Chạy kịch bản đối chứng còn thiếu trên Google Colab để hoàn thiện cặp so sánh trực diện giữa FedAvg và FedProx ở mức độ phân cực Non-IID khắc nghiệt nhất.
+    \item \textbf{Hiện thực hóa và thử nghiệm kịch bản E7 với Decoupled FL (FedPer/FedRep):} Triển khai giải pháp phân tách tầng biểu diễn chung và tầng phân loại cá nhân hóa, chứng minh bằng số liệu thực nghiệm khả năng phục hồi Macro-F1 tại $\alpha=0.1$ từ $43\%$ lên trên $75\%$.
 \end{itemize}
-Cơ chế này kỳ vọng sẽ khôi phục Macro-F1 ở kịch bản Non-IID cực đoan $\alpha=0.1$ từ $43.01\%$ lên trên $75\%$, đồng thời cứu tỷ lệ Recall của lớp Web-based tại các client có dữ liệu lớp này mà không bị phép lấy trung bình toàn cục xóa sổ.
 
-\subsubsection{Đề xuất 2: Phạt Proximal Thích ứng theo Entropy (\texorpdfstring{$\mu$}{mu}-Adaptive FedProx)}
-Thay vì cố định hằng số phạt $\mu = 0.05$ làm tê liệt tính dẻo cục bộ, đề tài đề xuất công thức điều hòa động theo chuẩn hóa Shannon Entropy của phân phối nhãn tại client $k$:
-\begin{equation}
-    \mu_k = \mu_0 \cdot \left( \frac{\mathcal{H}(P_k)}{\log_2(C)} \right)^\gamma
-\end{equation}
-Các trạm biên chứa dữ liệu đa dạng (gần IID) sẽ duy trì $\mu_k \approx \mu_0$ để chống trôi dạt tham số; ngược lại, các trạm biên sở hữu các lớp tấn công thiểu số đặc thù sẽ tự động hạ $\mu_k \to 0$, giải phóng tính dẻo để gradient thoải mái thích nghi với các lớp hiếm.
-
-\subsubsection{Đề xuất 3: Tổng hợp Nhận biết Mất cân bằng (Imbalance-Aware Aggregation)}
-Tái cân bằng trọng số tổng hợp tại Server dựa trên độ hiếm của lớp $w_c = (N_{\max}/N_c)^\tau$ thay vì số lượng mẫu thô $n_k/N$, nâng cao quyền biểu quyết (voting power) của các trạm biên đang bảo vệ các phân khúc mạng xuất hiện các cuộc tấn công hiếm.
-
-\subsection{Kế hoạch Hoàn thiện Khóa luận và Bảo vệ}
-Lộ trình thực hiện trong các tuần tới bao gồm:
+\section{Hướng Phát triển Dài hạn}
 \begin{itemize}
-    \item Hoàn thành kịch bản đối chứng cuối cùng: \texttt{flower\_e5\_fedavg\_dirichlet\_alpha=0.1} trên Google Colab để hoàn thiện cặp đối sánh trực tiếp FedAvg vs FedProx ở mức phân cực cao nhất.
-    \item Hiện thực hóa thử nghiệm kịch bản E7 ứng dụng Decoupled FL (FedPer) nhằm chứng minh bằng số liệu thực nghiệm giải pháp khắc phục thành công suy thoái Non-IID $\alpha=0.1$.
-    \item Hoàn thiện toàn văn Khóa luận Tốt nghiệp theo đúng quy chuẩn định dạng của Trường Đại học Công nghệ Thông tin (ĐHQG-HCM) và thiết kế slide bảo vệ trước Hội đồng chấm khóa luận.
+    \item Mở rộng kiểm chứng trên các tập dữ liệu an ninh mạng IoT thứ hai (Edge-IIoTset).
+    \item Tích hợp các thuật toán tổng hợp kháng lỗi Byzantine (\texttt{FedMedian}, \texttt{Krum}) để nâng cao khả năng chống chịu tấn công đầu độc tham số.
+    \item Đóng gói và triển khai thử nghiệm trên cụm thiết bị nhúng IoT thực tế (Raspberry Pi 4 / Jetson Nano) kết nối qua mạng Wi-Fi vật lý.
 \end{itemize}
 
 % ==============================================================================
-% TÀI LIỆU THAM KHẢO
+% REFERENCES
 % ==============================================================================
 \bibliographystyle{IEEEtran}
 \bibliography{references}
+
+% ==============================================================================
+% APPENDIXES (PHỤ LỤC)
+% ==============================================================================
+\appendix
+
+\chapter{Chi tiết Phân bố Nhãn trong CICIoT2023}
+\label{app:label_dist}
+Bảng \ref{tab:ciciot_distribution} mô tả chi tiết số lượng mẫu và tỷ lệ phần trăm của 8 phân lớp lớn được sử dụng trong nghiên cứu từ tập dữ liệu CICIoT2023 ($5,116,391$ mẫu).
+
+\begin{table}[H]
+\centering
+\caption{Phân bố mẫu của 8 phân lớp trong tập dữ liệu CICIoT2023.}
+\label{tab:ciciot_distribution}
+\begin{tabular}{l r r}
+\toprule
+\textbf{Tên Phân lớp} & \textbf{Số lượng Mẫu (Flows)} & \textbf{Tỷ lệ Phần trăm (\%)} \\
+\midrule
+\texttt{DDoS} & 1,922,002 & 37.57 \\
+\texttt{Benign (Hợp lệ)} & 1,098,191 & 21.46 \\
+\texttt{DoS} & 730,344 & 14.27 \\
+\texttt{Reconnaissance} & 690,534 & 13.50 \\
+\texttt{Spoofing} & 426,604 & 8.34 \\
+\texttt{Mirai Botnet} & 210,823 & 4.12 \\
+\texttt{Web-based} & 24,829 & 0.49 \\
+\texttt{Brute-force} & 13,064 & 0.26 \\
+\midrule
+\textbf{Tổng cộng} & \textbf{5,116,391} & \textbf{100.00} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\chapter{Cấu hình Siêu tham số Toàn bộ Kịch bản Thực nghiệm}
+\label{app:hyperparams}
+
+\begin{table}[H]
+\centering
+\caption{Bảng cấu hình siêu tham số đồng nhất cho các kịch bản thực nghiệm.}
+\label{tab:hyperparam_details}
+\begin{tabular}{l l}
+\toprule
+\textbf{Tham số} & \textbf{Giá trị Cấu hình} \\
+\midrule
+Kiến trúc mô hình & \texttt{TabularIoTMLP} ($39 \to 128 \to 64 \to 8$) \\
+Số lượng tham số & $14,024$ tham số ($\approx 54.28\text{ KB}$) \\
+Bộ tối ưu hóa (Optimizer) & AdamW ($\beta_1 = 0.9, \beta_2 = 0.999$, weight decay $= 10^{-4}$) \\
+Tốc độ học (Learning Rate $\eta$) & $0.001$ \\
+Kích thước batch ($B_{\text{size}}$) & 64 \\
+Số vòng liên đoàn ($T$) & 10 rounds \\
+Số epoch cục bộ ($E$) & 2 epochs \\
+Hệ số phạt FedProx ($\mu$) & $0.05$ \\
+Tỷ lệ phân chia tập Train / Test & $70\% / 30\%$ (Global Holdout Test Set) \\
+Phương pháp chuẩn hóa & \texttt{RobustScaler} (chỉ fit trên tập Train) \\
+Giao thức truyền thông & Google gRPC qua mạng socket TCP/IP \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \end{document}
