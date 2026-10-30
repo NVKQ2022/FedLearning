@@ -10,7 +10,7 @@
   "partition_type": "iid",
   "dirichlet_alpha": 0.5,
   "fraction_fit": 1.0,
-  "fraction_evaluate": 1.0,
+  "fraction_evaluate": 0.0,
   "client_val_ratio": 0.1,
   "client_test_ratio": 0.2,
   "min_fit_clients": 2,
