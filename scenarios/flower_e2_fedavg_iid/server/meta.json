@@ -13,9 +13,9 @@
     "Web-based"
   ],
   "num_clients": 5,
-  "total_train_samples": 59999,
-  "total_val_samples": 10001,
-  "total_test_samples": 30000,
+  "total_train_samples": 3069833,
+  "total_val_samples": 511640,
+  "total_test_samples": 1534918,
   "client_val_ratio": 0.1,
   "client_test_ratio": 0.2
 }

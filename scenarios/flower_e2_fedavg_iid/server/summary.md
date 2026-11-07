@@ -9,16 +9,16 @@
 | **Số lượng Edge Clients (K)** | `5` clients | Số trạm mạng IoT biên tham gia huấn luyện |
 | **Số vòng giao tiếp (Rounds)** | `10` rounds (Epochs cục bộ: `2`) | Tổng chu kỳ huấn luyện liên đoàn |
 | **Chi phí truyền thông (Comm Cost)** | **5.30 MB** | Tổng lưu lượng mạng tải lên/tải xuống |
-| **Độ trôi dạt tham số (Client Drift)** | **1.31** | Độ lệch chuẩn Euclidean ||w_local - w_global||_2 |
+| **Độ trôi dạt tham số (Client Drift)** | **9.63** | Độ lệch chuẩn Euclidean ||w_local - w_global||_2 |
 
 ## 2. Kết quả Đánh giá Tổng thể trên Global Test Set (30% Upcoming Data)
 | Chỉ số Đánh giá (Metric) | Kết quả (%) | Ý nghĩa theo Đề cương Luận văn KLTN |
 | :--- | :---: | :--- |
-| **Test Accuracy** | **80.43%** | Độ chính xác tổng thể trên toàn bộ lưu lượng kiểm định |
-| **Macro-F1 Score** | **59.12%** | **Chỉ số cốt lõi** đánh giá cân bằng (không thiên lệch lớp đa số) |
-| **Weighted-F1 Score** | **79.03%** | F1 có tính trọng số theo tần suất xuất hiện thực tế |
-| **Macro-Precision** | **62.96%** | Độ chuẩn xác trung bình trên 8 lớp tấn công |
-| **Macro-Recall** | **57.65%** | Tỷ lệ nhận diện trung bình trên 8 lớp tấn công |
+| **Test Accuracy** | **84.52%** | Độ chính xác tổng thể trên toàn bộ lưu lượng kiểm định |
+| **Macro-F1 Score** | **67.75%** | **Chỉ số cốt lõi** đánh giá cân bằng (không thiên lệch lớp đa số) |
+| **Weighted-F1 Score** | **83.88%** | F1 có tính trọng số theo tần suất xuất hiện thực tế |
+| **Macro-Precision** | **86.59%** | Độ chuẩn xác trung bình trên 8 lớp tấn công |
+| **Macro-Recall** | **65.21%** | Tỷ lệ nhận diện trung bình trên 8 lớp tấn công |
 
 ## 3. Khả năng Phát hiện các Lớp Tấn công Thiểu số (Minority Attack Recall)
 > [!IMPORTANT]
@@ -26,20 +26,20 @@
 
 | Lớp tấn công thiểu số | Tần suất xuất hiện | Tỷ lệ nhận diện (Recall %) | Nhận xét |
 | :--- | :---: | :---: | :--- |
-| **Web-based** | 0.49% (Rất hiếm) | **0.00%** | Thách thức do mất cân bằng cực đoan |
-| **Brute-force** | 0.26% (Rất hiếm) | **0.00%** | Cần tinh chỉnh loss/mu |
+| **Web-based** | 0.49% (Rất hiếm) | **0.85%** | Thách thức do mất cân bằng cực đoan |
+| **Brute-force** | 0.26% (Rất hiếm) | **20.75%** | Phát hiện tốt |
 
 ## 4. Chi tiết Hiệu năng theo từng Lớp Tấn công (Per-Class Metrics)
 | Lớp tấn công (Class) | Phân loại | Precision (%) | Recall (%) | F1-Score (%) | Số mẫu (Support) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Benign** | Đa số / Chuẩn | 72.98% | 89.16% | 80.26% | 6,439 |
-| **Brute-force** | Thiểu số (Minority) | 0.00% | 0.00% | 0.00% | 76 |
-| **DDoS** | Đa số / Chuẩn | 82.51% | 96.71% | 89.05% | 11,270 |
-| **DoS** | Đa số / Chuẩn | 84.28% | 46.21% | 59.69% | 4,283 |
-| **Mirai** | Đa số / Chuẩn | 98.63% | 99.27% | 98.95% | 1,236 |
-| **Recon** | Đa số / Chuẩn | 75.75% | 66.81% | 71.00% | 4,049 |
-| **Spoof** | Đa số / Chuẩn | 89.55% | 63.05% | 74.00% | 2,501 |
-| **Web-based** | Thiểu số (Minority) | 0.00% | 0.00% | 0.00% | 146 |
+| **Benign** | Đa số / Chuẩn | 80.29% | 86.88% | 83.45% | 329,458 |
+| **Brute-force** | Thiểu số (Minority) | 92.18% | 20.75% | 33.87% | 3,919 |
+| **DDoS** | Đa số / Chuẩn | 86.92% | 96.07% | 91.27% | 576,601 |
+| **DoS** | Đa số / Chuẩn | 85.74% | 62.06% | 72.00% | 219,103 |
+| **Mirai** | Đa số / Chuẩn | 99.87% | 99.51% | 99.69% | 63,247 |
+| **Recon** | Đa số / Chuẩn | 76.01% | 73.52% | 74.74% | 207,160 |
+| **Spoof** | Đa số / Chuẩn | 88.84% | 82.06% | 85.32% | 127,981 |
+| **Web-based** | Thiểu số (Minority) | 82.89% | 0.85% | 1.67% | 7,449 |
 
 ## 5. Trực quan hóa Đồ thị Thực nghiệm
 ### 📈 Quỹ đạo Hội tụ và Chi phí Mạng (Convergence & Communication)
