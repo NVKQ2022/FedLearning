@@ -1,4 +1,4 @@
-\chapter{Methodology and Proposed Solutions}
+\chapter{Methodology}
 \label{chap:methodology}
 
 \section{Controlled Empirical Benchmarking Methodology}
@@ -50,25 +50,5 @@ Nghiên cứu thiết lập hệ thống đo kiểm đa chiều để đánh gi�
     \end{equation}
 \end{enumerate}
 
-\section{Proposed Algorithmic Solutions}
-\label{sec:proposals}
-Dựa trên các phân tích hạn chế của FedAvg và FedProx, đề tài xây dựng 3 đề xuất thuật toán cải tiến nhằm giải quyết sự suy thoái Non-IID cực đoan:
-
-\subsection{Proposal 1: Decoupled Federated Learning (FedPer/FedRep) for IoT-IDS}
-Thay vì cưỡng chế toàn bộ mạng phải hội tụ về một mô hình phẳng duy nhất, đề tài đề xuất tách mạng \texttt{TabularIoTMLP} thành hai thành phần độc lập theo tư tưởng của Arivazhagan et al. \cite{arivazhagan2019federated} và Collins et al. \cite{collins2021exploiting}:
-\begin{itemize}
-    \item \textbf{Tầng Biểu diễn Đặc trưng Chung (Base Feature Extractor -- $39 \to 128 \to 64$):} Được chia sẻ và lấy trung bình toàn cục qua FedAvg. Thành phần này có nhiệm vụ học các quy luật biểu diễn lưu lượng mạng cốt lõi chung của toàn bộ hạ tầng IoT.
-    \item \textbf{Tầng Phân loại Cá nhân hóa Cục bộ (Personalized Classifier Head -- $64 \to 8$):} Được giữ lại hoàn toàn tại từng client (không bao giờ truyền tải qua mạng). Tầng này được huấn luyện tối ưu hóa riêng cho phân phối nhãn cục bộ $P_k(y)$ của từng trạm biên.
-\end{itemize}
-Cơ chế này kỳ vọng sẽ khôi phục tỷ lệ Macro-F1 tại mốc $\alpha=0.1$ từ $43.01\%$ lên trên $75\%$, đồng thời bảo toàn khả năng nhận diện lớp Web-based tại các trạm biên có dữ liệu lớp này mà không bị phép trung bình toàn cục xóa sổ.
-
-\subsection{Proposal 2: Entropy-Adaptive Proximal Penalty (\texorpdfstring{$\mu$}{mu}-Adaptive FedProx)}
-Thay vì cố định hệ số $\mu = 0.05$ làm triệt tiêu tính dẻo cục bộ của các lớp hiếm, đề xuất công thức điều hòa động theo độ hỗn loạn Shannon Entropy của phân phối nhãn tại client $k$:
-\begin{equation}
-    \mu_k = \mu_0 \cdot \left( \frac{\mathcal{H}(P_k)}{\log_2(C)} \right)^\gamma
-    \label{eq:adaptive_mu}
-\end{equation}
-Các trạm biên có dữ liệu đa dạng (gần IID) sẽ duy trì $\mu_k \approx \mu_0$ để chống trôi dạt tham số; ngược lại, các trạm biên sở hữu các lớp tấn công đặc thù thiểu số sẽ tự động hạ $\mu_k \to 0$, giải phóng tính dẻo để gradient thoải mái thích ứng với các mẫu hiếm.
-
-\subsection{Proposal 3: Imbalance-Aware Aggregation Strategy}
-Tái cân bằng trọng số tổng hợp tại Server dựa trên độ hiếm của lớp $w_c = (N_{\max}/N_c)^\tau$ thay vì số lượng mẫu thô $n_k/N$, nâng cao quyền biểu quyết của các trạm biên đang bảo vệ các phân khúc mạng xuất hiện các cuộc tấn công hiếm.
+% Tạm thời chưa đưa phần Proposed Algorithmic Solutions vào báo cáo chính (lưu tại 03_methodology/proposed_solutions.tex)
+% \input{03_methodology/proposed_solutions.tex}
