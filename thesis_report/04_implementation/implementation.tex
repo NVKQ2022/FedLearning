@@ -1,0 +1,50 @@
+\chapter{Implementation}
+\label{chap:implementation}
+
+\section{Experimental Testbed and Infrastructure}
+\label{sec:impl_testbed}
+
+\begin{quote}
+\textit{Lưu ý miễn trừ trách nhiệm khoa học:} Toàn bộ nội dung trong chương này mô tả cơ sở hạ tầng thực nghiệm và các kỹ thuật hiện thực hóa phần mềm được xây dựng để phục vụ việc thu thập số liệu đo kiểm một cách tự động, ổn định và có khả năng tái lập. Các công tác kỹ thuật này chỉ là phương tiện thực thi (testbed plumbing), hoàn toàn không cấu thành đóng góp khoa học của luận văn.
+\end{quote}
+
+Hệ thống đo kiểm được tổ chức thành 4 phân tầng kỹ thuật có kiểm soát:
+\begin{enumerate}
+    \item \textbf{Phân tầng Quản lý Dữ liệu và Phân vùng (Data \& Partitioning Layer):} Quản lý việc đọc các tệp CSV nén của CICIoT2023, tiền xử lý, lưu trữ bộ nhớ đệm (caching) và chia phân vùng theo file ánh xạ index định sẵn.
+    \item \textbf{Phân tầng Trạm Biên Liên đoàn (Federated Client Layer):} Quản lý các tiến trình client độc lập vận hành mô hình PyTorch \texttt{TabularIoTMLP}.
+    \item \textbf{Phân tầng Máy chủ Điều phối và Tổng hợp (Federated Server Layer):} Vận hành máy chủ Flower Server quản lý vòng đời huấn luyện liên đoàn.
+    \item \textbf{Phân tầng Giám sát và Đo kiểm Đa chiều (Evaluation \& Monitoring Layer):} Tự động ghi nhận log chi tiết, đo thời gian huấn luyện, tính toán độ trôi $L_2$ norm, và xuất các biểu đồ trực quan hóa.
+\end{enumerate}
+
+\section{Distributed System Implementation on Flower gRPC}
+\label{sec:impl_grpc}
+Hệ thống sử dụng nền tảng Flower (phiên bản $1.13.0$) kết nối qua giao thức Google Remote Procedure Call (gRPC). Mỗi client chạy trên một tiến trình hệ điều hành riêng biệt, thiết lập kết nối TCP/IP socket thực với Server tại địa chỉ cổng chỉ định.
+
+\subsection{Custom Aggregation Strategy and Server Evaluation}
+Lớp \texttt{AggregateCustomStrategy} được hiện thực hóa bằng cách kế thừa trực tiếp từ chiến lược cơ sở của Flower (\texttt{flwr.server.strategy.FedAvg} và \texttt{FedProx}):
+\begin{itemize}
+    \item \textbf{Tổng hợp tham số:} Thực hiện tính trung bình gia quyền vector trọng số gửi về từ các client hợp lệ sau mỗi round.
+    \item \textbf{Đánh giá toàn cục tập trung (Centralized Evaluation):} Sau mỗi round tổng hợp, máy chủ tự động nạp vector trọng số toàn cục mới nhất vào một mô hình đánh giá độc lập, chạy suy luận trên toàn bộ $1,534,918$ mẫu của tập kiểm định toàn cục $30\%$. Quá trình này bảo đảm kết quả đo lường giữa các vòng là hoàn toàn nhất quán và không phụ thuộc vào dữ liệu phân mảnh của client.
+    \item \textbf{Lưu trữ Checkpoint tối ưu:} Hệ thống tự động theo dõi chỉ số Macro-F1 toàn cục sau mỗi round; trọng số đạt đỉnh cao nhất được lưu trữ vào tệp \texttt{best\_weights.npz} để sử dụng cho việc phân tích ma trận nhầm lẫn cuối cùng.
+\end{itemize}
+
+\section{Data Preprocessing Pipeline and Leakage Control}
+\label{sec:impl_preprocess}
+Module tiền xử lý (\texttt{src/data/preprocess.py}) thực hiện tuần tự các bước:
+\begin{enumerate}
+    \item Loại bỏ các dòng chứa giá trị khuyết thiếu (NaN) hoặc giá trị vô hạn (Inf) phát sinh trong quá trình tính toán thống kê dòng mạng.
+    \item Ánh xạ 33 nhãn tấn công chi tiết về 8 lớp chính theo chuẩn phân loại của bộ dữ liệu CICIoT2023.
+    \item Áp dụng bộ chuẩn hóa \texttt{RobustScaler}: chỉ khớp thông số trung vị và khoảng tứ phân vị trên tập $70\%$ huấn luyện, triệt tiêu nguy cơ rò rỉ phân phối vào tập kiểm tra.
+\end{enumerate}
+
+\section{Local Training Pipeline and FedProx Integration}
+\label{sec:impl_training}
+Module huấn luyện (\texttt{src/training/federated\_trainer.py}) điều khiển vòng lặp học sâu PyTorch tại từng client:
+\begin{itemize}
+    \item Sử dụng bộ tối ưu hóa AdamW với tốc độ học $\eta = 10^{-3}$ và trọng số suy giảm (weight decay) $10^{-4}$.
+    \item Đối với FedProx, hàm mất mát được bổ sung trực tiếp số hạng phạt proximal trong mỗi batch:
+    \begin{equation}
+        \mathcal{L}_{\text{total}} = \mathcal{L}_{\text{CE}}(\hat{y}, y) + \frac{\mu}{2} \sum_{p} \|\mathbf{w}_p - \mathbf{w}_{p, \text{global}}\|_2^2
+    \end{equation}
+    Gradient của số hạng phạt được lan truyền ngược tự động thông qua cơ chế Autograd của PyTorch, kéo các tham số của client không đi lệch quỹ đạo toàn cục.
+\end{itemize}

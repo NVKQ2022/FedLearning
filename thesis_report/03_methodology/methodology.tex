@@ -1,0 +1,74 @@
+\chapter{Methodology and Proposed Solutions}
+\label{chap:methodology}
+
+\section{Controlled Empirical Benchmarking Methodology}
+Nghiên cứu áp dụng phương pháp luận đo kiểm thực nghiệm có kiểm soát nghiêm ngặt (Controlled Empirical Benchmarking). Để bảo đảm tính trung thực khoa học và loại bỏ hoàn toàn hiện tượng rò rỉ dữ liệu (Data Leakage), quy trình phân chia và tiền xử lý dữ liệu được thiết kế theo các nguyên tắc chuẩn mực sau:
+\begin{enumerate}
+    \item \textbf{Phân tách Tập Kiểm định Toàn cục Độc lập (Global Holdout Test Set):} Toàn bộ tập dữ liệu CICIoT2023 ($5,116,391$ mẫu) được phân chia ngẫu nhiên thành $70\%$ tập phát triển ($3,581,473$ mẫu) và $30\%$ tập kiểm định toàn cục tương lai ($1,534,918$ mẫu). Tập kiểm định $30\%$ này được cô lập hoàn toàn, không bao giờ tham gia vào quá trình huấn luyện cục bộ tại các client, và được dùng làm thước đo duy nhất để đánh giá mô hình toàn cục của tất cả các kịch bản thực nghiệm.
+    \item \textbf{Chuẩn hóa không rò rỉ tri thức (Leakage-Free Normalization):} Phép biến đổi chuẩn hóa \texttt{RobustScaler} (sử dụng trung vị và khoảng tứ phân vị IQR để chống nhiễu ngoại lai) chỉ được khớp (\texttt{fit}) trên tập dữ liệu huấn luyện, sau đó áp dụng phép chuyển đổi (\texttt{transform}) một chiều lên tập kiểm định.
+    \item \textbf{Chuẩn đối chứng Tập trung (Centralized Upper-bound Baseline):} Thiết lập kịch bản E1 huấn luyện mô hình trên toàn bộ $70\%$ dữ liệu tập trung với cùng kiến trúc \texttt{TabularIoTMLP} để xác định trần hiệu năng lý thuyết tối đa mà kiến trúc này có thể đạt được khi không có sự cản trở của môi trường phân tán.
+\end{enumerate}
+
+\section{Data Partitioning Strategies}
+Tập $70\%$ dữ liệu huấn luyện được phân vùng cho $K$ client theo hai phương thức:
+\begin{itemize}
+    \item \textbf{Phân vùng IID (Stratified Random Sampling):} Dữ liệu của từng lớp được xáo trộn ngẫu nhiên và phân bổ đồng đều theo tỷ lệ mẫu vào $K$ client, bảo đảm phân phối xác suất tiên nghiệm của nhãn $P_k(y)$ tại mọi client là tương đương nhau.
+    \item \textbf{Phân vùng Non-IID Dirichlet:} Sử dụng phân phối Dirichlet $\text{Dir}(\alpha)$ trên từng nhãn với các mức tham số $\alpha \in \{1.0, 0.5, 0.1\}$. Khi $\alpha = 0.1$, hiện tượng phân cực nhãn xảy ra cực đoan, mô phỏng chính xác các mạng con IoT chuyên biệt trong thực tế (ví dụ: phân khúc mạng chỉ toàn camera giám sát bị tấn công Mirai, trong khi phân khúc máy chủ web chỉ gặp tấn công SQLi).
+\end{itemize}
+
+\section{Lightweight TabularIoTMLP Model Architecture}
+Mô hình \texttt{TabularIoTMLP} được thiết kế tối ưu hóa cho dữ liệu bảng 39 đặc trưng dòng mạng, cân bằng giữa năng lực phi tuyến và tính gọn nhẹ cho thiết bị IoT biên:
+\begin{itemize}
+    \item \textbf{Tầng đầu vào (Input Layer):} Tiếp nhận vector đặc trưng kích thước $39$.
+    \item \textbf{Tầng ẩn 1 (Hidden Layer 1):} Kết nối tuyến tính $\text{Linear}(39, 128)$, hàm kích hoạt phi tuyến $\text{ReLU}$, kết hợp tầng điều hòa $\text{Dropout}(0.2)$ để chống hiện tượng quá khớp (overfitting).
+    \item \textbf{Tầng ẩn 2 (Hidden Layer 2):} Kết nối tuyến tính $\text{Linear}(128, 64)$, hàm kích hoạt $\text{ReLU}$.
+    \item \textbf{Tầng đầu ra (Output Classifier Head):} Kết nối tuyến tính $\text{Linear}(64, 8)$ đưa ra điểm số logit cho 8 phân lớp tấn công.
+\end{itemize}
+Tổng số lượng tham số của mô hình là $14,024$ tham số kiểu số thực $32$-bit (\texttt{float32}), tương đương với kích thước payload chỉ $\approx 54.28\text{ KB}$. Đây là kích thước lý tưởng cho phép lưu trữ trọn vẹn trong bộ nhớ SRAM của các vi điều khiển IoT công nghiệp hoặc router biên mà không gây quá tải tài nguyên phần cứng.
+
+\section{Multi-dimensional Evaluation Framework and Metrics}
+Nghiên cứu thiết lập hệ thống đo kiểm đa chiều để đánh giá toàn diện hệ thống:
+\begin{enumerate}
+    \item \textbf{Độ chính xác Tổng thể (Accuracy):} Tỷ lệ dự đoán đúng trên tổng số mẫu kiểm định.
+    \item \textbf{Macro-Averaged F1-score (Macro-F1):} Trung bình cộng điểm F1 trên toàn bộ 8 phân lớp:
+    \begin{equation}
+        \text{Macro-F1} = \frac{1}{C} \sum_{c=1}^C F1_c = \frac{1}{C} \sum_{c=1}^C \frac{2 \times \text{Precision}_c \times \text{Recall}_c}{\text{Precision}_c + \text{Recall}_c}
+        \label{eq:macro_f1}
+    \end{equation}
+    Đây là chỉ số quan trọng nhất phản ánh tính công bằng của mô hình đối với tất cả các lớp, ngăn chặn việc chỉ số tổng thể bị làm sai lệch bởi các lớp đa số (DDoS).
+    \item \textbf{Minority Recall (Tỷ lệ Phát hiện Lớp Thiểu số):} Đo lường khả năng bắt trúng các cuộc tấn công hiếm gặp: \texttt{Web-based} ($0.49\%$) và \texttt{Brute-force} ($0.26\%$).
+    \item \textbf{Chi phí Truyền thông Tích lũy (Cumulative Communication Cost):} Tổng dung lượng trao đổi hai chiều giữa Server và $K$ client qua mạng gRPC sau $T$ rounds:
+    \begin{equation}
+        \text{CommCost} = 2 \times \sum_{t=1}^T m_t \cdot B
+        \label{eq:comm_cost_def}
+    \end{equation}
+    Với $m_t$ là số client tham gia tại round $t$, và $B = 54.28\text{ KB}$ là kích thước vector trọng số mô hình.
+    \item \textbf{Độ trôi Tham số Trung bình (Average Client Drift):} Đo khoảng cách Euclidean giữa vector mô hình cục bộ và mô hình toàn cục để định lượng sự phân kỳ thống kê:
+    \begin{equation}
+        \overline{\text{Drift}} = \frac{1}{K} \sum_{k=1}^K \|\mathbf{w}_{\text{local}}^{(k)} - \mathbf{w}_{\text{global}}\|_2
+        \label{eq:drift_avg}
+    \end{equation}
+\end{enumerate}
+
+\section{Proposed Algorithmic Solutions}
+\label{sec:proposals}
+Dựa trên các phân tích hạn chế của FedAvg và FedProx, đề tài xây dựng 3 đề xuất thuật toán cải tiến nhằm giải quyết sự suy thoái Non-IID cực đoan:
+
+\subsection{Proposal 1: Decoupled Federated Learning (FedPer/FedRep) for IoT-IDS}
+Thay vì cưỡng chế toàn bộ mạng phải hội tụ về một mô hình phẳng duy nhất, đề tài đề xuất tách mạng \texttt{TabularIoTMLP} thành hai thành phần độc lập theo tư tưởng của Arivazhagan et al. \cite{arivazhagan2019federated} và Collins et al. \cite{collins2021exploiting}:
+\begin{itemize}
+    \item \textbf{Tầng Biểu diễn Đặc trưng Chung (Base Feature Extractor -- $39 \to 128 \to 64$):} Được chia sẻ và lấy trung bình toàn cục qua FedAvg. Thành phần này có nhiệm vụ học các quy luật biểu diễn lưu lượng mạng cốt lõi chung của toàn bộ hạ tầng IoT.
+    \item \textbf{Tầng Phân loại Cá nhân hóa Cục bộ (Personalized Classifier Head -- $64 \to 8$):} Được giữ lại hoàn toàn tại từng client (không bao giờ truyền tải qua mạng). Tầng này được huấn luyện tối ưu hóa riêng cho phân phối nhãn cục bộ $P_k(y)$ của từng trạm biên.
+\end{itemize}
+Cơ chế này kỳ vọng sẽ khôi phục tỷ lệ Macro-F1 tại mốc $\alpha=0.1$ từ $43.01\%$ lên trên $75\%$, đồng thời bảo toàn khả năng nhận diện lớp Web-based tại các trạm biên có dữ liệu lớp này mà không bị phép trung bình toàn cục xóa sổ.
+
+\subsection{Proposal 2: Entropy-Adaptive Proximal Penalty (\texorpdfstring{$\mu$}{mu}-Adaptive FedProx)}
+Thay vì cố định hệ số $\mu = 0.05$ làm triệt tiêu tính dẻo cục bộ của các lớp hiếm, đề xuất công thức điều hòa động theo độ hỗn loạn Shannon Entropy của phân phối nhãn tại client $k$:
+\begin{equation}
+    \mu_k = \mu_0 \cdot \left( \frac{\mathcal{H}(P_k)}{\log_2(C)} \right)^\gamma
+    \label{eq:adaptive_mu}
+\end{equation}
+Các trạm biên có dữ liệu đa dạng (gần IID) sẽ duy trì $\mu_k \approx \mu_0$ để chống trôi dạt tham số; ngược lại, các trạm biên sở hữu các lớp tấn công đặc thù thiểu số sẽ tự động hạ $\mu_k \to 0$, giải phóng tính dẻo để gradient thoải mái thích ứng với các mẫu hiếm.
+
+\subsection{Proposal 3: Imbalance-Aware Aggregation Strategy}
+Tái cân bằng trọng số tổng hợp tại Server dựa trên độ hiếm của lớp $w_c = (N_{\max}/N_c)^\tau$ thay vì số lượng mẫu thô $n_k/N$, nâng cao quyền biểu quyết của các trạm biên đang bảo vệ các phân khúc mạng xuất hiện các cuộc tấn công hiếm.

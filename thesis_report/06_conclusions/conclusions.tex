@@ -1,0 +1,27 @@
+\chapter{Conclusions and Future Work}
+\label{chap:conclusions}
+
+\section{Summary of Research Achievements}
+\label{sec:concl_summary}
+Báo cáo tiến độ khóa luận đã hoàn thành các mục tiêu khoa học đề ra:
+\begin{enumerate}
+    \item Xây dựng thành công hệ thống đo kiểm thực nghiệm phân tán gRPC trên tập dữ liệu chuẩn CICIoT2023 với hơn 5.1 triệu dòng dữ liệu mạng và quy trình kiểm thử không rò rỉ tri thức (Leakage-free).
+    \item Hoàn thành 10 kịch bản thực nghiệm đối chứng từ E1 đến E6, cung cấp bằng chứng thực nghiệm phản biện định lượng bác bỏ giả định rằng cơ chế tính trung bình trọng số thông thường có thể bảo vệ được các lớp tấn công thiểu số trong môi trường phân tán.
+    \item Vạch ra đường cong suy thoái định lượng theo phân phối Dirichlet với ngưỡng gãy đổ $\alpha \le 0.5$, và đo kiểm toàn diện chi phí truyền thông mạng hai chiều siêu nhẹ ($5.30\text{ MB} \to 10.60\text{ MB}$).
+\end{enumerate}
+
+\section{Roadmap for In-Progress and Pending Scenarios}
+\label{sec:concl_pending}
+Vì khóa luận đang trong giai đoạn hoàn thiện, các công việc trước mắt bao gồm:
+\begin{itemize}
+    \item \textbf{Thực hiện kịch bản đối chứng E5 FedAvg $\alpha=0.1$:} Chạy kịch bản đối chứng còn thiếu trên Google Colab để hoàn thiện cặp so sánh trực diện giữa FedAvg và FedProx ở mức độ phân cực Non-IID khắc nghiệt nhất.
+    \item \textbf{Hiện thực hóa và thử nghiệm kịch bản E7 với Decoupled FL (FedPer/FedRep):} Triển khai giải pháp phân tách tầng biểu diễn chung và tầng phân loại cá nhân hóa, chứng minh bằng số liệu thực nghiệm khả năng phục hồi Macro-F1 tại $\alpha=0.1$ từ $43\%$ lên trên $75\%$.
+\end{itemize}
+
+\section{Long-Term Research Directions}
+\label{sec:concl_future}
+\begin{itemize}
+    \item Mở rộng kiểm chứng trên các tập dữ liệu an ninh mạng IoT thứ hai (Edge-IIoTset).
+    \item Tích hợp các thuật toán tổng hợp kháng lỗi Byzantine (\texttt{FedMedian}, \texttt{Krum}) để nâng cao khả năng chống chịu tấn công đầu độc tham số.
+    \item Đóng gói và triển khai thử nghiệm trên cụm thiết bị nhúng IoT thực tế (Raspberry Pi 4 / Jetson Nano) kết nối qua mạng Wi-Fi vật lý.
+\end{itemize}

@@ -1,0 +1,60 @@
+\chapter{Introduction}
+\label{chap:intro}
+
+\section{Background and Research Motivation}
+Sự phát triển vượt bậc của công nghệ vi điện tử và truyền thông không dây đã thúc đẩy làn sóng bùng nổ của mạng lưới Internet vạn vật (Internet of Things -- IoT). Từ các hạ tầng đô thị thông minh, hệ thống giám sát y tế, đến các dây chuyền sản xuất tự động hóa công nghiệp (IIoT), hàng tỷ thiết bị thông minh đang liên tục kết nối và trao đổi dữ liệu qua mạng viễn thông toàn cầu. Tuy nhiên, sự tiện ích này đi kèm với sự mở rộng nghiêm trọng của bề mặt tấn công mạng (attack surface). Hầu hết các thiết bị IoT biên (Edge IoT) được thiết kế với ngân sách năng lượng và năng lực tính toán hạn chế, thiếu vắng các cơ chế bảo mật phần cứng nghiêm ngặt, biến chúng thành những mắt xích yếu nhất trong chuỗi an ninh mạng và mục tiêu hấp dẫn cho các cuộc tấn công diện rộng như từ chối dịch vụ phân tán (DDoS), mạng máy tính ma (Botnet Mirai), hay xâm nhập đánh cắp dữ liệu \cite{neto2023ciciot2023}.
+
+Để chủ động phát hiện và ngăn chặn các nguy cơ an ninh, các Hệ thống Phát hiện Xâm nhập Mạng (Network Intrusion Detection System -- NIDS) dựa trên Học máy (Machine Learning -- ML) và Học sâu (Deep Learning -- DL) đã được triển khai rộng rãi \cite{huang2022federated}. Trong mô hình học máy tập trung truyền thống (Centralized ML), toàn bộ dữ liệu lưu lượng mạng thô (raw packet captures hoặc network flow records) từ các trạm biên phải được tổng hợp về một trung tâm dữ liệu hoặc máy chủ đám mây (Cloud Datacenter) để phân tích và huấn luyện mô hình. Phương thức tiếp cận này hiện bộc lộ hai rào cản kỹ thuật cốt tử:
+\begin{enumerate}
+    \item \textbf{Vi phạm quyền riêng tư và quy định bảo vệ dữ liệu:} Lưu lượng mạng biên chứa đựng các thông tin định danh cá nhân nhạy cảm, topology nội bộ của hạ tầng mạng doanh nghiệp, và thói quen sinh hoạt của người dùng. Việc truyền tải tập trung dữ liệu thô đối mặt với nguy cơ rò rỉ dữ liệu và vi phạm nghiêm trọng các quy định pháp lý an toàn thông tin quốc tế (như GDPR, ISO/IEC 27701) \cite{yang2019federated}.
+    \item \textbf{Nghẽn cổ chai băng thông truyền thông:} Hàng triệu thiết bị IoT liên tục phát sinh hàng terabyte dữ liệu mỗi ngày. Việc đẩy toàn bộ luồng mạng qua đường truyền Internet diện rộng (WAN) dẫn đến tắc nghẽn băng thông, độ trễ truyền dữ liệu cao, và chi phí hạ tầng mạng vượt quá khả năng chịu tải của các nút mạng biên.
+\end{enumerate}
+
+\section{Core Challenges in Distributed IoT Networks}
+Học liên đoàn (Federated Learning -- FL) do McMahan et al. \cite{mcmahan2017communication} khởi xướng đã mang lại lời giải đột phá cho bài toán bảo vệ quyền riêng tư: các nút mạng biên giữ lại toàn bộ dữ liệu cục bộ, chỉ huấn luyện mô hình tại chỗ và định kỳ gửi các tham số trọng số ($\mathbf{w}$) về máy chủ trung tâm để tổng hợp thành mô hình toàn cục. Tuy vậy, khi ứng dụng mô hình học liên đoàn vào bài toán NIDS trên mạng IoT thực tế, các nhà nghiên cứu phải đối mặt với ba thách thức kỹ thuật lớn:
+\begin{enumerate}
+    \item \textbf{Dữ liệu phi đồng nhất (Non-IID Statistical Heterogeneity):} Trong thế giới thực, mỗi gateway hoặc thiết bị IoT chỉ quan sát một góc nhìn hạn chế về lưu lượng mạng tùy thuộc vào vị trí địa lý, chức năng nghiệp vụ và các loại thiết bị kết nối đằng sau nó. Phân phối dữ liệu giữa các client có sự dị biệt sâu sắc (khác biệt phân phối nhãn $P_k(y)$ và phân phối có điều kiện $P_k(x|y)$). Sự phi đồng nhất này dẫn tới hiện tượng trôi dạt tham số cục bộ (\textit{Client Drift}), làm chệch hướng hội tụ của thuật toán Federated Averaging (FedAvg) và suy giảm nghiêm trọng độ chính xác toàn cục \cite{li2020federated, hsu2019measuring}.
+    \item \textbf{Mất cân bằng lớp cấu trúc cực đoan (Severe Structural Class Imbalance):} Trong môi trường mạng viễn thông thực tế (như phản ánh trong tập dữ liệu chuẩn CICIoT2023), lưu lượng tấn công thể tích lớn (DDoS, DoS) chiếm hơn $70\%$ tổng lưu lượng, trong khi các cuộc tấn công tinh vi, nguy hiểm cao như Web-based (SQL Injection, XSS) hay Brute-force chỉ chiếm dưới $0.5\%$. Khi dữ liệu bị phân tán qua nhiều nút, các lớp đa số áp đảo hoàn toàn tín hiệu cập nhật gradient, khiến mô hình phân tán có nguy cơ mù hoàn toàn trước các mối đe dọa hiếm gặp \cite{alahmari2025enhancing}.
+    \item \textbf{Giới hạn tài nguyên phần cứng thiết bị biên (Resource Constraints):} Các trạm mạng IoT biên có bộ nhớ RAM và năng lực CPU hạn chế, không thể vận hành các mô hình cồng kềnh (như Transformer hay CNN-LSTM phức tạp) vốn đòi hỏi dung lượng tải trọng trao đổi lên đến hàng chục megabyte mỗi vòng liên đoàn \cite{albanbay2025federated}.
+\end{enumerate}
+
+\section{Research Objectives and Scope}
+Đề tài Khóa luận Tốt nghiệp tập trung giải quyết các mục tiêu khoa học cụ thể sau:
+\begin{itemize}
+    \item Khảo sát, chuẩn hóa và phân vùng tập dữ liệu chuẩn an ninh mạng IoT CICIoT2023 theo các mức độ dị biệt thống kê có kiểm soát bằng phân phối Dirichlet ($\alpha \in \{1.0, 0.5, 0.1\}$) và chuẩn đồng nhất IID.
+    \item Thiết kế và hiện thực mô hình nơ-ron nhẹ \texttt{TabularIoTMLP} tối ưu cho dữ liệu bảng 39 đặc trưng dòng mạng, bảo đảm kích thước tham số nhỏ gọn ($\approx 54.28\text{ KB}$) phù hợp với ràng buộc phần cứng IoT biên.
+    \item Triển khai hệ thống đo kiểm phân tán sử dụng Flower framework qua giao thức gRPC socket thực, đánh giá trực tiếp hai giải thuật tổng hợp nền tảng là FedAvg và FedProx.
+    \item Xây dựng chuẩn đối chứng tập trung (Centralized Upper-bound) trên cùng một kiến trúc mạng và tập dữ liệu để phân tách rõ ràng ảnh hưởng của năng lực mô hình với ảnh hưởng của cơ chế tổng hợp phân tán.
+    \item Định lượng hóa toàn diện tam giác đánh đổi giữa: Hiệu năng phân loại (Utility -- Macro-F1, Minority Recall), Chi phí tài nguyên (Cost -- Communication payload), và Khả năng mở rộng quy mô (Scalability -- số lượng trạm $K \in \{5, 7, 10\}$).
+\end{itemize}
+
+\section{Research Positioning and Scientific Contributions}
+\label{sec:contributions}
+
+\begin{quote}
+\textbf{Tuyên bố Định vị Bản chất Công trình:} Đề tài này được định vị là một \textbf{Nghiên cứu Thực nghiệm và Đo kiểm Hệ thống (Empirical Benchmarking Study)}. Mục tiêu của khóa luận là cung cấp các bằng chứng đo kiểm thực nghiệm có kiểm soát, trung thực và chính xác về mặt định lượng, vạch ra ranh giới kỹ thuật và bản chất toán học của các thuật toán FL hiện hành khi ứng dụng vào an ninh mạng IoT.
+\end{quote}
+
+\textbf{Lưu ý miễn trừ về mặt đóng góp kỹ thuật (Engineering Disclaimer):}
+Đề tài khẳng định rõ ràng rằng: \textit{Việc xây dựng hệ thống mô phỏng phân tán Flower gRPC, thiết lập đường truyền socket mạng đa tiến trình, hay tối ưu hóa bộ nhớ dữ liệu chỉ là cơ sở hạ tầng thực nghiệm và phương tiện kỹ thuật (experimental plumbing) nhằm thu thập số liệu đo kiểm khách quan. Toàn bộ các công tác kỹ thuật này KHÔNG cấu thành đóng góp khoa học của đề tài.}
+
+Bỏ qua các hình thức kỹ thuật bề nổi, giá trị khoa học thực chất của khóa luận bao gồm 3 đóng góp sau:
+\begin{enumerate}
+    \item \textbf{Bằng chứng thực nghiệm phản biện về giới hạn nhận diện lớp thiểu số (Empirical Counter-Evidence / Negative Finding):}
+    Bằng việc thiết lập đối chứng trực diện giữa mô hình tập trung (E1) và mô hình liên đoàn (E2--E6) trên cùng một không gian kiến trúc \texttt{TabularIoTMLP}, nghiên cứu chỉ ra rằng: khi huấn luyện tập trung, mô hình MLP đạt tỷ lệ Recall trên lớp \texttt{Web-based} là $52.41\%$ và \texttt{Brute-force} là $53.36\%$. Tuy nhiên, khi chuyển sang môi trường học liên đoàn, tỷ lệ này sụp đổ xuống $1.66\%$ ($K=5$) và $0.39\%$ ($K=10$) ở FedAvg, và bị dập tắt hoàn toàn về $0.00\%$ ở tất cả các kịch bản FedProx. Kết quả thực nghiệm này cung cấp bằng chứng đanh thép bác bỏ giả định lạc quan trong nhiều công bố lý thuyết, chứng minh rằng sự thất bại với lớp thiểu số là hệ quả toán học tất yếu của cơ chế trung bình trọng số mẫu $n_k/N$ và hiện tượng triệt tiêu tính dẻo cục bộ (\textit{Loss of Local Plasticity}) của số hạng phạt proximal.
+    \item \textbf{Xác lập đường cong suy thoái định lượng theo phân phối Dirichlet:}
+    Khác với phần lớn các công trình công bố chỉ thử nghiệm tại một điểm dữ liệu duy nhất ($\alpha=0.5$), nghiên cứu này thiết lập chuỗi đối chứng bậc thang có kiểm soát: $\text{IID} \to \alpha=1.0 \to \alpha=0.5 \to \alpha=0.1$. Nghiên cứu cung cấp số liệu định lượng chính xác: khi độ phi đồng nhất vượt qua ngưỡng $\alpha \le 0.5$, quá trình hội tụ gãy đổ nghiêm trọng, và tại $\alpha=0.1$, hiện tượng nhiễu loạn triệt tiêu làm Macro-F1 sụt giảm tới $25\%$ (từ $68.00\%$ xuống $43.01\%$).
+    \item \textbf{Khung đánh giá đánh đổi đa chiều và Đề xuất giải pháp thuật toán cải tiến:}
+    Đo lường toàn diện chi phí truyền thông thực tế (chỉ tiêu tốn $5.30\text{ MB} \to 10.60\text{ MB}$ cho toàn bộ 10 rounds huấn luyện), chứng minh tính ổn định tuyệt đối khi mở rộng quy mô $K=5 \to 7 \to 10$ trong môi trường IID (biến thiên Macro-F1 $<0.72\%$). Trên nền tảng các phát hiện thực nghiệm, đề tài đề xuất hướng giải pháp thuật toán \textbf{Decoupled Federated Learning (FedPer/FedRep)} phân tách tầng trích xuất đặc trưng chung và tầng phân loại cá nhân hóa để khắc phục triệt để hiện tượng trôi dạt tham số trong Non-IID cực đoan.
+\end{enumerate}
+
+\section{Thesis Organization}
+Báo cáo khóa luận được cấu trúc thành 6 chương chính theo đúng chuẩn mực khoa học:
+\begin{itemize}
+    \item \textbf{Chapter I -- Introduction:} Bối cảnh và động lực nghiên cứu, các thách thức cốt lõi của mạng IoT, mục tiêu, phạm vi và tuyên bố định vị 3 đóng góp khoa học thực chất của đề tài.
+    \item \textbf{Chapter II -- Literature Review:} Tổng quan tập dữ liệu CICIoT2023, nền tảng toán học của FedAvg, hiện tượng Client Drift, thuật toán FedProx, mô hình hóa Non-IID qua phân phối Dirichlet, ma trận đối sánh các công trình gần đây (2022--2026) và các khoảng trống nghiên cứu.
+    \item \textbf{Chapter III -- Methodology and Proposed Solutions:} Phương pháp luận nghiên cứu đối chứng không rò rỉ dữ liệu, chiến lược phân vùng IID/Dirichlet, thiết kế kiến trúc mạng \texttt{TabularIoTMLP}, hệ tiêu chí đánh giá đa chiều, và 3 đề xuất giải pháp thuật toán (Decoupled FL, Entropy-Adaptive Proximal, Imbalance-Aware Aggregation).
+    \item \textbf{Chapter IV -- Implementation:} Trình bày cơ sở hạ tầng thử nghiệm (testbed plumbing), cơ chế giao tiếp socket gRPC trên Flower, chiến lược tổng hợp tùy biến, pipeline tiền xử lý và quy trình huấn luyện cục bộ.
+    \item \textbf{Chapter V -- Testing Scenarios, Results, and Discussions:} Bảng tổng hợp Master Benchmark 10 kịch bản (E1--E6), phân tích chuyên sâu 3 phát hiện khoa học, phân tích ma trận nhầm lẫn, thảo luận hạn chế kỹ thuật và định vị Phòng thủ chiều sâu (Defense-in-Depth).
+    \item \textbf{Chapter VI -- Conclusions and Future Work:} Tổng kết các kết quả đạt được, kế hoạch hoàn thiện các kịch bản đang triển khai (E5 FedAvg $\alpha=0.1$, E7 Decoupled FL), cùng các hướng mở rộng dài hạn.
+\end{itemize}
