@@ -24,6 +24,7 @@ from .scenario import (
     plot_scenario_per_class_recall,
     export_scenario_summary_and_plots,
     backup_scenario_to_drive,
+    pull_code_from_github,
     commit_scenario_to_github,
 )
 from .grpc_runner import run_flower_grpc
@@ -48,5 +49,6 @@ __all__ = [
     "plot_scenario_per_class_recall",
     "export_scenario_summary_and_plots",
     "backup_scenario_to_drive",
+    "pull_code_from_github",
     "commit_scenario_to_github",
 ]

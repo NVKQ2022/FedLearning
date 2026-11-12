@@ -1294,6 +1294,100 @@ def backup_scenario_to_drive(
     }
 
 
+def pull_code_from_github(
+    branch: str = "main",
+    remote: str = "origin",
+    rebase: bool = True,
+    autostash: bool = True,
+    github_token: Optional[str] = None,
+    repo_url: str = "https://github.com/NVKQ2022/FedLearning.git",
+) -> Dict[str, Any]:
+    """
+    Pulls the latest codebase changes from GitHub remote into the local environment / runner.
+
+    Safeguards:
+        - Validates that the working directory is inside a valid git repository.
+        - Supports git rebase with autostash to preserve untracked/unstaged changes safely.
+        - If github_token is provided, temporarily authenticates remote and restores original URL.
+        - Outputs a clear, structured summary showing commit status before and after pull.
+
+    Args:
+        branch: Git branch name (default 'main').
+        remote: Git remote name (default 'origin').
+        rebase: Whether to use git rebase (default True).
+        autostash: Whether to use --autostash with rebase (default True).
+        github_token: Optional GitHub Personal Access Token.
+        repo_url: Repository URL.
+
+    Returns:
+        Dict containing pull results (status, branch, remote, head_before, head_after, updated, message).
+    """
+    # 1. Verify git repository
+    try:
+        git_root = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        raise RuntimeError("Current workspace is not a valid git repository.")
+
+    head_before = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
+
+    # 2. Authentication if token is provided
+    original_remote = subprocess.check_output(["git", "remote", "get-url", remote], text=True).strip()
+    clean_url = repo_url.strip()
+    if clean_url.startswith("https://"):
+        host_path = clean_url[len("https://"):]
+    elif clean_url.startswith("http://"):
+        host_path = clean_url[len("http://"):]
+    else:
+        host_path = clean_url
+
+    try:
+        if github_token and github_token.strip():
+            tok = github_token.strip()
+            auth_url = f"https://{tok}@{host_path}"
+            subprocess.run(["git", "remote", "set-url", remote, auth_url], check=True)
+
+        cmd = ["git", "pull"]
+        if rebase:
+            cmd.append("--rebase")
+            if autostash:
+                cmd.append("--autostash")
+        cmd.extend([remote, branch])
+
+        pull_res = subprocess.run(cmd, capture_output=True, text=True)
+        if pull_res.returncode != 0:
+            # Fallback if --autostash is not supported or rebase encounters a transient issue
+            fallback_cmd = ["git", "pull", remote, branch]
+            pull_res = subprocess.run(fallback_cmd, capture_output=True, text=True)
+            if pull_res.returncode != 0:
+                print(f"❌ Git pull thất bại:\n{pull_res.stderr}")
+                raise RuntimeError(f"Git pull failed: {pull_res.stderr}")
+
+        head_after = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
+        updated = (head_before != head_after)
+
+        print("=" * 80)
+        print("🔄 GITHUB CODEBASE SYNCHRONIZATION")
+        print("=" * 80)
+        print(f"📁 Git Root:        {git_root}")
+        print(f"🌿 Branch / Remote: {branch} / {remote}")
+        print(f"🏷️ Commit Trước:   {head_before}")
+        print(f"🏷️ Commit Sau:      {head_after}")
+        print(f"🚀 Trạng thái:      {'Đã cập nhật mã nguồn mới' if updated else 'Đã ở phiên bản mới nhất'}")
+        print("=" * 80)
+
+        return {
+            "status": "success",
+            "branch": branch,
+            "remote": remote,
+            "head_before": head_before,
+            "head_after": head_after,
+            "updated": updated,
+            "message": pull_res.stdout.strip()
+        }
+    finally:
+        subprocess.run(["git", "remote", "set-url", remote, original_remote], check=True)
+
+
 def commit_scenario_to_github(
     scenario_path_or_name: str,
     github_token: Optional[str] = None,
@@ -1433,8 +1527,19 @@ def commit_scenario_to_github(
 
             push_res = subprocess.run(["git", "push", "origin", branch], capture_output=True, text=True)
             if push_res.returncode != 0:
-                print(f"❌ Git push thất bại:\n{push_res.stderr}")
-                raise RuntimeError(f"Git push failed: {push_res.stderr}")
+                # If push was rejected due to non-fast-forward / fetch first, attempt auto-rebase and retry push
+                if "fetch first" in push_res.stderr or "non-fast-forward" in push_res.stderr:
+                    print("⚠️ Remote có commit mới hơn. Đang tự động kéo và rebase trước khi đẩy lại...")
+                    rebase_res = subprocess.run(["git", "pull", "--rebase", "origin", branch], capture_output=True, text=True)
+                    if rebase_res.returncode == 0:
+                        push_res = subprocess.run(["git", "push", "origin", branch], capture_output=True, text=True)
+
+                if push_res.returncode != 0:
+                    print(f"❌ Git push thất bại:\n{push_res.stderr}")
+                    raise RuntimeError(f"Git push failed: {push_res.stderr}")
+                else:
+                    pushed = True
+                    print(f"🚀 Đã đồng bộ thành công kết quả scenario '{scenario_name}' lên GitHub!")
             else:
                 pushed = True
                 print(f"🚀 Đã đồng bộ thành công kết quả scenario '{scenario_name}' lên GitHub!")
