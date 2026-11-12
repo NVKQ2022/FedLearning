@@ -16,7 +16,7 @@ Learning Rate ($\eta$) & $0.001$ \\
 Batch Size ($B_{\text{size}}$) & 64 \\
 Communication Rounds ($T$) & 10 rounds \\
 Local Epochs ($E$) & 2 epochs \\
-FedProx Penalty ($\mu$) & $0.05$ \\
+FedProx Penalty ($\mu$) & $0.05$ (Standard Baseline) / $\{0.001, 0.01, 0.025, 0.05\}$ (E5 Pareto Sweep) \\
 Train / Test Split Ratio & $70\% / 30\%$ (Global Holdout Test Set) \\
 Normalization Method & \texttt{RobustScaler} (fitted only on Train split) \\
 Communication Protocol & Google gRPC over TCP/IP sockets \\
