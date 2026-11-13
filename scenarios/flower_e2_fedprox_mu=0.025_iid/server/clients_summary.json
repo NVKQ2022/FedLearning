@@ -1,0 +1,52 @@
+[
+  {
+    "client_id": 0,
+    "samples": 613969,
+    "train_samples": 429778,
+    "val_samples": 61397,
+    "test_samples": 122794,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 1,
+    "samples": 613968,
+    "train_samples": 429777,
+    "val_samples": 61397,
+    "test_samples": 122794,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 2,
+    "samples": 613967,
+    "train_samples": 429776,
+    "val_samples": 61397,
+    "test_samples": 122794,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 3,
+    "samples": 613966,
+    "train_samples": 429776,
+    "val_samples": 61396,
+    "test_samples": 122794,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  },
+  {
+    "client_id": 4,
+    "samples": 613963,
+    "train_samples": 429774,
+    "val_samples": 61396,
+    "test_samples": 122793,
+    "dominant_class": "DDoS",
+    "dominant_pct": 37.57,
+    "entropy": 0.7819
+  }
+]
