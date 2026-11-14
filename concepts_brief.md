@@ -1,73 +1,71 @@
-# Empirical Benchmark of the Stability-Plasticity Dilemma in FL-IoT-IDS
+# Undergraduate Thesis Condensation & Rigor Hardening Strategy
 
-* **Author:** Nguyễn Việt Kỳ Quân (NVKQ2022)
-* **Date:** 2026-11-12
+* **Author:** NVKQ2022 (Nguyen Viet Ky Quan -- 23521267)
+* **Date:** 2026-11-14
+* **Academic Context:** Undergraduate Thesis Defense / Technical Report (UIT, VNU-HCM)
+* **Target Artifact:** `thesis_report/main.pdf` (reducing from 34 pages to ~20–21 pages)
+
+---
 
 ## Overview
 
-This empirical study investigates the performance collapse of Federated Learning (FL) algorithms on minority attack classes under statistical heterogeneity in IoT Network Intrusion Detection Systems (IoT-NIDS). 
+This strategy condenses the undergraduate thesis report from 34 pages down to a dense, publication-grade ~20-page monograph. It eliminates unverified algorithmic proposals from the Abstract and Chapter 3, relocates Decoupled Federated Learning (FedPer/FedRep) strictly into Chapter 6 (Future Work) as an empirically grounded hypothesis, and centers 100% of the narrative on the empirical 23-scenario benchmark matrix, the minority extinction cliff, and the multi-regime Pareto frontier.
 
-Using the CICIoT2023 benchmark (5.1 million network flows), the study deconstructs the consensus in recent literature (2022–2026) that Federated Proximal (FedProx) is strictly superior to Federated Averaging (FedAvg) under non-IID conditions. The core finding demonstrates that this reported superiority is an artifact of aggregate classification accuracy ($>98\%$), which is dominated by benign and DDoS traffic ($>90\%$). Under severe Dirichlet label skew ($\alpha=0.1$), FedProx suppresses parameter drift but over-regularizes local model updates. This proximal anchoring extinguishes the gradient signals of rare, high-consequence attacks (`Web-based` at $0.49\%$ and `Brute-force` at $0.26\%$), reducing their detection recall to $0.00\%$.
+---
 
-By completing the missing baseline (E5 FedAvg at $\alpha=0.1$), executing proximal sensitivity sweeps ($\mu \in \{0.001, 0.01, 0.05, 0.1\}$), and conducting multi-seed verification ($N=3$), this project maps the empirical Pareto frontier between Client Drift Stability ($\sigma_{loss}, \Delta w$) and Minority Detection Plasticity ($\text{Recall}_{minority}$).
+## Multi-Lens Analysis & Key Findings
 
-## Analysis
+### 1. Structural & Float Layout Inefficiencies (`egm-design`, `egm-codebase-details`)
+* **Frontmatter Bloat**: Frontmatter currently spans 7 pages due to isolated page breaks for Abstract, Acknowledgments, Table of Contents, List of Figures, List of Tables, and Acronyms. Over 60% of this space is whitespace.
+* **Float Rigidness**: Figures using `[H]` from the `float` package create massive page breaks and empty vertical gaps when they fail to fit on a single page alongside preceding text.
+* **Redundant Pages**:
+  * List of Figures and List of Tables consume 2 full pages and can be omitted or combined for a 20-page monograph.
+  * Appendices A and B consume 2 full pages while simply repeating dataset distribution and hyperparameter tables already present in Chapters 2, 3, and 5.
+  * Explicit `\clearpage` in Chapter 5 forces an unnecessary page break after a 14-line section.
 
-### 1. Mathematical Mechanism of Minority Collapse
-The local objective of FedProx on client $k$ is formulated as:
-$$\min_{w} h_k(w; w_t) = \mathcal{L}_{task}(w) + \frac{\mu}{2} \|w - w_t\|_2^2$$
-where $w_t$ is the global model received from the central server at round $t$, and $\mu$ is the proximal regularization parameter.
+### 2. Academic Credibility & Defense Vulnerability (`egm-zoom-out`, `egm-comprehension`)
+* **The "Unverified Proposal" Trap**: Proposing Decoupled FL in the Abstract and Chapter 3 without empirical ablation or implementation invites severe committee pushback ("Why propose what was not tested?").
+* **The Negative Finding High Ground**: Presenting the work strictly as an **Empirical Counter-Evidence and Benchmarking Study** backed by 23 scenarios, 5.1M flows, and 1.53M test samples provides bulletproof defense credibility.
+* **Narrative Arc**:
+  1. *Problem*: IoT high-volume vs. rare attacks under non-IID data.
+  2. *Empirical Setup*: 23 controlled scenarios across 4 Dirichlet regimes (IID, $\alpha=1.0$, $\alpha=0.5$, $\alpha=0.1$).
+  3. *Core Discovery*: FedAvg dilutes rare attack gradients ($n_k/N$ weighting); FedProx induces a "Minority Extinction Cliff" at $\mu \ge 0.01$.
+  4. *Pareto Solution*: $\mu = 0.001$ suppresses drift by 78.7%–90.8% while preserving minority plasticity.
+  5. *System Positioning*: FL-IoT-IDS operates at Layer 3/4; Layer 7 belongs to WAF.
+  6. *Future Direction*: Decoupled FL is mathematically required to personalize classification heads.
 
-In an extreme non-IID partition ($\alpha=0.1$), a client that holds rare attack samples must take large gradient steps to adapt its decision boundary. However, the proximal penalty $\frac{\mu}{2}\|w - w_t\|_2^2$ acts as an elastic anchor pulling local weights back to $w_t$. Because minority samples generate weak gradient magnitudes relative to the proximal loss penalty, the optimization updates are dominated by the distance constraint. As $\mu$ increases, parameter drift decreases by $>95\%$, but the output layer linear weights for minority classes remain pinned near zero. The global model achieves convergence stability by sacrificing the plasticity required to identify stealthy intrusions.
+### 3. Page Budget Allocation (`egm-implementation-readiness`)
 
-### 2. Multi-Lens Critique & Systemic Risks
-* **Confounding Variables (`egm-design`):** To prove that minority collapse is caused by the proximal operator rather than poor optimization, all training hyperparameters must be locked: identical architecture (`TabularIoTMLP`, $39 \to 128 \to 64 \to 8$, 14,024 parameters), learning rate ($\eta = 10^{-3}$), weight decay ($10^{-4}$), batch size ($128$), and local epochs ($E=2$).
-* **Optimizer State Bleed (`egm-codebase-details`):** In PyTorch implementations of federated learning, reusing local AdamW optimizer instances across communication rounds carries stale momentum buffers ($m_t, v_t$). This creates trajectory momentum that distorts the proximal gradient. Local optimizers must be re-instantiated fresh at the start of each round when updated weights are loaded.
-* **The Asymmetric Baseline Gap (`egm-codebase-details`):** The current experiment suite contains E5 FedProx at $\alpha=0.1$ ($\mu=0.05$), but lacks the counterpart E5 FedAvg run at $\alpha=0.1$ ($\mu=0.0$). This missing cell prevents claiming that proximal regularization is worse than standard averaging under extreme skew.
-* **Cybersecurity Impact (`egm-zoom-out`):** In IoT networks, attackers use web application vulnerabilities and credential brute-forcing for initial perimeter access, using volumetric DDoS only for disruption. Deploying an IDS that achieves $99\%$ accuracy by classifying DDoS correctly while maintaining $0.00\%$ recall on initial-access vectors leaves the internal network completely unprotected.
-* **Statistical Validity (`egm-implementation-readiness`):** Single-seed results ($seed=42$) are insufficient to eliminate the possibility of partition artifacts. Evaluating three distinct random seeds ($seed \in \{42, 101, 2024\}$) across the $\mu$ grid produces standard deviations that convert anecdotal observations into statistical laws.
+| Section | Current Pages | Target Budget | Key Actions |
+| :--- | :---: | :---: | :--- |
+| **Frontmatter** (Cover, Abstract, ToC, Acronyms) | 7.0 | **2.5** | Omit LoF/LoT; merge Acronyms; clean Abstract text. |
+| **Chapter 1: Introduction** | 3.0 | **2.0** | Tighten engineering disclaimer; focus on 3 empirical contributions. |
+| **Chapter 2: Literature Review** | 4.5 | **3.0** | Condense dataset description; shrink Related Works matrix Table 2.1 to 0.5 page. |
+| **Chapter 3: Methodology** | 3.5 | **2.5** | Remove `proposed_solutions.tex`; focus on 4-step controlled benchmark pipeline. |
+| **Chapter 4: Implementation** | 2.5 | **1.5** | Remove redundant disclaimer; condense gRPC testbed and training loop prose. |
+| **Chapter 5: Results & Discussions** | 8.5 | **5.5** | Keep Master Table 5.1 (23 scenarios); retain hero Pareto Figure 5.5; consolidate Figs 5.1 & 5.2. |
+| **Chapter 6: Conclusions & Future Work** | 1.5 | **1.5** | Expand Section 6.2 with Decoupled FL theoretical formulation. |
+| **References** | 1.5 | **1.5** | Retain complete IEEE references. |
+| **Appendices A & B** | 2.0 | **0.0** | Omit; absorb essential data into Ch 2 and Ch 5. |
+| **Total Page Count** | **34.0** | **~20.0–21.0** | **Net Reduction: -13 to -14 pages (~40%)** |
 
-### 3. Contradiction Resolution (The Inventive Perspective)
-The fundamental technical contradiction in FedProx is:
-* *Improving Parameter:* Global consensus convergence and drift suppression on majority classes.
-* *Worsening Parameter:* Local feature representation plasticity on rare minority classes.
-
-The Ideal Final Result (IFR) is an algorithm that bounds parameter drift on common flow representations while permitting unrestricted gradient movement on classification decision boundaries. While the present study focuses on diagnostic benchmarking, it outlines three concrete resolution blueprints for future work:
-1. **Layer-Selective Proximal Regularization:** Restricting $\mu > 0$ to feature extractor layers ($W_1, W_2$) while setting $\mu = 0$ on the classification head.
-2. **Entropy-Adaptive Proximal Penalty:** Scaling $\mu_k = \mu_0 \cdot \left(\frac{\mathcal{H}(P_k)}{\log_2 C}\right)^\gamma$ based on local client label entropy.
-3. **Annealed Proximal Schedule:** Initializing with high $\mu$ for consensus formation, followed by exponential decay to enable minority feature acquisition.
+---
 
 ## Goals vs. Non-Goals
 
 ### In-Scope Goals
-* **Complete E5 Head-to-Head Comparison:** Execute FedAvg ($\mu=0.0$) under Dirichlet $\alpha=0.1$ using the exact partition and seed as E5 FedProx.
-* **Map the Stability-Plasticity Pareto Frontier:** Run a 5-point parameter sweep across $\mu \in \{0.0, 0.001, 0.01, 0.05, 0.1\}$ under $\alpha=0.1$.
-* **Multi-Seed Statistical Verification:** Execute 3 random seeds ($42, 101, 2024$) for all 5 configurations ($15$ simulations total), logging mean and standard deviation for Accuracy, Macro-F1, Minority Recall (`Web-based`, `Brute-force`), and Parameter Drift ($L_2$ norm).
-* **Guaranteed Leakage-Free Evaluation:** Evaluate all configurations exclusively on the stationary $30\%$ holdout test set ($1,534,918$ samples), using `RobustScaler` fitted strictly on training data.
-* **Document Chapter Upgrades:** Integrate findings and Pareto frontier plots directly into Chapters 4 and 5 of the thesis report (`thesis_report/`).
+* **Purity of Empirical Positioning**: Eliminate all speculative algorithms from Abstract and Chapter 3; retain Decoupled FL strictly as a theoretically motivated future-work hypothesis in Chapter 6.
+* **Document Compression to ~20 Pages**: Strip frontmatter bloat (LoF/LoT), remove redundant appendices, eliminate forced page breaks, and tighten float geometry.
+* **Preservation of Scientific Substance**: Keep the complete 23-scenario benchmark matrix, all 4 empirical findings, and the multi-regime Pareto figure intact.
 
 ### Out-of-Scope Non-Goals
-* **Developing a Brand-New Aggregation Algorithm:** This study is strictly an empirical diagnostic benchmark; it does not deploy a new custom optimizer or theorem in the primary test matrix.
-* **Multi-Dataset Ingestion (Edge-IIoTset / TON_IoT):** Cross-dataset evaluation is deferred to future work due to schema mismatches (39 flow features vs 61 features) and compute constraints.
-* **Generative Data Resampling (GANs / SMOTE):** Data synthesis is excluded due to memory and compute infeasibility on edge IoT microcontrollers.
+* **No New Model Training**: Do not run additional seeds or hyperparameter points.
+* **No Code Refactoring**: Do not modify Flower runner scripts or pipeline code; modifications are strictly confined to the LaTeX report repository.
 
-## Alternatives Weighed
+---
 
-* **Direction B: Developing a Novel Algorithmic Fix (Deferred by Author):**
-  * *Reason:* Requires implementing, debugging, and proving a new algorithm (e.g., Dual-Head Decoupled FL or Adaptive $\mu$) on Colab within a tight graduation deadline. If the algorithm yields noisy results, the entire thesis defense is compromised.
-* **Adding a Second Dataset (Edge-IIoTset) (Rejected by Author):**
-  * *Reason:* Edge-IIoTset uses different feature extractors (61 features vs. 39 features in CICIoT2023). Running parallel benchmarks doubles data preprocessing and compute overhead without resolving the core mathematical question of proximal regularization.
-* **Synthetic Oversampling via SMOTE-ENN / GANs (Rejected):**
-  * *Reason:* Synthetic sample generation requires large memory buffers and intensive compute, violating the hardware invariants of edge IoT devices (e.g., microcontrollers, low-power routers).
+## Key Tactical Decisions
 
-## Key Decisions & Staging for Next Steps
-
-### Key Technical Decisions
-1. **Benchmark Matrix:** 15 total simulations (5 parameter settings $\times$ 3 random seeds).
-2. **Computational Budget:** 10 communication rounds $\times$ 2 local epochs per simulation; estimated total runtime is $\approx 40$ minutes on Google Colab T4 GPU.
-3. **Artifact Output:** Results will be written to `reports/pareto_frontier_e5_ciciot2023.csv` and visualized as Pareto trade-off curves.
-
-### Staging for Next Steps
-1. **Runner Deployment:** Embed the automated sweep runner script into `notebooks/colab_experiment_runner.ipynb`.
-2. **Execution & Metric Logging:** Run the 15-scenario sweep on Google Colab and push raw CSV results back to the repository.
-3. **Report Integration:** Update Table V.1 in `thesis_report/05_results_discussions/results_discussions.tex` with mean $\pm$ standard deviation and insert the Pareto curve figure.
+1. **Purge Decoupled FL from Frontmatter and Chapter 3**: Delete lines mentioning Decoupled FL from `abstract.tex`, `introduction.tex`, and `methodology.tex`. Delete `proposed_solutions.tex`.
+2. **Expand Chapter 6.2 with Mathematical Hypothesis**: Formally articulate why localizing the classification head $\mathbf{w}_{\text{head}}^{(k)}$ resolves the minority extinction cliff identified in Finding 1.
+3. **Condense LaTeX Geometry**: Use `titlesec` to reduce chapter top margins, omit LoF/LoT in `main.tex`, and switch figure placements from rigid `[H]` to `[htbp]`.
