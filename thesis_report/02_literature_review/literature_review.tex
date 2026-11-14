@@ -4,19 +4,7 @@
 \section{CICIoT2023 Benchmark Dataset}
 Tập dữ liệu CICIoT2023 \cite{neto2023ciciot2023} là một trong những chuẩn đánh giá (benchmark dataset) quy mô lớn và chân thực nhất hiện nay cho các hệ thống NIDS trong môi trường IoT. Bộ dữ liệu được xây dựng bởi Viện An ninh mạng Canada (CIC) dựa trên mô hình thử nghiệm vật lý gồm 105 thiết bị IoT thực tế (bao gồm camera an ninh, bóng đèn thông minh, cảm biến gia dụng, gateway và thiết bị trung tâm điều khiển), kết nối qua các giao thức mạng phổ biến như Wi-Fi, Zigbee, và Z-Wave.
 
-Bộ dữ liệu chứa hơn 47 triệu bản ghi dòng dữ liệu mạng (network flows). Mỗi bản ghi bao gồm 39 đặc trưng số (numerical statistical flow features) mô tả các thuộc tính thống kê của gói tin như: độ dài gói tin trung bình, phương sai độ dài, thời gian giữa các gói tin (Inter-Arrival Time -- IAT), các cờ điều khiển giao thức TCP/UDP, và tốc độ truyền luồng \cite{dadkhah2024ciciomt2024}. Toàn bộ các cuộc tấn công bao gồm 33 biến thể tấn công chi tiết, được chuẩn hóa và gom nhóm thành 8 phân lớp lớn:
-\begin{enumerate}
-    \item \textbf{Benign (Lưu lượng hợp lệ):} Chiếm $21.46\%$ tổng số mẫu ($1,098,191$ dòng).
-    \item \textbf{DDoS (Từ chối dịch vụ phân tán):} Chiếm $37.57\%$ tổng số mẫu ($1,922,002$ dòng) -- lớp chiếm đa số tuyệt đối.
-    \item \textbf{DoS (Từ chối dịch vụ đơn nguồn):} Chiếm $14.27\%$ tổng số mẫu ($730,344$ dòng).
-    \item \textbf{Reconnaissance (Dò quét mạng):} Chiếm $13.50\%$ tổng số mẫu ($690,534$ dòng).
-    \item \textbf{Spoofing (Giả mạo địa chỉ/ARP):} Chiếm $8.34\%$ tổng số mẫu ($426,604$ dòng).
-    \item \textbf{Mirai (Mã độc mạng botnet IoT):} Chiếm $4.12\%$ tổng số mẫu ($210,823$ dòng).
-    \item \textbf{Web-based (Tấn công tầng ứng dụng web -- SQLi, XSS, Command Injection):} Chiếm $0.49\%$ ($24,829$ dòng).
-    \item \textbf{Brute-force (Dò quét mật khẩu qua từ điển):} Chiếm $0.26\%$ ($13,064$ dòng) -- lớp thiểu số cực đoan.
-\end{enumerate}
-
-Tỷ lệ mất cân bằng giữa lớp lớn nhất (DDoS) và lớp nhỏ nhất (Brute-force) lên tới $147.11:1$. Đây chính là đặc trưng thực tế của không gian mạng viễn thông: các cuộc tấn công lũ lụt đường truyền xảy ra với mật độ gói tin dày đặc, trong khi các cuộc tấn công khai thác lỗ hổng tinh vi chỉ phát sinh vài chục gói tin nhưng lại có sức phá hoại mục tiêu vô cùng nghiêm trọng.
+Bộ dữ liệu chứa hơn 47 triệu bản ghi dòng dữ liệu mạng (network flows). Mỗi bản ghi bao gồm 39 đặc trưng số mô tả thuộc tính thống kê gói tin (độ dài, phương sai, IAT, cờ TCP/UDP, tốc độ truyền luồng) \cite{dadkhah2024ciciomt2024}. Toàn bộ 33 biến thể tấn công chi tiết được chuẩn hóa và gom nhóm thành 8 phân lớp lớn: \textbf{DDoS} ($37.57\%$ -- $1,922,002$ dòng, đa số tuyệt đối), \textbf{Benign} ($21.46\%$ -- $1,098,191$ dòng), \textbf{DoS} ($14.27\%$), \textbf{Reconnaissance} ($13.50\%$), \textbf{Spoofing} ($8.34\%$), \textbf{Mirai Botnet} ($4.12\%$), cùng hai lớp thiểu số nguy hiểm cao là \textbf{Web-based} ($0.49\%$ -- $24,829$ dòng) và \textbf{Brute-force} ($0.26\%$ -- $13,064$ dòng). Tỷ lệ mất cân bằng giữa DDoS và Brute-force lên tới $147.11:1$, phản ánh chính xác thực tế lưu lượng mạng viễn thông.
 
 \section{Federated Learning Foundations and Baseline Algorithms}
 
@@ -73,11 +61,12 @@ Trong đó $\mathbf{1}_K$ là vector gồm $K$ phần tử bằng $1$, và $\alp
 \section{Recent Related Works and Comparative Analysis (2022--2026)}
 Để làm rõ vị trí học thuật của đề tài, Bảng \ref{tab:lit_review_matrix} tổng hợp phân tích đối sánh chi tiết giữa nghiên cứu này và các công bố khoa học tiêu biểu giai đoạn 2022--2026 trên tập dữ liệu CICIoT2023 và bài toán FL-NIDS.
 
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
 \caption{Comparative analysis between this work and recent FL-IoT-IDS studies (2022--2026).}
 \label{tab:lit_review_matrix}
-\small
+\footnotesize
+\renewcommand{\arraystretch}{0.95}
 \begin{tabularx}{\textwidth}{p{3.0cm} p{3.2cm} p{3.8cm} X}
 \toprule
 \textbf{Reference} & \textbf{Architecture \& Algorithm} & \textbf{Data Partitioning} & \textbf{Unresolved Limitations} \\

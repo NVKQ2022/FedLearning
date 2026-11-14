@@ -3,12 +3,7 @@
 
 \section{Experimental Testbed and Infrastructure}
 \label{sec:impl_testbed}
-
-\begin{quote}
-\textit{Lưu ý miễn trừ trách nhiệm khoa học:} Toàn bộ nội dung trong chương này mô tả cơ sở hạ tầng thực nghiệm và các kỹ thuật hiện thực hóa phần mềm được xây dựng để phục vụ việc thu thập số liệu đo kiểm một cách tự động, ổn định và có khả năng tái lập. Các công tác kỹ thuật này chỉ là phương tiện thực thi (testbed plumbing), hoàn toàn không cấu thành đóng góp khoa học của luận văn.
-\end{quote}
-
-Hệ thống đo kiểm được tổ chức thành 4 phân tầng kỹ thuật có kiểm soát:
+Chương này mô tả ngắn gọn cơ sở hạ tầng thực nghiệm được xây dựng làm phương tiện đo kiểm và thu thập số liệu tự động. Hệ thống được tổ chức thành 4 phân tầng kỹ thuật có kiểm soát:
 \begin{enumerate}
     \item \textbf{Phân tầng Quản lý Dữ liệu và Phân vùng (Data \& Partitioning Layer):} Quản lý việc đọc các tệp CSV nén của CICIoT2023, tiền xử lý, lưu trữ bộ nhớ đệm (caching) và chia phân vùng theo file ánh xạ index định sẵn.
     \item \textbf{Phân tầng Trạm Biên Liên đoàn (Federated Client Layer):} Quản lý các tiến trình client độc lập vận hành mô hình PyTorch \texttt{TabularIoTMLP}.

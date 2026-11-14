@@ -11,18 +11,23 @@ Báo cáo khóa luận đã hoàn thành toàn diện các mục tiêu khoa họ
     \item Khảo sát toàn diện ma trận siêu tham số $\mu \in \{0.001, 0.01, 0.025, 0.05\}$ xuyên suốt 4 điều kiện phân tán (IID, $\alpha=1.0$, $\alpha=0.5$, $\alpha=0.1$) và xác lập đường cong biên Pareto đa điều kiện (Multi-Regime Pareto Frontier). Chứng minh tính quy luật của hiện tượng "Vực thẳm tuyệt chủng lớp thiểu số" khi $\mu \ge 0.01$ và định vị điểm tối ưu toàn cục tại $\mu=0.001$ giúp kiềm chế trôi dạt tham số từ $78.7\% - 90.8\%$ trong khi vẫn bảo toàn tính dẻo để nhận diện được lớp tấn công hiếm \texttt{Brute-force} ($12.38\%$).
 \end{enumerate}
 
-\section{Roadmap for In-Progress and Pending Scenarios}
-\label{sec:concl_pending}
-Vì khóa luận đang trong giai đoạn hoàn thiện, các công việc trước mắt bao gồm:
-\begin{itemize}
-    \item \textbf{Kiểm chứng thống kê đa hạt giống (Multi-Seed Verification):} Chạy lặp lại với 3 random seeds ($42, 101, 2024$) trên các kịch bản Pareto then chốt để cung cấp khoảng tin cậy (Confidence Interval) và độ lệch chuẩn ($\text{mean} \pm \text{std}$) cho bảng số liệu.
-    \item \textbf{Hiện thực hóa và thử nghiệm kịch bản E7 với Decoupled FL (FedPer/FedRep):} Triển khai giải pháp phân tách tầng biểu diễn chung và tầng phân loại cá nhân hóa, chứng minh bằng số liệu thực nghiệm khả năng phục hồi Macro-F1 tại $\alpha=0.1$ từ $43\%$ lên trên $75\%$.
-\end{itemize}
+\section{Theoretical Proposal: Decoupled Federated Learning}
+\label{sec:concl_decoupled}
+Từ phát hiện thực nghiệm về sự sụp đổ của lớp thiểu số do cơ chế trung bình trọng số toàn cục (\ref{eq:fedavg_agg}) và hiệu ứng quá điều hòa của FedProx, đề tài xây dựng đề xuất thuật toán \textbf{Decoupled Federated Learning (FedPer/FedRep)} như một giải pháp lý thuyết mở đường cho các nghiên cứu tiếp nối:
+\begin{enumerate}
+    \item \textbf{Phân rã Tham số Mô hình:} Không gian trọng số của \texttt{TabularIoTMLP} được phân tách thành hai thành phần độc lập $\mathbf{w} = [\mathbf{w}_{\text{base}}, \mathbf{w}_{\text{head}}^{(k)}]$:
+    \begin{itemize}
+        \item \textit{Tầng Biểu diễn Đặc trưng Chung ($\mathbf{w}_{\text{base}}$: $39 \to 128 \to 64$):} Học các đặc trưng lưu lượng dòng mạng cốt lõi chung của toàn hạ tầng IoT, được chia sẻ và tổng hợp toàn cục qua FedAvg: $\mathbf{w}_{\text{base}, t+1} = \sum_{k=1}^K \frac{n_k}{N} \mathbf{w}_{\text{base}, t+1}^{(k)}$.
+        \item \textit{Tầng Phân loại Cá nhân hóa Cục bộ ($\mathbf{w}_{\text{head}}^{(k)}$: $64 \to 8$):} Được giữ lại hoàn toàn tại từng trạm biên $k$ (không trao đổi qua mạng). Tầng này tối ưu hóa riêng cho phân phối nhãn cục bộ $P_k(y)$, loại bỏ hoàn toàn nguy cơ gradient của các lớp tấn công hiếm (\texttt{Web-based}, \texttt{Brute-force}) bị phép trung bình mẫu $n_k/N$ triệt tiêu.
+    \end{itemize}
+    \item \textbf{Kỳ vọng Học thuật:} Kiến trúc Decoupled FL được kỳ vọng sẽ giải phóng hoàn toàn tính dẻo cục bộ, khôi phục khả năng bắt trúng các cuộc tấn công hiếm lên mức tương đương mô hình tập trung ($>50\%$), đồng thời duy trì độ ổn định trôi dạt tham số thấp ở tầng trích xuất đặc trưng.
+\end{enumerate}
 
 \section{Long-Term Research Directions}
 \label{sec:concl_future}
 \begin{itemize}
-    \item Mở rộng kiểm chứng trên các tập dữ liệu an ninh mạng IoT thứ hai (Edge-IIoTset).
-    \item Tích hợp các thuật toán tổng hợp kháng lỗi Byzantine (\texttt{FedMedian}, \texttt{Krum}) để nâng cao khả năng chống chịu tấn công đầu độc tham số.
-    \item Đóng gói và triển khai thử nghiệm trên cụm thiết bị nhúng IoT thực tế (Raspberry Pi 4 / Jetson Nano) kết nối qua mạng Wi-Fi vật lý.
+    \item \textbf{Kiểm chứng Thống kê Đa Hạt giống (Multi-Seed Verification):} Chạy lặp lại với 3 random seeds ($42, 101, 2024$) trên các kịch bản Pareto then chốt để bổ sung khoảng tin cậy (Confidence Interval) và độ lệch chuẩn ($\text{mean} \pm \text{std}$) cho bảng số liệu.
+    \item \textbf{Mở rộng Tập Dữ liệu Độc lập:} Đánh giá khả năng tổng quát hóa chéo trên các tập dữ liệu IoT thứ hai như Edge-IIoTset hoặc TON\_IoT.
+    \item \textbf{Kháng lỗi Byzantine và Phòng thủ Đầu độc:} Tích hợp các giải thuật tổng hợp bền vững (\texttt{FedMedian}, \texttt{Krum}) để chống tấn công đầu độc vector trọng số.
+    \item \textbf{Triển khai Phần cứng Nhúng Vật lý:} Đóng gói và đo kiểm thực nghiệm trên cụm thiết bị nhúng IoT thực tế (Raspberry Pi 4 / Jetson Nano) kết nối qua mạng Wi-Fi vật lý.
 \end{itemize}

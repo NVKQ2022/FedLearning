@@ -70,3 +70,14 @@ scratch/
 
 # Code graph for agent
 .codegraph/
+
+# LaTeX Build Artifacts
+*.aux
+*.bbl
+*.blg
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+

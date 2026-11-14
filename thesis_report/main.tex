@@ -16,6 +16,11 @@
 \usepackage{float}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{titlesec}
+
+% Tinh chỉnh tiêu đề chương để tiết kiệm khoảng trắng
+\titleformat{\chapter}[display]{\normalfont\bfseries\Large}{\chaptertitlename\ \thechapter}{6pt}{\LARGE}
+\titlespacing*{\chapter}{0pt}{0pt}{14pt}
 
 \geometry{
     a4paper,
@@ -66,16 +71,16 @@
 \input{00_frontmatter/abstract.tex}
 
 % ==============================================================================
-% 3. TABLE OF CONTENTS, LIST OF FIGURES, LIST OF TABLES
+% 3. TABLE OF CONTENTS
 % ==============================================================================
 \tableofcontents
 \newpage
 
-\listoffigures
-\newpage
-
-\listoftables
-\newpage
+% Danh mục hình vẽ và bảng biểu tạm thời lược bỏ theo định dạng báo cáo rút gọn
+% \listoffigures
+% \newpage
+% \listoftables
+% \newpage
 
 % ==============================================================================
 % 4. LIST OF ACRONYMS AND ABBREVIATIONS
@@ -122,10 +127,10 @@
 \bibliography{references}
 
 % ==============================================================================
-% APPENDIXES
+% APPENDIXES (Lược bỏ theo định dạng báo cáo rút gọn)
 % ==============================================================================
-\appendix
-\input{07_appendices/appendix_a.tex}
-\input{07_appendices/appendix_b.tex}
+% \appendix
+% \input{07_appendices/appendix_a.tex}
+% \input{07_appendices/appendix_b.tex}
 
 \end{document}

@@ -36,7 +36,7 @@ Học liên đoàn (Federated Learning -- FL) do McMahan et al. \cite{mcmahan201
 \end{quote}
 
 \textbf{Lưu ý miễn trừ về mặt đóng góp kỹ thuật (Engineering Disclaimer):}
-Đề tài khẳng định rõ ràng rằng: \textit{Việc xây dựng hệ thống mô phỏng phân tán Flower gRPC, thiết lập đường truyền socket mạng đa tiến trình, hay tối ưu hóa bộ nhớ dữ liệu chỉ là cơ sở hạ tầng thực nghiệm và phương tiện kỹ thuật (experimental plumbing) nhằm thu thập số liệu đo kiểm khách quan. Toàn bộ các công tác kỹ thuật này KHÔNG cấu thành đóng góp khoa học của đề tài.}
+Đề tài khẳng định rõ ràng: \textit{Hạ tầng thử nghiệm Flower gRPC, giao tiếp socket đa tiến trình và tối ưu bộ nhớ chỉ là phương tiện thực thi đo kiểm (experimental plumbing), hoàn toàn không cấu thành đóng góp khoa học của luận văn.}
 
 Bỏ qua các hình thức kỹ thuật bề nổi, giá trị khoa học thực chất của khóa luận bao gồm 3 đóng góp sau:
 \begin{enumerate}
@@ -49,12 +49,4 @@ Bỏ qua các hình thức kỹ thuật bề nổi, giá trị khoa học thực
 \end{enumerate}
 
 \section{Thesis Organization}
-Báo cáo khóa luận được cấu trúc thành 6 chương chính theo đúng chuẩn mực khoa học:
-\begin{itemize}
-    \item \textbf{Chapter I -- Introduction:} Bối cảnh và động lực nghiên cứu, các thách thức cốt lõi của mạng IoT, mục tiêu, phạm vi và tuyên bố định vị 3 đóng góp khoa học thực chất của đề tài.
-    \item \textbf{Chapter II -- Literature Review:} Tổng quan tập dữ liệu CICIoT2023, nền tảng toán học của FedAvg, hiện tượng Client Drift, thuật toán FedProx, mô hình hóa Non-IID qua phân phối Dirichlet, ma trận đối sánh các công trình gần đây (2022--2026) và các khoảng trống nghiên cứu.
-    \item \textbf{Chapter III -- Methodology:} Phương pháp luận nghiên cứu đối chứng không rò rỉ dữ liệu, chiến lược phân vùng IID/Dirichlet, thiết kế kiến trúc mạng \texttt{TabularIoTMLP}, và hệ tiêu chí đánh giá đa chiều.
-    \item \textbf{Chapter IV -- Implementation:} Trình bày cơ sở hạ tầng thử nghiệm (testbed plumbing), cơ chế giao tiếp socket gRPC trên Flower, chiến lược tổng hợp tùy biến, pipeline tiền xử lý và quy trình huấn luyện cục bộ.
-    \item \textbf{Chapter V -- Testing Scenarios, Results, and Discussions:} Bảng tổng hợp Master Benchmark 23 kịch bản (E1--E6), phân tích chuyên sâu 4 phát hiện khoa học, đường cong biên Pareto đa điều kiện, phân tích ma trận nhầm lẫn, thảo luận hạn chế kỹ thuật và định vị Phòng thủ chiều sâu (Defense-in-Depth).
-    \item \textbf{Chapter VI -- Conclusions and Future Work:} Tổng kết các kết quả đạt được, kế hoạch hoàn thiện kiểm chứng đa hạt giống, cùng các hướng mở rộng dài hạn (E7 Decoupled FL).
-\end{itemize}
+Báo cáo khóa luận được cấu trúc thành 6 chương: \textbf{Chapter I} nêu bối cảnh, thách thức và 3 đóng góp khoa học thực chất của đề tài. \textbf{Chapter II} tổng quan tập dữ liệu CICIoT2023, nền tảng toán học FedAvg/FedProx, Dirichlet skew và đối sánh các nghiên cứu tiêu biểu (2022--2026). \textbf{Chapter III} trình bày phương pháp luận đo kiểm không rò rỉ dữ liệu, kiến trúc \texttt{TabularIoTMLP} và hệ tiêu chí đánh giá đa chiều. \textbf{Chapter IV} tóm lược cơ sở hạ tầng thử nghiệm phân tán Flower gRPC socket thực. \textbf{Chapter V} phân tích chuyên sâu 23 kịch bản Master Benchmark, 4 phát hiện khoa học, đường cong biên Pareto đa điều kiện và định vị phòng thủ chiều sâu. \textbf{Chapter VI} tổng kết thành tựu và thiết lập giả thuyết kiến trúc Decoupled FL cho các nghiên cứu tiếp nối.
