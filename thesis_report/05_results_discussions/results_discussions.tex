@@ -3,7 +3,7 @@
 
 \section{Experimental Scenario Matrix and Benchmark Setup}
 \label{sec:res_matrix}
-Nghiên cứu triển khai hệ sinh thái gồm \textbf{20 kịch bản thực nghiệm đối chứng có kiểm soát chặt chẽ} (từ E1 đến E6, bao gồm khảo sát toàn diện dải siêu tham số $\mu$ trên 3 điều kiện phân vùng) trên cùng một môi trường phần cứng và cấu hình siêu tham số đồng nhất:
+Nghiên cứu triển khai hệ sinh thái gồm \textbf{23 kịch bản thực nghiệm đối chứng có kiểm soát chặt chẽ} (từ E1 đến E6, bao gồm khảo sát toàn diện ma trận siêu tham số $\mu$ trên cả 4 điều kiện phân tán: IID, $\alpha=1.0$, $\alpha=0.5$ và $\alpha=0.1$) trên cùng một môi trường phần cứng và cấu hình siêu tham số đồng nhất:
 \begin{itemize}
     \item Số vòng giao tiếp liên đoàn: $T = 10$ rounds.
     \item Số epoch huấn luyện cục bộ: $E = 2$ epochs/round.
@@ -16,14 +16,14 @@ Nghiên cứu triển khai hệ sinh thái gồm \textbf{20 kịch bản thực 
 \clearpage
 \section{Master Benchmark Results and Synthesis}
 \label{sec:res_master}
-Bảng \ref{tab:master_results} trình bày toàn bộ kết quả đo kiểm thực nghiệm thu được từ đầy đủ 20 kịch bản trong hệ sinh thái của đề tài.
+Bảng \ref{tab:master_results} trình bày toàn bộ kết quả đo kiểm thực nghiệm thu được từ đầy đủ 23 kịch bản trong hệ sinh thái của đề tài.
 
 \begin{table}[htbp]
 \centering
-\caption{Master benchmark results of the FL-IoT-IDS system on CICIoT2023 across 20 experimental scenarios.}
+\caption{Master benchmark results of the FL-IoT-IDS system on CICIoT2023 across 23 experimental scenarios.}
 \label{tab:master_results}
 \small
-\renewcommand{\arraystretch}{1.05}
+\renewcommand{\arraystretch}{1.0}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X c c c c c c}
 \toprule
 \textbf{Experimental Scenario} & \textbf{Accuracy} & \textbf{Macro-F1} & \textbf{Web-based} & \textbf{Brute-force} & \textbf{Comm Cost} & \textbf{Drift} \\
@@ -39,8 +39,11 @@ E2: FedProx ($\mu=0.01$, IID, $K=5$) & 83.00 & 61.81 & 0.00 & 0.00 & 5.30 & 0.92
 E2: FedProx ($\mu=0.025$, IID, $K=5$) & 81.34 & 60.21 & 0.00 & 0.00 & 5.30 & 0.69 \\
 E2: FedProx ($\mu=0.05$, IID, $K=5$) & 80.09 & 59.06 & 0.00 & 0.00 & 5.30 & \textbf{0.52} \\
 \midrule
-\multicolumn{7}{l}{\textit{Group E3: Mild Non-IID Skew ($\alpha=1.0, K=5$)}} \\
-E3: FedAvg ($\alpha=1.0, K=5$) & 84.42 & 67.62 & 0.39 & 21.54 & 5.30 & 10.75 \\
+\multicolumn{7}{l}{\textit{Group E3: Mild Non-IID Skew ($\alpha=1.0, K=5$) \& $\mu$ Sensitivity Sweep}} \\
+E3: FedAvg ($\alpha=1.0, K=5$) & \textbf{84.42} & \textbf{67.62} & \textbf{0.39} & \textbf{21.54} & 5.30 & 10.75 \\
+E3: FedProx ($\mu=0.001, \alpha=1.0, K=5$) & 83.83 & 66.28 & 0.01 & 16.97 & 5.30 & 2.15 \\
+E3: FedProx ($\mu=0.01, \alpha=1.0, K=5$) & 82.01 & 60.85 & 0.00 & 0.00 & 5.30 & 0.99 \\
+E3: FedProx ($\mu=0.025, \alpha=1.0, K=5$) & 79.74 & 58.36 & 0.00 & 0.00 & 5.30 & 0.69 \\
 E3: FedProx ($\mu=0.05, \alpha=1.0, K=5$) & 77.41 & 55.45 & 0.00 & 0.00 & 5.30 & \textbf{0.56} \\
 \midrule
 \multicolumn{7}{l}{\textit{Group E4: Moderate Non-IID Skew ($\alpha=0.5, K=5$) \& $\mu$ Sensitivity Sweep}} \\
@@ -191,25 +194,25 @@ Số liệu chứng minh hệ thống đạt khả năng phòng thủ tuyệt đ
 
 \subsection{Finding 4: Cross-Regime Invariance of the Stability-Plasticity Trade-Off and Multi-Condition Pareto Frontier}
 \label{sec:res_pareto}
-Việc hoàn thành trọn vẹn dải siêu tham số $\mu \in \{0.001, 0.01, 0.025, 0.05\}$ trên cả 3 điều kiện phân tán khác biệt---bao gồm Chuẩn đồng nhất (IID, $K=5$), Dị biệt vừa phải ($\alpha=0.5, K=5$) và Dị biệt cực đoan ($\alpha=0.1, K=5$)---mở ra phát hiện học thuật quan trọng và có giá trị nhất của luận văn: xác lập tính bất biến quy luật (Cross-Regime Invariance) của sự đánh đổi giữa kiểm soát độ trôi tham số và tính dẻo nhận diện tấn công hiếm (Hình \ref{fig:pareto_multiregime}).
+Việc hoàn thành trọn vẹn dải siêu tham số $\mu \in \{0.001, 0.01, 0.025, 0.05\}$ trên toàn bộ 4 điều kiện phân tán khác biệt---bao gồm Chuẩn đồng nhất (IID, $K=5$), Dị biệt nhẹ ($\alpha=1.0, K=5$), Dị biệt vừa phải ($\alpha=0.5, K=5$) và Dị biệt cực đoan ($\alpha=0.1, K=5$)---mở ra phát hiện học thuật quan trọng và có giá trị nhất của luận văn: xác lập tính bất biến quy luật (Cross-Regime Invariance) của sự đánh đổi giữa kiểm soát độ trôi tham số và tính dẻo nhận diện tấn công hiếm (Hình \ref{fig:pareto_multiregime}).
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{figures/pareto_frontier_multiregime.png}
-    \caption{Multi-regime empirical analysis of the Stability-Plasticity trade-off across IID, $\alpha=0.5$, and $\alpha=0.1$: (a) Parameter drift stabilization, (b) Global Macro-F1 utility, (c) Minority class extinction cliff at $\mu \ge 0.01$, and (d) 2D Pareto trade-off plane.}
+    \caption{Multi-regime empirical analysis of the Stability-Plasticity trade-off across IID, $\alpha=1.0$, $\alpha=0.5$, and $\alpha=0.1$: (a) Parameter drift stabilization, (b) Global Macro-F1 utility, (c) Minority class extinction cliff at $\mu \ge 0.01$, and (d) 2D Pareto trade-off plane.}
     \label{fig:pareto_multiregime}
 \end{figure}
 
-Phân tích định lượng tổng hợp trên 20 kịch bản thực nghiệm mang lại 4 kết luận khoa học cốt lõi:
+Phân tích định lượng tổng hợp trên 23 kịch bản thực nghiệm mang lại 4 kết luận khoa học cốt lõi:
 \begin{enumerate}
     \item \textbf{Tính phổ quát của hiện tượng "Vực thẳm tuyệt chủng lớp thiểu số" (Minority Extinction Cliff at $\mu \ge 0.01$):}
-    Trước đây, sự sụp đổ của lớp thiểu số thường bị quy kết đơn giản cho sự méo mó dữ liệu Non-IID. Tuy nhiên, bằng chứng thực nghiệm đối chứng trên Bảng \ref{tab:master_results} và Hình \ref{fig:pareto_multiregime}(c) chỉ ra rằng: \textbf{ngay cả trong điều kiện phân phối hoàn toàn đồng nhất (IID)}, chỉ cần tăng $\mu$ từ $0.001$ lên $0.01$, tỷ lệ Recall của lớp \texttt{Brute-force} lập tức rơi tự do từ $14.72\%$ về đúng $\mathbf{0.00\%}$. Hiện tượng tương tự lặp lại chính xác ở $\alpha=0.5$ ($7.94\% \to 0.00\%$) và $\alpha=0.1$ ($12.38\% \to 0.00\%$). Điều này chứng minh rằng sự biến mất của lớp thiểu số không phải là lỗi ngẫu nhiên do phân vùng dữ liệu, mà là \textbf{một hệ quả toán học mang tính quy luật} của số hạng phạt proximal $\frac{\mu}{2}\|\mathbf{w} - \mathbf{w}_t\|_2^2$ khi tối ưu hóa trên không gian hàm mất mát bị mất cân bằng trầm trọng. Khi $\mu \ge 0.01$, lực cản tham số ghìm chặt mô hình cục bộ vào mô hình toàn cục vốn đang bị áp đảo bởi các lớp thể tích lớn (DDoS/DoS), triệt tiêu hoàn toàn khả năng di chuyển gradient về phía vùng phân loại của các mẫu hiếm.
+    Trước đây, sự sụp đổ của lớp thiểu số thường bị quy kết đơn giản cho sự méo mó dữ liệu Non-IID. Tuy nhiên, bằng chứng thực nghiệm đối chứng trên Bảng \ref{tab:master_results} và Hình \ref{fig:pareto_multiregime}(c) chỉ ra rằng: \textbf{ngay cả trong điều kiện phân phối hoàn toàn đồng nhất (IID) và dị biệt nhẹ ($\alpha=1.0$)}, chỉ cần tăng $\mu$ từ $0.001$ lên $0.01$, tỷ lệ Recall của lớp \texttt{Brute-force} lập tức rơi tự do từ $14.72\%$ (IID) và $16.97\%$ ($\alpha=1.0$) về đúng $\mathbf{0.00\%}$. Hiện tượng tương tự lặp lại chính xác ở $\alpha=0.5$ ($7.94\% \to 0.00\%$) và $\alpha=0.1$ ($12.38\% \to 0.00\%$). Điều này chứng minh rằng sự biến mất của lớp thiểu số không phải là lỗi ngẫu nhiên do phân vùng dữ liệu, mà là \textbf{một hệ quả toán học mang tính quy luật} của số hạng phạt proximal $\frac{\mu}{2}\|\mathbf{w} - \mathbf{w}_t\|_2^2$ khi tối ưu hóa trên không gian hàm mất mát bị mất cân bằng trầm trọng. Khi $\mu \ge 0.01$, lực cản tham số ghìm chặt mô hình cục bộ vào mô hình toàn cục vốn đang bị áp đảo bởi các lớp thể tích lớn (DDoS/DoS), triệt tiêu hoàn toàn khả năng di chuyển gradient về phía vùng phân loại của các mẫu hiếm.
 
     \item \textbf{Điểm ngọt Pareto toàn cục tại $\mu = 0.001$ (The Universal Pareto Sweet Spot):}
     Tại mức điều hòa siêu nhẹ $\mu = 0.001$, số hạng proximal phát huy hiệu năng tối ưu trên toàn bộ phổ dữ liệu:
     \begin{itemize}
-        \item Kéo giảm độ trôi dạt tham số $L_2$ một cách ngoạn mục: giảm $78.7\%$ ở IID ($9.63 \to 2.05$), giảm $83.5\%$ ở $\alpha=0.5$ ($13.30 \to 2.19$), và giảm tới $\mathbf{90.8\%}$ ở $\alpha=0.1$ ($22.39 \to 2.06$).
-        \item Bảo toàn trọn vẹn tính dẻo gradient cho các mẫu hiếm, cho phép hệ thống duy trì khả năng bắt trúng lớp \texttt{Brute-force} ($14.72\%$ ở IID, $7.94\%$ ở $\alpha=0.5$, và $12.38\%$ ở $\alpha=0.1$).
+        \item Kéo giảm độ trôi dạt tham số $L_2$ một cách ngoạn mục: giảm $78.7\%$ ở IID ($9.63 \to 2.05$), giảm $80.0\%$ ở $\alpha=1.0$ ($10.75 \to 2.15$), giảm $83.5\%$ ở $\alpha=0.5$ ($13.30 \to 2.19$), và giảm tới $\mathbf{90.8\%}$ ở $\alpha=0.1$ ($22.39 \to 2.06$).
+        \item Bảo toàn trọn vẹn tính dẻo gradient cho các mẫu hiếm, cho phép hệ thống duy trì khả năng bắt trúng lớp \texttt{Brute-force} ($14.72\%$ ở IID, $16.97\%$ ở $\alpha=1.0$, $7.94\%$ ở $\alpha=0.5$, và $12.38\%$ ở $\alpha=0.1$).
         \item Riêng ở kịch bản dị biệt khắc nghiệt $\alpha=0.1$, $\mu=0.001$ vượt mặt cả FedAvg chuẩn trên điểm Macro-F1 ($\mathbf{57.42\%}$ so với $53.25\%$) và bỏ xa FedProx chuẩn $\mu=0.05$ tới $\mathbf{+14.41\%}$, xác lập điểm cực đại trên đường biên Pareto thực nghiệm.
     \end{itemize}
 
@@ -217,12 +220,13 @@ Phân tích định lượng tổng hợp trên 20 kịch bản thực nghiệm 
     Khi thiết lập $\mu = 0.05$ (giá trị mặc định hay dùng trong nhiều công trình FL kinh điển), mặc dù độ trôi tham số đạt mức thấp nhất ($0.52 - 0.65$), mô hình toàn cục phải trả giá bằng sự suy giảm nghiêm trọng trên mọi chỉ số:
     \begin{itemize}
         \item Macro-F1 ở IID giảm từ $67.75\%$ xuống $59.06\%$ ($-8.69\%$).
+        \item Macro-F1 ở $\alpha=1.0$ giảm từ $67.62\%$ xuống $55.45\%$ ($-12.17\%$).
         \item Macro-F1 ở $\alpha=0.5$ giảm từ $64.73\%$ xuống $53.01\%$ ($-11.72\%$).
         \item Ở $\alpha=0.1$, mô hình suy thoái nghiêm trọng nhất: Macro-F1 rơi xuống $43.01\%$ (thấp hơn FedAvg hơn $10\%$), và thậm chí lớp mã độc có thể tích trung bình như \texttt{Mirai Botnet} cũng bị suy sụp chỉ số F1 từ $95.28\%$ xuống chỉ còn $47.25\%$.
     \end{itemize}
 
     \item \textbf{Ý nghĩa định hướng cho thiết kế hệ thống FL-IoT trong thực tế:}
-    Các kết quả thực nghiệm 20 kịch bản đặt dấu chấm hết cho quan niệm sai lầm phổ biến cho rằng "hệ số $\mu$ càng lớn thì thuật toán FedProx càng chống chịu Non-IID tốt hơn". Trong các hệ thống an ninh mạng IoT thực tế với dữ liệu bảng mất cân bằng, việc áp dụng cơ chế proximal đòi hỏi hệ số phạt phải được hiệu chỉnh ở mức cực nhỏ ($\mu \approx 10^{-3}$) để vừa kiểm soát được drift vừa không biến bộ phát hiện xâm nhập thành một hệ thống "mù" trước các cuộc tấn công tinh vi.
+    Các kết quả thực nghiệm 23 kịch bản đặt dấu chấm hết cho quan niệm sai lầm phổ biến cho rằng "hệ số $\mu$ càng lớn thì thuật toán FedProx càng chống chịu Non-IID tốt hơn". Trong các hệ thống an ninh mạng IoT thực tế với dữ liệu bảng mất cân bằng, việc áp dụng cơ chế proximal đòi hỏi hệ số phạt phải được hiệu chỉnh ở mức cực nhỏ ($\mu \approx 10^{-3}$) để vừa kiểm soát được drift vừa không biến bộ phát hiện xâm nhập thành một hệ thống "mù" trước các cuộc tấn công tinh vi.
 \end{enumerate}
 
 \section{Objective Analysis of System Limitations and Defense-in-Depth Positioning}
