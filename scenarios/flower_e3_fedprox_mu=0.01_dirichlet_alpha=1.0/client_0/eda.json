@@ -1,0 +1,32 @@
+{
+  "client_id": 0,
+  "total_samples": 539779,
+  "num_classes": 8,
+  "dominant_class": "DDoS",
+  "dominant_class_pct": 55.28,
+  "shannon_entropy": 1.3456,
+  "normalized_entropy": 0.6471,
+  "imbalance_ratio": 438.17,
+  "present_classes_count": 8,
+  "missing_classes": [],
+  "class_counts": {
+    "Benign": 30379,
+    "Brute-force": 681,
+    "DDoS": 298396,
+    "DoS": 76630,
+    "Mirai": 12691,
+    "Recon": 29866,
+    "Spoof": 88561,
+    "Web-based": 2575
+  },
+  "class_percentages": {
+    "Benign": 5.63,
+    "Brute-force": 0.13,
+    "DDoS": 55.28,
+    "DoS": 14.2,
+    "Mirai": 2.35,
+    "Recon": 5.53,
+    "Spoof": 16.41,
+    "Web-based": 0.48
+  }
+}
