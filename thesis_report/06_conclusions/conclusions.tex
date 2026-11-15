@@ -5,22 +5,22 @@
 \label{sec:concl_summary}
 Báo cáo khóa luận đã hoàn thành toàn diện các mục tiêu khoa học đề ra:
 \begin{enumerate}
-    \item Xây dựng thành công hệ thống đo kiểm thực nghiệm phân tán gRPC trên tập dữ liệu chuẩn CICIoT2023 với hơn 5.1 triệu dòng dữ liệu mạng và quy trình kiểm thử không rò rỉ tri thức (Leakage-free).
-    \item Hoàn thành trọn vẹn \textbf{23 kịch bản thực nghiệm đối chứng} từ E1 đến E6 trên hơn $1.53$ triệu mẫu kiểm định độc lập, cung cấp bằng chứng thực nghiệm phản biện định lượng bác bỏ giả định rằng cơ chế tính trung bình trọng số thông thường có thể bảo vệ được các lớp tấn công thiểu số trong môi trường phân tán.
-    \item Vạch ra đường cong suy thoái định lượng theo phân phối Dirichlet với ngưỡng gãy đổ $\alpha \le 0.5$, và đo kiểm toàn diện chi phí truyền thông mạng hai chiều siêu nhẹ ($5.30\text{ MB} \to 10.60\text{ MB}$).
-    \item Khảo sát toàn diện ma trận siêu tham số $\mu \in \{0.001, 0.01, 0.025, 0.05\}$ xuyên suốt 4 điều kiện phân tán (IID, $\alpha=1.0$, $\alpha=0.5$, $\alpha=0.1$) và xác lập đường cong biên Pareto đa điều kiện (Multi-Regime Pareto Frontier). Chứng minh tính quy luật của hiện tượng "Vực thẳm tuyệt chủng lớp thiểu số" khi $\mu \ge 0.01$ và định vị điểm tối ưu toàn cục tại $\mu=0.001$ giúp kiềm chế trôi dạt tham số từ $78.7\% - 90.8\%$ trong khi vẫn bảo toàn tính dẻo để nhận diện được lớp tấn công hiếm \texttt{Brute-force} ($12.38\%$).
+    \item Xây dựng thành công hệ thống đo kiểm thực nghiệm phân tán gRPC trên benchmark dataset CICIoT2023 với hơn 5.1 triệu dòng dữ liệu mạng và quy trình kiểm thử Leakage-free.
+    \item Hoàn thành trọn vẹn \textbf{23 kịch bản thực nghiệm đối chứng} từ E1 đến E6 trên hơn $1.53$ triệu mẫu kiểm định độc lập, cung cấp bằng chứng thực nghiệm phản biện định lượng bác bỏ giả định rằng cơ chế parameter aggregation thông thường có thể bảo vệ được các minority classes trong môi trường phân tán.
+    \item Vạch ra đường cong suy thoái định lượng theo phân phối Dirichlet với ngưỡng gãy đổ $\alpha \le 0.5$, và đo kiểm toàn diện communication cost hai chiều siêu nhẹ ($5.30\text{ MB} \to 10.60\text{ MB}$).
+    \item Khảo sát toàn diện ma trận siêu tham số $\mu \in \{0.001, 0.01, 0.025, 0.05\}$ xuyên suốt 4 điều kiện phân tán (IID, $\alpha=1.0$, $\alpha=0.5$, $\alpha=0.1$) và xác lập Multi-Regime Pareto Frontier. Chứng minh tính quy luật của hiện tượng Minority Extinction Cliff khi $\mu \ge 0.01$ và định vị universal Pareto sweet spot tại $\mu=0.001$ giúp kiềm chế parameter drift từ $78.7\% - 90.8\%$ trong khi vẫn bảo toàn local plasticity để nhận diện minority class \texttt{Brute-force} ($12.38\%$).
 \end{enumerate}
 
 \section{Theoretical Proposal: Decoupled Federated Learning}
 \label{sec:concl_decoupled}
-Từ phát hiện thực nghiệm về sự sụp đổ của lớp thiểu số do cơ chế trung bình trọng số toàn cục (\ref{eq:fedavg_agg}) và hiệu ứng quá điều hòa của FedProx, đề tài xây dựng đề xuất thuật toán \textbf{Decoupled Federated Learning (FedPer/FedRep)} như một giải pháp lý thuyết mở đường cho các nghiên cứu tiếp nối:
+Từ phát hiện thực nghiệm về sự sụp đổ của minority classes do cơ chế parameter aggregation toàn cục (\ref{eq:fedavg_agg}) và hiệu ứng quá điều hòa của FedProx, đề tài xây dựng đề xuất thuật toán \textbf{Decoupled Federated Learning (FedPer/FedRep)} như một giải pháp lý thuyết mở đường cho các nghiên cứu tiếp nối:
 \begin{enumerate}
     \item \textbf{Phân rã Tham số Mô hình:} Không gian trọng số của \texttt{TabularIoTMLP} được phân tách thành hai thành phần độc lập $\mathbf{w} = [\mathbf{w}_{\text{base}}, \mathbf{w}_{\text{head}}^{(k)}]$:
     \begin{itemize}
-        \item \textit{Tầng Biểu diễn Đặc trưng Chung ($\mathbf{w}_{\text{base}}$: $39 \to 128 \to 64$):} Học các đặc trưng lưu lượng dòng mạng cốt lõi chung của toàn hạ tầng IoT, được chia sẻ và tổng hợp toàn cục qua FedAvg: $\mathbf{w}_{\text{base}, t+1} = \sum_{k=1}^K \frac{n_k}{N} \mathbf{w}_{\text{base}, t+1}^{(k)}$.
-        \item \textit{Tầng Phân loại Cá nhân hóa Cục bộ ($\mathbf{w}_{\text{head}}^{(k)}$: $64 \to 8$):} Được giữ lại hoàn toàn tại từng trạm biên $k$ (không trao đổi qua mạng). Tầng này tối ưu hóa riêng cho phân phối nhãn cục bộ $P_k(y)$, loại bỏ hoàn toàn nguy cơ gradient của các lớp tấn công hiếm (\texttt{Web-based}, \texttt{Brute-force}) bị phép trung bình mẫu $n_k/N$ triệt tiêu.
+        \item \textit{Feature Representation Base ($\mathbf{w}_{\text{base}}$: $39 \to 128 \to 64$):} Học các đặc trưng lưu lượng dòng mạng cốt lõi chung của toàn hạ tầng IoT, được chia sẻ và aggregation toàn cục qua FedAvg: $\mathbf{w}_{\text{base}, t+1} = \sum_{k=1}^K \frac{n_k}{N} \mathbf{w}_{\text{base}, t+1}^{(k)}$.
+        \item \textit{Personalized Classification Head ($\mathbf{w}_{\text{head}}^{(k)}$: $64 \to 8$):} Được giữ lại hoàn toàn tại từng client $k$ (không trao đổi qua mạng). Tầng này tối ưu hóa riêng cho phân phối nhãn cục bộ $P_k(y)$, loại bỏ hoàn toàn nguy cơ gradient của các minority classes (\texttt{Web-based}, \texttt{Brute-force}) bị phép weighted averaging $n_k/N$ triệt tiêu.
     \end{itemize}
-    \item \textbf{Kỳ vọng Học thuật:} Kiến trúc Decoupled FL được kỳ vọng sẽ giải phóng hoàn toàn tính dẻo cục bộ, khôi phục khả năng bắt trúng các cuộc tấn công hiếm lên mức tương đương mô hình tập trung ($>50\%$), đồng thời duy trì độ ổn định trôi dạt tham số thấp ở tầng trích xuất đặc trưng.
+    \item \textbf{Kỳ vọng Học thuật:} Kiến trúc Decoupled FL được kỳ vọng sẽ giải phóng hoàn toàn local plasticity, khôi phục Recall của minority classes lên mức tương đương Centralized baseline ($>50\%$), đồng thời duy trì parameter drift thấp ở tầng trích xuất đặc trưng.
 \end{enumerate}
 
 \section{Long-Term Research Directions}

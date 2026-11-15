@@ -5,12 +5,12 @@
 \label{sec:res_matrix}
 Nghiên cứu triển khai hệ sinh thái gồm \textbf{23 kịch bản thực nghiệm đối chứng có kiểm soát chặt chẽ} (từ E1 đến E6, bao gồm khảo sát toàn diện ma trận siêu tham số $\mu$ trên cả 4 điều kiện phân tán: IID, $\alpha=1.0$, $\alpha=0.5$ và $\alpha=0.1$) trên cùng một môi trường phần cứng và cấu hình siêu tham số đồng nhất:
 \begin{itemize}
-    \item Số vòng giao tiếp liên đoàn: $T = 10$ rounds.
-    \item Số epoch huấn luyện cục bộ: $E = 2$ epochs/round.
-    \item Kích thước batch cục bộ: $B_{\text{size}} = 64$.
-    \item Tốc độ học: $\eta = 10^{-3}$ với bộ tối ưu AdamW.
-    \item Dải khảo sát hệ số phạt FedProx: $\mu \in \{0.001, 0.01, 0.025, 0.05\}$ và chuẩn cơ sở FedAvg ($\mu = 0.0$).
-    \item Tập kiểm định đánh giá: $100\%$ kịch bản đều được đánh giá độc lập trên cùng tập \textbf{Global Holdout Test Set ($30\%$ Data)} gồm đúng $1,534,918$ mẫu luồng mạng thực.
+    \item Số communication rounds: $T = 10$ rounds.
+    \item Số local epochs: $E = 2$ epochs/round.
+    \item Local batch size: $B_{\text{size}} = 64$.
+    \item Learning rate: $\eta = 10^{-3}$ với optimizer AdamW.
+    \item Dải khảo sát proximal parameter: $\mu \in \{0.001, 0.01, 0.025, 0.05\}$ và baseline FedAvg ($\mu = 0.0$).
+    \item Tập kiểm định đánh giá: $100\%$ kịch bản đều được đánh giá độc lập trên cùng \textbf{Global Holdout Test Set ($30\%$ Data)} gồm đúng $1,534,918$ mẫu luồng mạng thực.
 \end{itemize}
 
 \section{Master Benchmark Results and Synthesis}
@@ -70,11 +70,11 @@ E6: FedAvg (IID, $K=10$) & 84.41 & 67.28 & 0.39 & 19.21 & \textbf{10.60} & 7.25 
 \label{sec:res_findings}
 
 \subsection{Finding 1: Empirical Counter-Evidence on Minority Class Collapse (Negative Finding)}
-Đối chiếu trực diện giữa kịch bản tập trung (E1) và các kịch bản phân tán (E2--E6) mang lại một phát hiện khoa học mang tính bước ngoặt:
+Đối chiếu trực diện giữa Centralized Baseline (E1) và các kịch bản phân tán (E2--E6) mang lại một phát hiện khoa học mang tính bước ngoặt:
 \begin{itemize}
-    \item \textbf{Năng lực nội tại của kiến trúc mô hình:} Khi huấn luyện tập trung (E1) với toàn bộ dữ liệu, mô hình \texttt{TabularIoTMLP} đạt tỷ lệ phát hiện (Recall) lên tới $\mathbf{52.41\%}$ trên lớp \texttt{Web-based} và $\mathbf{53.36\%}$ trên lớp \texttt{Brute-force} (xem Hình \ref{fig:cm_e1_centralized}). Điều này chứng minh rằng kiến trúc nơ-ron MLP 3 tầng hoàn toàn có đủ dung lượng biểu diễn để trích xuất các đặc trưng phân loại của các lớp tấn công thiểu số.
-    \item \textbf{Sự sụp đổ do cơ chế tổng hợp phân tán (FedAvg):} Khi phân tán sang môi trường liên đoàn FedAvg, tỷ lệ Recall của \texttt{Web-based} sụt giảm thảm hại xuống $1.66\%$ ($K=5$) và tiếp tục rơi xuống $0.39\%$ khi mở rộng lên $K=10$ clients. Nguyên nhân toán học nằm ở công thức (\ref{eq:fedavg_agg}): lớp Web-based chỉ chiếm $0.49\%$ dữ liệu, khiến gradient của các trạm chứa lớp này bị "pha loãng" và triệt tiêu hoàn toàn bởi hàng trăm nghìn mẫu của các lớp DDoS/DoS khi tính trung bình gia quyền $n_k/N$.
-    \item \textbf{Hiệu ứng phong tỏa tính dẻo của FedProx (Loss of Local Plasticity):} Đáng chú ý, ở tất cả các kịch bản sử dụng FedProx với $\mu=0.05$, Recall của cả Web-based và Brute-force đều rơi thẳng về $\mathbf{0.00\%}$. Số hạng phạt $\frac{\mu}{2}\|\mathbf{w} - \mathbf{w}_t\|_2^2$ đã cưỡng chế vector tham số client không được dịch chuyển xa khỏi mô hình toàn cục, vô tình dập tắt nỗ lực di chuyển gradient để học các mẫu hiếm.
+    \item \textbf{Năng lực nội tại của kiến trúc mô hình:} Khi huấn luyện tập trung (E1), \texttt{TabularIoTMLP} đạt Recall $\mathbf{52.41\%}$ ở lớp Web-based và $\mathbf{53.36\%}$ ở lớp Brute-force (Hình \ref{fig:cm_e1_centralized}). Điều này chứng minh rằng mạng MLP có đủ capacity để nhận diện minority classes.
+    \item \textbf{Sự sụp đổ của Minority Classes ở FedAvg:} Khi chuyển sang Federated Learning với FedAvg, Recall của Web-based sụt giảm xuống $1.66\%$ ($K=5$) và chỉ còn $0.39\%$ khi mở rộng $K=10$ clients. Nguyên nhân toán học nằm ở công thức (\ref{eq:fedavg_agg}): minority class Web-based chỉ chiếm $0.49\%$ dữ liệu, khiến gradient của client chứa lớp này bị triệt tiêu bởi số lượng áp đảo của majority classes khi aggregation $n_k/N$.
+    \item \textbf{Hiệu ứng triệt tiêu local plasticity của FedProx (Loss of Local Plasticity):} Đáng chú ý, ở tất cả các kịch bản sử dụng FedProx với $\mu=0.05$, Recall của cả Web-based và Brute-force đều rơi thẳng về $\mathbf{0.00\%}$. Proximal penalty term $\frac{\mu}{2}\|\mathbf{w} - \mathbf{w}_t\|_2^2$ đã cưỡng chế vector tham số client không được dịch chuyển xa khỏi global model, dập tắt hoàn toàn nỗ lực gradient update để học các minority classes.
 \end{itemize}
 
 \begin{figure}[htbp]
@@ -97,7 +97,7 @@ E6: FedAvg (IID, $K=10$) & 84.41 & 67.28 & 0.39 & 19.21 & \textbf{10.60} & 7.25 
 \end{figure}
 
 \subsection{Finding 2: Superior Detection Performance on High-Volume Infrastructure Attacks}
-Bảng \ref{tab:per_class_e2} chi tiết hóa hiệu năng phân loại theo từng lớp của kịch bản E2 FedAvg trên tập kiểm định toàn cục $1,534,918$ mẫu.
+Bảng \ref{tab:per_class_e2} chi tiết hóa hiệu năng phân loại theo từng class của kịch bản E2 FedAvg trên global holdout test set $1,534,918$ mẫu.
 
 \begin{table}[H]
 \centering
@@ -122,16 +122,16 @@ Bảng \ref{tab:per_class_e2} chi tiết hóa hiệu năng phân loại theo t�
 
 Số liệu chứng minh hệ thống đạt khả năng phòng thủ tuyệt đối trước các mối nguy hại hạ tầng nguy hiểm nhất của thế giới IoT:
 \begin{itemize}
-    \item \textbf{Mã độc Mirai Botnet:} Đạt F1-score $\mathbf{99.70\%}$ với tỷ lệ Recall bắt trúng lên tới $\mathbf{99.54\%}$ trên $63,247$ mẫu kiểm định.
+    \item \textbf{Mã độc Mirai Botnet:} Đạt F1-score $\mathbf{99.70\%}$ với Recall lên tới $\mathbf{99.54\%}$ trên $63,247$ mẫu kiểm định.
     \item \textbf{Tấn công DDoS:} Đạt F1-score $\mathbf{91.30\%}$ và Recall $\mathbf{96.20\%}$ trên hơn nửa triệu gói tin kiểm định.
-    \item \textbf{Lưu lượng Hợp lệ (Benign):} Đạt F1-score $83.53\%$ và Precision $80.60\%$, bảo đảm tỷ lệ cảnh báo giả (False Positive Rate) ở mức chấp nhận được trong vận hành mạng.
+    \item \textbf{Benign (Lưu lượng Hợp lệ):} Đạt F1-score $83.53\%$ và Precision $80.60\%$, bảo đảm False Positive Rate ở mức thấp chấp nhận được trong vận hành mạng.
 \end{itemize}
 
 \subsection{Finding 3: Quantified Dirichlet Degradation Curve and Scalability Analysis}
 \begin{itemize}
-    \item \textbf{Kiểm soát độ trôi tham số (Drift L2 Norm):} Ở FedAvg, khi mức độ phân tán Non-IID tăng từ $\alpha=1.0$ lên $\alpha=0.5$, độ trôi tăng từ $10.75$ lên $13.30$ ($+23.7\%$). Ngược lại, FedProx kiểm soát trôi dạt cực kỳ nghiêm ngặt, luôn duy trì chuẩn $L_2$ dưới $0.65$ (giảm hơn $95\%$ so với FedAvg), minh chứng số hạng phạt proximal hoạt động đúng chức năng toán học của nó.
+    \item \textbf{Kiểm soát parameter drift (Drift L2 Norm):} Ở FedAvg, khi mức độ Non-IID tăng từ $\alpha=1.0$ lên $\alpha=0.5$, parameter drift tăng từ $10.75$ lên $13.30$ ($+23.7\%$). Ngược lại, FedProx kiểm soát drift cực kỳ nghiêm ngặt, luôn duy trì $L_2$ norm dưới $0.65$ (giảm hơn $95\%$ so với FedAvg), minh chứng proximal penalty term hoạt động đúng chức năng toán học của nó.
     \item \textbf{Ngưỡng gãy đổ $\alpha = 0.5$ và sụp đổ tại $\alpha = 0.1$:} Từ IID ($68.00\%$) sang $\alpha=1.0$ ($67.62\%$), hiệu năng suy giảm không đáng kể ($-0.38\%$). Tuy nhiên, khi vượt qua ngưỡng $\alpha = 0.5$, Macro-F1 bắt đầu suy giảm nhanh ($64.73\%$), và tại $\alpha = 0.1$, hệ thống rơi vào vùng suy thoái nghiêm trọng với Macro-F1 chỉ còn $43.01\%$ (mất tới gần $25\%$ hiệu năng).
-    \item \textbf{Tính tuyến tính khi mở rộng quy mô ($K=5 \to 7 \to 10$):} Trong điều kiện IID, khi số lượng client tăng gấp đôi, Macro-F1 duy trì độ ổn định cao ($68.00\% \to 67.82\% \to 67.28\%$, mức biến thiên $<0.72\%$), trong khi chi phí truyền thông tích lũy tăng tuyến tính hoàn hảo ($5.30\text{ MB} \to 7.42\text{ MB} \to 10.60\text{ MB}$).
+    \item \textbf{Tính tuyến tính khi mở rộng quy mô ($K=5 \to 7 \to 10$):} Trong điều kiện IID, khi client scalability tăng gấp đôi, Macro-F1 duy trì stability cao ($68.00\% \to 67.82\% \to 67.28\%$, mức biến thiên $<0.72\%$), trong khi cumulative communication cost tăng tuyến tính hoàn hảo ($5.30\text{ MB} \to 7.42\text{ MB} \to 10.60\text{ MB}$).
 \end{itemize}
 
 \begin{figure}[htbp]
@@ -174,7 +174,7 @@ Số liệu chứng minh hệ thống đạt khả năng phòng thủ tuyệt đ
 
 \subsection{Finding 4: Cross-Regime Invariance of the Stability-Plasticity Trade-Off and Multi-Condition Pareto Frontier}
 \label{sec:res_pareto}
-Việc hoàn thành trọn vẹn dải siêu tham số $\mu \in \{0.001, 0.01, 0.025, 0.05\}$ trên toàn bộ 4 điều kiện phân tán khác biệt---bao gồm Chuẩn đồng nhất (IID, $K=5$), Dị biệt nhẹ ($\alpha=1.0, K=5$), Dị biệt vừa phải ($\alpha=0.5, K=5$) và Dị biệt cực đoan ($\alpha=0.1, K=5$)---mở ra phát hiện học thuật quan trọng và có giá trị nhất của luận văn: xác lập tính bất biến quy luật (Cross-Regime Invariance) của sự đánh đổi giữa kiểm soát độ trôi tham số và tính dẻo nhận diện tấn công hiếm (Hình \ref{fig:pareto_multiregime}).
+Việc hoàn thành trọn vẹn dải siêu tham số $\mu \in \{0.001, 0.01, 0.025, 0.05\}$ trên toàn bộ 4 điều kiện phân tán khác biệt---bao gồm IID ($K=5$), Non-IID nhẹ ($\alpha=1.0, K=5$), Non-IID vừa phải ($\alpha=0.5, K=5$) và Non-IID cực đoan ($\alpha=0.1, K=5$)---mở ra phát hiện học thuật quan trọng của luận văn: xác lập Cross-Regime Invariance của sự trade-off giữa kiểm soát parameter drift và local plasticity cho minority classes (Hình \ref{fig:pareto_multiregime}).
 
 \begin{figure}[htbp]
     \centering
@@ -185,19 +185,19 @@ Việc hoàn thành trọn vẹn dải siêu tham số $\mu \in \{0.001, 0.01, 0
 
 Phân tích định lượng tổng hợp trên 23 kịch bản thực nghiệm mang lại 4 kết luận khoa học cốt lõi:
 \begin{enumerate}
-    \item \textbf{Tính phổ quát của hiện tượng "Vực thẳm tuyệt chủng lớp thiểu số" (Minority Extinction Cliff at $\mu \ge 0.01$):}
-    Trước đây, sự sụp đổ của lớp thiểu số thường bị quy kết đơn giản cho sự méo mó dữ liệu Non-IID. Tuy nhiên, bằng chứng thực nghiệm đối chứng trên Bảng \ref{tab:master_results} và Hình \ref{fig:pareto_multiregime}(c) chỉ ra rằng: \textbf{ngay cả trong điều kiện phân phối hoàn toàn đồng nhất (IID) và dị biệt nhẹ ($\alpha=1.0$)}, chỉ cần tăng $\mu$ từ $0.001$ lên $0.01$, tỷ lệ Recall của lớp \texttt{Brute-force} lập tức rơi tự do từ $14.72\%$ (IID) và $16.97\%$ ($\alpha=1.0$) về đúng $\mathbf{0.00\%}$. Hiện tượng tương tự lặp lại chính xác ở $\alpha=0.5$ ($7.94\% \to 0.00\%$) và $\alpha=0.1$ ($12.38\% \to 0.00\%$). Điều này chứng minh rằng sự biến mất của lớp thiểu số không phải là lỗi ngẫu nhiên do phân vùng dữ liệu, mà là \textbf{một hệ quả toán học mang tính quy luật} của số hạng phạt proximal $\frac{\mu}{2}\|\mathbf{w} - \mathbf{w}_t\|_2^2$ khi tối ưu hóa trên không gian hàm mất mát bị mất cân bằng trầm trọng. Khi $\mu \ge 0.01$, lực cản tham số ghìm chặt mô hình cục bộ vào mô hình toàn cục vốn đang bị áp đảo bởi các lớp thể tích lớn (DDoS/DoS), triệt tiêu hoàn toàn khả năng di chuyển gradient về phía vùng phân loại của các mẫu hiếm.
+    \item \textbf{Tính phổ quát của Minority Extinction Cliff khi $\mu \ge 0.01$:}
+    Trước đây, sự sụp đổ của minority classes thường bị quy kết đơn giản cho dữ liệu Non-IID. Tuy nhiên, bằng chứng thực nghiệm đối chứng trên Bảng \ref{tab:master_results} và Hình \ref{fig:pareto_multiregime}(c) chỉ ra rằng: \textbf{ngay cả trong điều kiện IID và Non-IID nhẹ ($\alpha=1.0$)}, chỉ cần tăng $\mu$ từ $0.001$ lên $0.01$, Recall của minority class \texttt{Brute-force} lập tức rơi tự do từ $14.72\%$ (IID) và $16.97\%$ ($\alpha=1.0$) về đúng $\mathbf{0.00\%}$. Hiện tượng tương tự lặp lại chính xác ở $\alpha=0.5$ ($7.94\% \to 0.00\%$) và $\alpha=0.1$ ($12.38\% \to 0.00\%$). Điều này chứng minh rằng sự biến mất của minority classes không phải là lỗi ngẫu nhiên do data partitioning, mà là \textbf{hệ quả toán học mang tính quy luật} của proximal penalty term $\frac{\mu}{2}\|\mathbf{w} - \mathbf{w}_t\|_2^2$ khi tối ưu hóa trên loss landscape bị class imbalance trầm trọng. Khi $\mu \ge 0.01$, proximal penalty ghìm chặt local model vào global model vốn đang bị áp đảo bởi các majority classes (DDoS/DoS), triệt tiêu hoàn toàn khả năng di chuyển gradient về phía vùng phân loại của các minority classes.
 
-    \item \textbf{Điểm ngọt Pareto toàn cục tại $\mu = 0.001$ (The Universal Pareto Sweet Spot):}
-    Tại mức điều hòa siêu nhẹ $\mu = 0.001$, số hạng proximal phát huy hiệu năng tối ưu trên toàn bộ phổ dữ liệu:
+    \item \textbf{Universal Pareto Sweet Spot tại $\mu = 0.001$:}
+    Tại mức proximal parameter siêu nhẹ $\mu = 0.001$, FedProx phát huy hiệu năng tối ưu trên toàn bộ phổ dữ liệu:
     \begin{itemize}
-        \item Kéo giảm độ trôi dạt tham số $L_2$ một cách ngoạn mục: giảm $78.7\%$ ở IID ($9.63 \to 2.05$), giảm $80.0\%$ ở $\alpha=1.0$ ($10.75 \to 2.15$), giảm $83.5\%$ ở $\alpha=0.5$ ($13.30 \to 2.19$), và giảm tới $\mathbf{90.8\%}$ ở $\alpha=0.1$ ($22.39 \to 2.06$).
-        \item Bảo toàn trọn vẹn tính dẻo gradient cho các mẫu hiếm, cho phép hệ thống duy trì khả năng bắt trúng lớp \texttt{Brute-force} ($14.72\%$ ở IID, $16.97\%$ ở $\alpha=1.0$, $7.94\%$ ở $\alpha=0.5$, và $12.38\%$ ở $\alpha=0.1$).
-        \item Riêng ở kịch bản dị biệt khắc nghiệt $\alpha=0.1$, $\mu=0.001$ vượt mặt cả FedAvg chuẩn trên điểm Macro-F1 ($\mathbf{57.42\%}$ so với $53.25\%$) và bỏ xa FedProx chuẩn $\mu=0.05$ tới $\mathbf{+14.41\%}$, xác lập điểm cực đại trên đường biên Pareto thực nghiệm.
+        \item Kéo giảm parameter drift $L_2$ norm một cách ngoạn mục: giảm $78.7\%$ ở IID ($9.63 \to 2.05$), giảm $80.0\%$ ở $\alpha=1.0$ ($10.75 \to 2.15$), giảm $83.5\%$ ở $\alpha=0.5$ ($13.30 \to 2.19$), và giảm tới $\mathbf{90.8\%}$ ở $\alpha=0.1$ ($22.39 \to 2.06$).
+        \item Bảo toàn trọn vẹn local plasticity cho minority classes, cho phép hệ thống duy trì Recall lớp \texttt{Brute-force} ($14.72\%$ ở IID, $16.97\%$ ở $\alpha=1.0$, $7.94\%$ ở $\alpha=0.5$, và $12.38\%$ ở $\alpha=0.1$).
+        \item Riêng ở kịch bản Non-IID khắc nghiệt $\alpha=0.1$, $\mu=0.001$ vượt mặt cả FedAvg chuẩn trên điểm Macro-F1 ($\mathbf{57.42\%}$ so với $53.25\%$) và bỏ xa FedProx chuẩn $\mu=0.05$ tới $\mathbf{+14.41\%}$, xác lập điểm cực đại trên đường biên Pareto thực nghiệm.
     \end{itemize}
 
     \item \textbf{Hiệu ứng quá điều hòa và sự suy thoái toàn diện khi $\mu = 0.05$:}
-    Khi thiết lập $\mu = 0.05$ (giá trị mặc định hay dùng trong nhiều công trình FL kinh điển), mặc dù độ trôi tham số đạt mức thấp nhất ($0.52 - 0.65$), mô hình toàn cục phải trả giá bằng sự suy giảm nghiêm trọng trên mọi chỉ số:
+    Khi thiết lập $\mu = 0.05$ (giá trị mặc định hay dùng trong nhiều công trình FL kinh điển), mặc dù parameter drift đạt mức thấp nhất ($0.52 - 0.65$), mô hình toàn cục phải trả giá bằng sự suy giảm nghiêm trọng trên mọi chỉ số:
     \begin{itemize}
         \item Macro-F1 ở IID giảm từ $67.75\%$ xuống $59.06\%$ ($-8.69\%$).
         \item Macro-F1 ở $\alpha=1.0$ giảm từ $67.62\%$ xuống $55.45\%$ ($-12.17\%$).
@@ -206,19 +206,19 @@ Phân tích định lượng tổng hợp trên 23 kịch bản thực nghiệm 
     \end{itemize}
 
     \item \textbf{Ý nghĩa định hướng cho thiết kế hệ thống FL-IoT trong thực tế:}
-    Các kết quả thực nghiệm 23 kịch bản đặt dấu chấm hết cho quan niệm sai lầm phổ biến cho rằng "hệ số $\mu$ càng lớn thì thuật toán FedProx càng chống chịu Non-IID tốt hơn". Trong các hệ thống an ninh mạng IoT thực tế với dữ liệu bảng mất cân bằng, việc áp dụng cơ chế proximal đòi hỏi hệ số phạt phải được hiệu chỉnh ở mức cực nhỏ ($\mu \approx 10^{-3}$) để vừa kiểm soát được drift vừa không biến bộ phát hiện xâm nhập thành một hệ thống "mù" trước các cuộc tấn công tinh vi.
+    Các kết quả thực nghiệm 23 kịch bản đặt dấu chấm hết cho quan niệm sai lầm phổ biến cho rằng "hệ số $\mu$ càng lớn thì thuật toán FedProx càng chống chịu Non-IID tốt hơn". Trong các hệ thống FL-IoT-IDS thực tế với tabular data bị class imbalance, việc áp dụng proximal penalty đòi hỏi $\mu$ phải được hiệu chỉnh ở mức nhỏ ($\mu \approx 10^{-3}$) để vừa kiểm soát được parameter drift vừa bảo toàn local plasticity cho các minority classes.
 \end{enumerate}
 
 \section{Objective Analysis of System Limitations and Defense-in-Depth Positioning}
 \label{sec:res_limitations}
 Dưới góc nhìn phản biện khoa học khách quan, nghiên cứu thẳng thắn nhìn nhận 4 hạn chế kỹ thuật của hệ thống prototype hiện tại:
 \begin{enumerate}
-    \item \textbf{Điểm mù thực tế đối với tấn công Web-based và Định vị Phòng thủ Chiều sâu (Defense-in-Depth):} Một hệ thống NIDS bỏ lọt $98\% - 99\%$ các cuộc tấn công Web-based không thể hoạt động như một giải pháp độc lập (Stand-alone Solution). Do đó, mô hình FL-IoT-IDS được định vị trong kiến trúc an ninh mạng đa tầng:
+    \item \textbf{Điểm mù thực tế đối với tấn công Web-based và Định vị Defense-in-Depth:} Một hệ thống NIDS bỏ lọt $98\% - 99\%$ các cuộc tấn công Web-based không thể hoạt động như một Stand-alone Solution. Do đó, mô hình FL-IoT-IDS được định vị trong kiến trúc an ninh mạng đa tầng:
     \begin{itemize}
-        \item \textit{Tầng Ứng dụng (Layer 7):} Các cuộc tấn công Web (SQL Injection, XSS) đòi hỏi giải mã và phân tích sâu nội dung payload HTTP/HTTPS, bắt buộc phải do Tường lửa ứng dụng web (WAF) hoặc Signature-based IDS (như Suricata, Snort) đảm nhiệm.
-        \item \textit{Tầng Mạng/Giao vận (Layer 3/Layer 4 -- Phạm vi Đề tài):} Mô hình FL-IoT-IDS tập trung phát hiện tối ưu các cuộc tấn công lưu lượng lớn (DDoS, DoS, Botnet Mirai, Reconnaissance, Spoofing) với độ chính xác và Recall vượt trội ($>85\% - 99\%$), giải phóng tải tính toán cho các thiết bị phân tích tầng trên.
+        \item \textit{Tầng Ứng dụng (Layer 7):} Các cuộc tấn công Web (SQL Injection, XSS) đòi hỏi giải mã và phân tích sâu nội dung payload HTTP/HTTPS, bắt buộc phải do WAF hoặc Signature-based IDS (như Suricata, Snort) đảm nhiệm.
+        \item \textit{Tầng Mạng/Giao vận (Layer 3/Layer 4 -- Phạm vi Đề tài):} Mô hình FL-IoT-IDS tập trung phát hiện tối ưu các cuộc tấn công lưu lượng lớn (DDoS, DoS, Botnet Mirai, Reconnaissance, Spoofing) với Recall vượt trội ($>85\% - 99\%$), giải phóng tải tính toán cho các thiết bị phân tích tầng trên.
     \end{itemize}
-    \item \textbf{Khoảng cách giữa mô phỏng đa tiến trình gRPC và mạng IoT vật lý:} Dù đã sử dụng giao thức socket TCP/IP gRPC thực thụ, môi trường thử nghiệm trên một máy chủ chưa thể tái hiện đầy đủ các yếu tố ngẫu nhiên của sóng vô tuyến: mất gói tin (packet loss), trễ biến thiên (jitter), thiết bị ngắt kết nối đột ngột (client dropouts), và sự không đồng nhất về phần cứng (thiết bị chạy nhanh, thiết bị chạy chậm -- Straggler problem).
+    \item \textbf{Khoảng cách giữa mô phỏng đa tiến trình gRPC và mạng IoT vật lý:} Dù đã sử dụng giao thức socket TCP/IP gRPC thực thụ, môi trường thử nghiệm trên một máy chủ chưa thể tái hiện đầy đủ các yếu tố ngẫu nhiên của sóng vô tuyến: mất gói tin (packet loss), trễ biến thiên (jitter), client dropouts, và sự không đồng nhất về phần cứng (Straggler problem).
     \item \textbf{Thiên kiến tập dữ liệu đơn (Single-Dataset Bias):} Toàn bộ các kết luận thực nghiệm mới được kiểm chứng trên CICIoT2023. Để nâng cao tính tổng quát hóa, mô hình cần được thử nghiệm chéo trên các tập dữ liệu khác như Edge-IIoTset hoặc TON\_IoT.
-    \item \textbf{Nguy cơ từ tấn công đầu độc trọng số (No Byzantine Robustness):} FedAvg và FedProx mặc định toàn bộ các nút tham gia đều trung thực. Trong thực tế, chỉ cần 1 client bị chiếm quyền điều khiển và gửi các vector trọng số độc hại (Poisoning/Backdoor attack), mô hình toàn cục có thể bị vô hiệu hóa hoàn toàn \cite{blanchard2017machine, yin2018byzantine}. Khung mã nguồn của đề tài đã chuẩn bị sẵn các mô-đun mở rộng cho \texttt{FedMedian} và \texttt{FedTrimmedMean} để nghiên cứu sâu hơn.
+    \item \textbf{Nguy cơ từ tấn công đầu độc trọng số (No Byzantine Robustness):} FedAvg và FedProx mặc định toàn bộ các nút tham gia đều trung thực. Trong thực tế, chỉ cần 1 client bị chiếm quyền điều khiển và gửi các vector trọng số độc hại (Poisoning/Backdoor attack), global model có thể bị vô hiệu hóa hoàn toàn \cite{blanchard2017machine, yin2018byzantine}. Khung mã nguồn của đề tài đã chuẩn bị sẵn các module mở rộng cho \texttt{FedMedian} và \texttt{FedTrimmedMean} để nghiên cứu sâu hơn.
 \end{enumerate}

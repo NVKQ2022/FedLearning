@@ -2,27 +2,27 @@
 \label{chap:methodology}
 
 \section{Controlled Empirical Benchmarking Methodology}
-Nghiên cứu áp dụng phương pháp luận đo kiểm thực nghiệm có kiểm soát nghiêm ngặt (Controlled Empirical Benchmarking). Để bảo đảm tính trung thực khoa học và loại bỏ hoàn toàn hiện tượng rò rỉ dữ liệu (Data Leakage), quy trình phân chia và tiền xử lý dữ liệu được thiết kế theo các nguyên tắc chuẩn mực sau:
+Nghiên cứu áp dụng phương pháp luận đo kiểm thực nghiệm có kiểm soát nghiêm ngặt (Controlled Empirical Benchmarking). Để bảo đảm tính trung thực khoa học và loại bỏ hoàn toàn hiện tượng Data Leakage, quy trình phân chia và tiền xử lý dữ liệu được thiết kế theo các nguyên tắc chuẩn mực sau:
 \begin{enumerate}
-    \item \textbf{Phân tách Tập Kiểm định Toàn cục Độc lập (Global Holdout Test Set):} Toàn bộ tập dữ liệu CICIoT2023 ($5,116,391$ mẫu) được phân chia ngẫu nhiên thành $70\%$ tập phát triển ($3,581,473$ mẫu) và $30\%$ tập kiểm định toàn cục tương lai ($1,534,918$ mẫu). Tập kiểm định $30\%$ này được cô lập hoàn toàn, không bao giờ tham gia vào quá trình huấn luyện cục bộ tại các client, và được dùng làm thước đo duy nhất để đánh giá mô hình toàn cục của tất cả các kịch bản thực nghiệm.
-    \item \textbf{Chuẩn hóa không rò rỉ tri thức (Leakage-Free Normalization):} Phép biến đổi chuẩn hóa \texttt{RobustScaler} (sử dụng trung vị và khoảng tứ phân vị IQR để chống nhiễu ngoại lai) chỉ được khớp (\texttt{fit}) trên tập dữ liệu huấn luyện, sau đó áp dụng phép chuyển đổi (\texttt{transform}) một chiều lên tập kiểm định.
-    \item \textbf{Chuẩn đối chứng Tập trung (Centralized Upper-bound Baseline):} Thiết lập kịch bản E1 huấn luyện mô hình trên toàn bộ $70\%$ dữ liệu tập trung với cùng kiến trúc \texttt{TabularIoTMLP} để xác định trần hiệu năng lý thuyết tối đa mà kiến trúc này có thể đạt được khi không có sự cản trở của môi trường phân tán.
+    \item \textbf{Phân tách Global Holdout Test Set Độc lập:} Tập dữ liệu CICIoT2023 ($5,116,391$ mẫu) được chia ngẫu nhiên thành $70\%$ tập phát triển ($3,581,473$ mẫu) và $30\%$ holdout test set ($1,534,918$ mẫu). Tập $30\%$ này được cô lập hoàn toàn, không tham gia local training, và dùng làm thước đo duy nhất đánh giá global model.
+    \item \textbf{Chuẩn hóa không rò rỉ tri thức (Leakage-Free Normalization):} Phép biến đổi chuẩn hóa \texttt{RobustScaler} (sử dụng trung vị và khoảng tứ phân vị IQR để chống nhiễu ngoại lai) chỉ được \texttt{fit} trên tập dữ liệu huấn luyện, sau đó áp dụng phép chuyển đổi \texttt{transform} một chiều lên holdout test set.
+    \item \textbf{Centralized Upper-bound Baseline:} Thiết lập kịch bản E1 huấn luyện mô hình trên toàn bộ $70\%$ dữ liệu tập trung với cùng kiến trúc \texttt{TabularIoTMLP} để xác định trần hiệu năng lý thuyết tối đa mà kiến trúc này có thể đạt được khi không có sự cản trở của môi trường phân tán.
 \end{enumerate}
 
 \section{Data Partitioning Strategies}
-Tập $70\%$ dữ liệu huấn luyện được phân vùng cho $K$ client theo hai phương thức:
+Tập $70\%$ dữ liệu huấn luyện được phân chia cho $K$ client theo hai data partitioning strategies:
 \begin{itemize}
-    \item \textbf{Phân vùng IID (Stratified Random Sampling):} Dữ liệu của từng lớp được xáo trộn ngẫu nhiên và phân bổ đồng đều theo tỷ lệ mẫu vào $K$ client, bảo đảm phân phối xác suất tiên nghiệm của nhãn $P_k(y)$ tại mọi client là tương đương nhau.
-    \item \textbf{Phân vùng Non-IID Dirichlet:} Sử dụng phân phối Dirichlet $\text{Dir}(\alpha)$ trên từng nhãn với các mức tham số $\alpha \in \{1.0, 0.5, 0.1\}$. Khi $\alpha = 0.1$, hiện tượng phân cực nhãn xảy ra cực đoan, mô phỏng chính xác các mạng con IoT chuyên biệt trong thực tế (ví dụ: phân khúc mạng chỉ toàn camera giám sát bị tấn công Mirai, trong khi phân khúc máy chủ web chỉ gặp tấn công SQLi).
+    \item \textbf{Phân vùng IID (Stratified Random Sampling):} Dữ liệu của từng lớp được xáo trộn ngẫu nhiên và phân bổ đồng đều theo tỷ lệ mẫu vào $K$ clients, bảo đảm phân phối xác suất tiên nghiệm của nhãn $P_k(y)$ tại mọi client là tương đương nhau.
+    \item \textbf{Phân vùng Dirichlet Non-IID:} Sử dụng phân phối Dirichlet $\text{Dir}(\alpha)$ trên từng nhãn với các mức tham số $\alpha \in \{1.0, 0.5, 0.1\}$. Khi $\alpha = 0.1$, hiện tượng phân cực nhãn xảy ra cực đoan, mô phỏng chính xác các mạng con IoT chuyên biệt trong thực tế (ví dụ: phân khúc mạng chỉ toàn camera giám sát bị tấn công Mirai, trong khi phân khúc máy chủ web chỉ gặp tấn công SQLi).
 \end{itemize}
 
 \section{Lightweight TabularIoTMLP Model Architecture}
-Mô hình \texttt{TabularIoTMLP} được thiết kế tối ưu hóa cho dữ liệu bảng 39 đặc trưng dòng mạng, cân bằng giữa năng lực phi tuyến và tính gọn nhẹ cho thiết bị IoT biên:
+Mô hình \texttt{TabularIoTMLP} được thiết kế tối ưu hóa cho dữ liệu bảng 39 đặc trưng dòng mạng, cân bằng giữa năng lực phi tuyến và tính gọn nhẹ cho IoT edge client:
 \begin{itemize}
-    \item \textbf{Tầng đầu vào (Input Layer):} Tiếp nhận vector đặc trưng kích thước $39$.
-    \item \textbf{Tầng ẩn 1 (Hidden Layer 1):} Kết nối tuyến tính $\text{Linear}(39, 128)$, hàm kích hoạt phi tuyến $\text{ReLU}$, kết hợp tầng điều hòa $\text{Dropout}(0.2)$ để chống hiện tượng quá khớp (overfitting).
-    \item \textbf{Tầng ẩn 2 (Hidden Layer 2):} Kết nối tuyến tính $\text{Linear}(128, 64)$, hàm kích hoạt $\text{ReLU}$.
-    \item \textbf{Tầng đầu ra (Output Classifier Head):} Kết nối tuyến tính $\text{Linear}(64, 8)$ đưa ra điểm số logit cho 8 phân lớp tấn công.
+    \item \textbf{Input Layer:} Tiếp nhận feature vector kích thước $39$.
+    \item \textbf{Hidden Layer 1:} Kết nối tuyến tính $\text{Linear}(39, 128)$, hàm kích hoạt $\text{ReLU}$, kết hợp tầng điều hòa $\text{Dropout}(0.2)$ để chống hiện tượng overfitting.
+    \item \textbf{Hidden Layer 2:} Kết nối tuyến tính $\text{Linear}(128, 64)$, hàm kích hoạt $\text{ReLU}$.
+    \item \textbf{Output Classifier Head:} Kết nối tuyến tính $\text{Linear}(64, 8)$ đưa ra điểm số logit cho 8 classes tấn công.
 \end{itemize}
 Tổng số lượng tham số của mô hình là $14,024$ tham số kiểu số thực $32$-bit (\texttt{float32}), tương đương với kích thước payload chỉ $\approx 54.28\text{ KB}$. Đây là kích thước lý tưởng cho phép lưu trữ trọn vẹn trong bộ nhớ SRAM của các vi điều khiển IoT công nghiệp hoặc router biên mà không gây quá tải tài nguyên phần cứng.
 
@@ -30,20 +30,20 @@ Tổng số lượng tham số của mô hình là $14,024$ tham số kiểu s�
 Nghiên cứu thiết lập hệ thống đo kiểm đa chiều để đánh giá toàn diện hệ thống:
 \begin{enumerate}
     \item \textbf{Độ chính xác Tổng thể (Accuracy):} Tỷ lệ dự đoán đúng trên tổng số mẫu kiểm định.
-    \item \textbf{Macro-Averaged F1-score (Macro-F1):} Trung bình cộng điểm F1 trên toàn bộ 8 phân lớp:
+    \item \textbf{Macro-Averaged F1-score (Macro-F1):} Trung bình cộng điểm F1 trên toàn bộ 8 classes:
     \begin{equation}
         \text{Macro-F1} = \frac{1}{C} \sum_{c=1}^C F1_c = \frac{1}{C} \sum_{c=1}^C \frac{2 \times \text{Precision}_c \times \text{Recall}_c}{\text{Precision}_c + \text{Recall}_c}
         \label{eq:macro_f1}
     \end{equation}
-    Đây là chỉ số quan trọng nhất phản ánh tính công bằng của mô hình đối với tất cả các lớp, ngăn chặn việc chỉ số tổng thể bị làm sai lệch bởi các lớp đa số (DDoS).
-    \item \textbf{Minority Recall (Tỷ lệ Phát hiện Lớp Thiểu số):} Đo lường khả năng bắt trúng các cuộc tấn công hiếm gặp: \texttt{Web-based} ($0.49\%$) và \texttt{Brute-force} ($0.26\%$).
-    \item \textbf{Chi phí Truyền thông Tích lũy (Cumulative Communication Cost):} Tổng dung lượng trao đổi hai chiều giữa Server và $K$ client qua mạng gRPC sau $T$ rounds:
+    Đây là chỉ số quan trọng nhất phản ánh tính công bằng của mô hình đối với tất cả các lớp, ngăn chặn việc chỉ số tổng thể bị làm sai lệch bởi các majority classes (DDoS).
+    \item \textbf{Minority Recall:} Đo lường khả năng bắt trúng các minority classes: \texttt{Web-based} ($0.49\%$) và \texttt{Brute-force} ($0.26\%$).
+    \item \textbf{Cumulative Communication Cost:} Tổng dung lượng trao đổi hai chiều giữa federated server và $K$ clients qua mạng gRPC sau $T$ communication rounds:
     \begin{equation}
         \text{CommCost} = 2 \times \sum_{t=1}^T m_t \cdot B
         \label{eq:comm_cost_def}
     \end{equation}
     Với $m_t$ là số client tham gia tại round $t$, và $B = 54.28\text{ KB}$ là kích thước vector trọng số mô hình.
-    \item \textbf{Độ trôi Tham số Trung bình (Average Client Drift):} Đo khoảng cách Euclidean giữa vector mô hình cục bộ và mô hình toàn cục để định lượng sự phân kỳ thống kê:
+    \item \textbf{Average Client Drift:} Đo khoảng cách Euclidean giữa vector mô hình cục bộ và mô hình toàn cục để định lượng parameter drift:
     \begin{equation}
         \overline{\text{Drift}} = \frac{1}{K} \sum_{k=1}^K \|\mathbf{w}_{\text{local}}^{(k)} - \mathbf{w}_{\text{global}}\|_2
         \label{eq:drift_avg}
