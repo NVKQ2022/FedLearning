@@ -1,12 +1,31 @@
 \chapter{Literature Review}
 \label{chap:literature}
 
-\section{CICIoT2023 Benchmark Dataset}
-Tập dữ liệu CICIoT2023 \cite{neto2023ciciot2023} là một trong những benchmark dataset quy mô lớn và chân thực nhất hiện nay cho các hệ thống NIDS trong môi trường IoT. Bộ dữ liệu được xây dựng bởi Viện An ninh mạng Canada (CIC) dựa trên mô hình thử nghiệm vật lý gồm 105 thiết bị IoT thực tế (bao gồm camera an ninh, bóng đèn thông minh, cảm biến gia dụng, gateway và thiết bị trung tâm điều khiển), kết nối qua các giao thức mạng phổ biến như Wi-Fi, Zigbee, và Z-Wave.
+\section{Internet of Things and Security Challenges}
+\label{sec:lit_iot}
+Internet of Things (IoT) đại diện cho sự hội tụ giữa mạng viễn thông, hệ thống nhúng thông minh và cảm biến thu thập dữ liệu trong mọi lĩnh vực đời sống, từ thành phố thông minh (Smart City), công nghiệp 4.0 (IIoT), đến y tế và nhà thông minh. Tuy nhiên, đặc thù phần cứng của các thiết bị IoT biên là tài nguyên tính toán (CPU) và dung lượng bộ nhớ (RAM) bị hạn chế nghiêm ngặt, kết nối mạng không dây qua các giao thức năng lượng thấp (như Wi-Fi, Zigbee, Z-Wave). Do thiếu hụt các cơ chế mã hóa và bảo mật phần cứng mạnh mẽ, các nút mạng IoT trở thành mục tiêu lý tưởng cho tin tặc khai thác để phát động các cuộc tấn công mạng quy mô lớn \cite{dadkhah2024ciciomt2024}.
 
-Bộ dữ liệu chứa hơn 47 triệu bản ghi dòng dữ liệu mạng (network flows). Mỗi bản ghi bao gồm 39 đặc trưng số mô tả thuộc tính thống kê gói tin (độ dài, phương sai, IAT, cờ TCP/UDP, tốc độ truyền luồng) \cite{dadkhah2024ciciomt2024}. Toàn bộ 33 biến thể tấn công chi tiết được chuẩn hóa và gom nhóm thành 8 phân lớp lớn: \textbf{DDoS} ($37.57\%$ -- $1,922,002$ dòng, đa số tuyệt đối), \textbf{Benign} ($21.46\%$ -- $1,098,191$ dòng), \textbf{DoS} ($14.27\%$), \textbf{Reconnaissance} ($13.50\%$), \textbf{Spoofing} ($8.34\%$), \textbf{Mirai Botnet} ($4.12\%$), cùng hai minority classes nguy hiểm cao là \textbf{Web-based} ($0.49\%$ -- $24,829$ dòng) và \textbf{Brute-force} ($0.26\%$ -- $13,064$ dòng). Tỷ lệ class imbalance giữa DDoS và Brute-force lên tới $147.11:1$, phản ánh chính xác thực tế lưu lượng mạng viễn thông.
+Để phục vụ nghiên cứu và đánh giá thực nghiệm các hệ thống NIDS trong môi trường IoT, Viện An ninh mạng Canada (CIC) đã xây dựng benchmark dataset CICIoT2023 \cite{neto2023ciciot2023}. Đây là một trong những tập dữ liệu lớn và chân thực nhất hiện nay, được thu thập từ mô hình thử nghiệm vật lý gồm đúng 105 thiết bị IoT thực tế. Bộ dữ liệu chứa hơn 47 triệu bản ghi dòng dữ liệu mạng (network flows). Mỗi bản ghi bao gồm 39 đặc trưng số mô tả thuộc tính thống kê gói tin (độ dài, phương sai, IAT, cờ TCP/UDP, tốc độ truyền luồng). Toàn bộ 33 biến thể tấn công chi tiết được chuẩn hóa và gom nhóm thành 8 phân lớp lớn: \textbf{DDoS} ($37.57\%$ -- $1,922,002$ dòng, đa số tuyệt đối), \textbf{Benign} ($21.46\%$ -- $1,098,191$ dòng), \textbf{DoS} ($14.27\%$), \textbf{Reconnaissance} ($13.50\%$), \textbf{Spoofing} ($8.34\%$), \textbf{Mirai Botnet} ($4.12\%$), cùng hai minority classes nguy hiểm cao là \textbf{Web-based} ($0.49\%$ -- $24,829$ dòng) và \textbf{Brute-force} ($0.26\%$ -- $13,064$ dòng). Tỷ lệ class imbalance giữa DDoS và Brute-force lên tới $147.11:1$, phản ánh chính xác thực tế lưu lượng mạng viễn thông.
 
-\section{Federated Learning Foundations and Baseline Algorithms}
+\section{Virtualization and Distributed Environments}
+\label{sec:lit_virtualization}
+Trong việc phát triển và thử nghiệm các giải pháp an ninh mạng phân tán, công nghệ ảo hóa (Virtualization) và container hóa (Containerization) đóng vai trò nền tảng. Ảo hóa cho phép trừu tượng hóa tài nguyên phần cứng vật lý, tạo ra các môi trường thực thi cô lập (isolated execution environments) để mô phỏng hoạt động của hàng loạt client và gateway IoT độc lập trên cùng một hạ tầng máy chủ:
+\begin{itemize}
+    \item \textbf{Ảo hóa cấp hệ điều hành và Cô lập Tiến trình:} Sử dụng cơ chế phân tách tiến trình (Process Isolation) và socket mạng nội bộ, mỗi node mạng IoT được cấp phát không gian bộ nhớ, không gian địa chỉ cổng mạng (port space), và thread tính toán riêng biệt. Điều này ngăn chặn việc rò rỉ dữ liệu trực tiếp giữa các client trong bộ nhớ RAM, bảo đảm tính độc lập tuyệt đối giữa các bên tham gia huấn luyện.
+    \item \textbf{Mô phỏng Mạng phân tán có kiểm soát:} Ảo hóa cho phép thiết lập môi trường thử nghiệm tái lập (reproducible experimental testbed), kiểm soát chặt chẽ dung lượng dữ liệu nạp vào từng nút, cấu hình tham số mạng và giám sát tài nguyên tiêu thụ theo thời gian thực mà không làm gián đoạn hệ thống mạng vật lý đang vận hành.
+\end{itemize}
+
+\section{Application Development Frameworks for Distributed Systems}
+\label{sec:lit_frameworks}
+Việc xây dựng hệ thống Federated Learning quy mô lớn đòi hỏi sự phối hợp chặt chẽ giữa các nền tảng phát triển ứng dụng phân tán hiện đại:
+\begin{itemize}
+    \item \textbf{Google Remote Procedure Call (gRPC):} Là giao thức truyền thông liên tiến trình hiệu năng cao dựa trên HTTP/2 và Protocol Buffers. gRPC cho phép các node client và server giao tiếp hai chiều với độ trễ thấp, hỗ trợ streaming dữ liệu và tuần tự hóa (serialization) các tensor trọng số mô hình với chi phí overhead tối thiểu so với REST/HTTP truyền thống.
+    \item \textbf{Flower Federated Learning Framework:} Là framework mã nguồn mở hàng đầu hiện nay cho Federated Learning \cite{beutel2020flower}. Flower cung cấp kiến trúc module hóa cao, tương thích hoàn toàn với gRPC socket, cho phép tùy biến linh hoạt các thuật toán aggregation và quản lý vòng đời huấn luyện phân tán trên hàng ngàn tiến trình độc lập.
+    \item \textbf{PyTorch Deep Learning Engine:} Cung cấp hạ tầng tính toán tensor tối ưu, cơ chế Autograd tự động hóa quá trình lan truyền ngược gradient, và các lớp nơ-ron hỗ trợ triển khai nhanh chóng các mô hình học sâu nhẹ trên thiết bị biên.
+\end{itemize}
+
+\section{Federated Learning Foundations and Dirichlet Data Heterogeneity}
+\label{sec:lit_fl}
 
 \subsection{Federated Averaging (FedAvg) Algorithm}
 Thuật toán Federated Averaging (FedAvg) do McMahan et al. \cite{mcmahan2017communication} đề xuất là nền tảng của Federated Learning. Giả sử hệ thống có $K$ clients tham gia. Mỗi client $k$ sở hữu một tập dữ liệu cục bộ $\mathcal{D}_k$ với số lượng mẫu là $n_k$. Tổng số mẫu toàn mạng là $N = \sum_{k=1}^K n_k$. Mục tiêu tối ưu toàn cục là tìm vector trọng số $\mathbf{w}$ tối thiểu hóa loss function:
@@ -14,10 +33,10 @@ Thuật toán Federated Averaging (FedAvg) do McMahan et al. \cite{mcmahan2017co
     \min_{\mathbf{w}} F(\mathbf{w}) = \sum_{k=1}^K \frac{n_k}{N} F_k(\mathbf{w}) \quad \text{với} \quad F_k(\mathbf{w}) = \frac{1}{n_k} \sum_{i \in \mathcal{D}_k} \ell(f(\mathbf{x}_i; \mathbf{w}), y_i)
     \label{eq:fl_objective}
 \end{equation}
-Trong đó $\ell(\cdot)$ là loss function (như Cross-Entropy Loss). Tại mỗi communication round $t \in \{1, 2, \dots, T\}$:
+Trong đó $\ell(\cdot)$ là hàm mất mát Cross-Entropy. Tại mỗi communication round $t$:
 \begin{enumerate}
     \item Federated server broadcast vector trọng số global model $\mathbf{w}_t$ xuống tập các client được lựa chọn.
-    \item Mỗi client $k$ khởi tạo mô hình cục bộ bằng $\mathbf{w}_t$, sau đó thực hiện $E$ local epochs huấn luyện bằng giải thuật SGD hoặc AdamW trên dữ liệu nội bộ $\mathcal{D}_k$, thu được vector trọng số cục bộ mới $\mathbf{w}_{t+1}^{(k)}$.
+    \item Mỗi client $k$ khởi tạo mô hình cục bộ bằng $\mathbf{w}_t$, thực hiện $E$ local epochs huấn luyện trên dữ liệu nội bộ $\mathcal{D}_k$, thu được vector trọng số cục bộ mới $\mathbf{w}_{t+1}^{(k)}$.
     \item Các client gửi vector trọng số $\mathbf{w}_{t+1}^{(k)}$ về server. Server thực hiện parameter aggregation theo trung bình gia quyền:
     \begin{equation}
         \mathbf{w}_{t+1} = \sum_{k=1}^K \frac{n_k}{N} \mathbf{w}_{t+1}^{(k)}
@@ -26,8 +45,7 @@ Trong đó $\ell(\cdot)$ là loss function (như Cross-Entropy Loss). Tại mỗ
 \end{enumerate}
 
 \subsection{Parameter Client Drift Phenomenon}
-Trong điều kiện dữ liệu IID, gradient cục bộ $\nabla F_k(\mathbf{w})$ là ước lượng không chệch của gradient toàn cục $\nabla F(\mathbf{w})$, bảo đảm mô hình hội tụ nhanh chóng. Tuy nhiên, khi dữ liệu phân tán bị Non-IID, mục tiêu tối ưu của các client bị phân kỳ: $\arg\min F_k(\mathbf{w}) \ne \arg\min F(\mathbf{w})$.
-Các bước cập nhật cục bộ độc lập sau $E$ local epochs sẽ kéo vector trọng số của từng client di chuyển về các hướng cục bộ đối nghịch nhau. Khoảng cách client drift tại round $t$ được định lượng bằng chuẩn $L_2$:
+Trong điều kiện dữ liệu IID, gradient cục bộ $\nabla F_k(\mathbf{w})$ là ước lượng không chệch của gradient toàn cục $\nabla F(\mathbf{w})$, bảo đảm mô hình hội tụ nhanh chóng. Tuy nhiên, khi dữ liệu phân tán bị Non-IID, mục tiêu tối ưu của các client bị phân kỳ: $\arg\min F_k(\mathbf{w}) \ne \arg\min F(\mathbf{w})$. Các bước cập nhật cục bộ sau $E$ epochs sẽ kéo vector trọng số của từng client di chuyển về các hướng cục bộ đối nghịch nhau. Khoảng cách client drift tại round $t$ được định lượng bằng chuẩn $L_2$:
 \begin{equation}
     \Delta \mathbf{w}^{(k)} = \|\mathbf{w}_{\text{local}}^{(k)} - \mathbf{w}_{\text{global}}^{(t)}\|_2 = \sqrt{\sum_{l} \|\mathbf{w}_{\text{local}}^{(k, l)} - \mathbf{w}_{\text{global}}^{(t, l)}\|_2^2}
     \label{eq:client_drift}
@@ -40,25 +58,24 @@ Khi $\Delta \mathbf{w}^{(k)}$ quá lớn, phép parameter aggregation (\ref{eq:f
     \min_{\mathbf{w}} h_k(\mathbf{w}; \mathbf{w}_t) = F_k(\mathbf{w}) + \frac{\mu}{2} \|\mathbf{w} - \mathbf{w}_t\|_2^2
     \label{eq:fedprox_obj}
 \end{equation}
-Trong đó $\mu \ge 0$ là proximal parameter. Số hạng $\frac{\mu}{2} \|\mathbf{w} - \mathbf{w}_t\|_2^2$ đóng vai trò như một sợi dây neo đàn hồi (elastic anchor), ngăn không cho vector nghiệm cục bộ dịch chuyển quá xa khỏi global model $\mathbf{w}_t$ nhận được từ server. Về mặt lý thuyết toán học, số hạng phạt này làm cho hàm mục tiêu cục bộ có tính lồi mạnh hơn (strongly convex), giúp ổn định hóa quá trình hội tụ trong môi trường mạng không đồng nhất.
+Trong đó $\mu \ge 0$ là proximal parameter. Số hạng $\frac{\mu}{2} \|\mathbf{w} - \mathbf{w}_t\|_2^2$ đóng vai trò như một sợi dây neo đàn hồi (elastic anchor), ngăn không cho vector nghiệm cục bộ dịch chuyển quá xa khỏi global model $\mathbf{w}_t$ nhận được từ server, giúp ổn định hóa quá trình hội tụ trong môi trường mạng không đồng nhất.
 
-\section{Non-IID Data Modeling via Dirichlet Distribution}
-Để mô phỏng hiện tượng Label Distribution Skew một cách có kiểm soát và khoa học, nghiên cứu áp dụng phương pháp data partitioning dựa trên phân phối Dirichlet nhiều chiều theo chuẩn mực của Hsu et al. \cite{hsu2019measuring}.
-
-Với mỗi lớp tấn công $c \in \{1, 2, \dots, C\}$ (với $C=8$), một vector tỷ lệ phân bổ $\mathbf{p}_c = (p_{c, 1}, p_{c, 2}, \dots, p_{c, K})$ được lấy mẫu từ phân phối Dirichlet:
+\subsection{Non-IID Data Modeling via Dirichlet Distribution}
+Để mô phỏng hiện tượng Label Distribution Skew một cách có kiểm soát và khoa học, nghiên cứu áp dụng phương pháp data partitioning dựa trên phân phối Dirichlet nhiều chiều theo chuẩn mực của Hsu et al. \cite{hsu2019measuring}. Với mỗi lớp tấn công $c \in \{1, 2, \dots, C\}$ (với $C=8$), một vector tỷ lệ phân bổ $\mathbf{p}_c = (p_{c, 1}, p_{c, 2}, \dots, p_{c, K})$ được lấy mẫu từ phân phối Dirichlet:
 \begin{equation}
     \mathbf{p}_c \sim \text{Dir}(\alpha \cdot \mathbf{1}_K)
     \label{eq:dirichlet}
 \end{equation}
 Trong đó $\mathbf{1}_K$ là vector gồm $K$ phần tử bằng $1$, và $\alpha > 0$ là tham số tập trung (concentration parameter):
 \begin{itemize}
-    \item Khi $\alpha \to \infty$, vector $\mathbf{p}_c \to (1/K, 1/K, \dots, 1/K)$, dữ liệu của mỗi lớp được chia đều hoàn hảo cho tất cả các client, tương đương với trạng thái phân phối đồng nhất IID.
-    \item Khi $\alpha = 1.0$, dữ liệu bắt đầu xuất hiện sự chênh lệch phân phối vừa phải giữa các client (Non-IID nhẹ).
+    \item Khi $\alpha \to \infty$, vector $\mathbf{p}_c \to (1/K, 1/K, \dots, 1/K)$, dữ liệu của mỗi lớp được chia đều cho các client, tương đương phân phối đồng nhất IID.
+    \item Khi $\alpha = 1.0$, dữ liệu xuất hiện sự chênh lệch phân phối vừa phải giữa các client (Non-IID nhẹ).
     \item Khi $\alpha = 0.5$, mức độ tập trung tăng cao, một số client bắt đầu thiếu hụt hoàn toàn một số lớp tấn công nhất định (Non-IID trung bình).
-    \item Khi $\alpha \to 0$ (ví dụ $\alpha = 0.1$), phân phối bị phân mảnh cực đoan: hầu hết các mẫu của lớp $c$ sẽ chỉ tập trung vào duy nhất một hoặc hai client, trong khi các client còn lại hoàn toàn không quan sát thấy lớp này.
+    \item Khi $\alpha \to 0$ (ví dụ $\alpha = 0.1$), phân phối bị phân mảnh cực đoan: hầu hết các mẫu của lớp $c$ sẽ chỉ tập trung vào một hoặc hai client, trong khi các client còn lại hoàn toàn không quan sát thấy lớp này.
 \end{itemize}
 
-\section{Recent Related Works and Comparative Analysis (2022--2026)}
+\section{Recent Related Works and Identified Research Gaps}
+\label{sec:lit_related}
 Để làm rõ vị trí học thuật của đề tài, Bảng \ref{tab:lit_review_matrix} tổng hợp phân tích đối sánh chi tiết giữa nghiên cứu này và các công bố khoa học tiêu biểu giai đoạn 2022--2026 trên tập dữ liệu CICIoT2023 và bài toán FL-NIDS.
 
 \begin{table}[htbp]
@@ -82,10 +99,9 @@ Huang et al. (2022) \cite{huang2022federated} & MLP / FedAvg & Phân vùng Non-I
 \end{tabularx}
 \end{table}
 
-\section{Identified Research Gaps}
 Từ việc phân tích tổng quan tài liệu, đề tài xác định 3 khoảng trống nghiên cứu cốt lõi mà các công trình trước đây chưa giải quyết thấu đáo:
 \begin{enumerate}
-    \item \textbf{Khoảng trống về Phân tích Nguyên nhân Thất bại (Negative Finding Gap):} Các bài báo thường chỉ công bố Accuracy tổng thể ($>90\%$), vô tình che giấu việc mô hình hoàn toàn mất khả năng phát hiện các minority classes ($<0.5\%$). Thiếu vắng các nghiên cứu đối chứng có kiểm soát giữa Centralized Baseline và Federated Learning trên cùng một tập dữ liệu để chứng minh cơ chế nào làm sụp đổ minority classes.
+    \item \textbf{Khoảng trống về Phân tích Nguyên nhân Thất bại (Negative Finding Gap):} Các bài báo thường chỉ công bố Accuracy tổng thể ($>90\%$), che giấu việc mô hình hoàn toàn mất khả năng phát hiện các minority classes ($<0.5\%$). Thiếu vắng các nghiên cứu đối chứng có kiểm soát giữa Centralized Baseline và Federated Learning trên cùng một tập dữ liệu để chứng minh cơ chế nào làm sụp đổ minority classes.
     \item \textbf{Khoảng trống về Đường cong Suy thoái Định lượng (Dirichlet Spectrum Gap):} Đa số công bố chỉ chọn ngẫu nhiên một giá trị $\alpha$ duy nhất, không cung cấp một phổ suy thoái liên tục để chỉ ra cho các kỹ sư mạng biết: tại ngưỡng $\alpha$ cụ thể nào thì hệ thống FL bắt đầu mất kiểm soát.
     \item \textbf{Khoảng trống về Đo kiểm Đánh đổi Toàn diện (Multi-dimensional Trade-off Gap):} Các nghiên cứu thường tách rời việc đo độ chính xác với communication cost hai chiều và stability khi mở rộng client scalability.
 \end{enumerate}

@@ -58,7 +58,7 @@
 \begin{document}
 
 % ==============================================================================
-% 1. COVER PAGE
+% 1. COVER PAGE (Trang bìa)
 % ==============================================================================
 \input{00_frontmatter/cover.tex}
 
@@ -66,24 +66,31 @@
 \setcounter{page}{1}
 
 % ==============================================================================
-% 2. ABSTRACT
-% ==============================================================================
-\input{00_frontmatter/abstract.tex}
-
-% ==============================================================================
-% 3. TABLE OF CONTENTS
+% 2. TABLE OF CONTENTS (Mục lục)
 % ==============================================================================
 \tableofcontents
 \newpage
 
-% Danh mục hình vẽ và bảng biểu tạm thời lược bỏ theo định dạng báo cáo rút gọn
-% \listoffigures
-% \newpage
-% \listoftables
-% \newpage
+% ==============================================================================
+% 3. ABSTRACT (Tóm tắt/Abstract)
+% ==============================================================================
+\input{00_frontmatter/abstract.tex}
 
 % ==============================================================================
-% 4. LIST OF ACRONYMS AND ABBREVIATIONS
+% 4. LIST OF FIGURES & LIST OF TABLES (List of Figures, List of Tables)
+% ==============================================================================
+\phantomsection
+\addcontentsline{toc}{chapter}{\listfigurename}
+\listoffigures
+\newpage
+
+\phantomsection
+\addcontentsline{toc}{chapter}{\listtablename}
+\listoftables
+\newpage
+
+% ==============================================================================
+% 5. LIST OF ACRONYMS AND ABBREVIATIONS (List of Acronyms/Abbreviations)
 % ==============================================================================
 \input{00_frontmatter/acronyms.tex}
 
@@ -91,46 +98,47 @@
 \setcounter{page}{1}
 
 % ==============================================================================
-% CHAPTER I: INTRODUCTION
+% CHAPTER I: INTRODUCTION (Chapter I: Introduction/Giới thiệu)
 % ==============================================================================
 \input{01_introduction/introduction.tex}
 
 % ==============================================================================
-% CHAPTER II: LITERATURE REVIEW
+% CHAPTER II: LITERATURE REVIEW (Chapter II: Literature Review/Related Work)
 % ==============================================================================
 \input{02_literature_review/literature_review.tex}
 
 % ==============================================================================
-% CHAPTER III: METHODOLOGY
+% CHAPTER III: METHODOLOGY (Chapter III: Methodology/Phương pháp luận)
 % ==============================================================================
 \input{03_methodology/methodology.tex}
 
 % ==============================================================================
-% CHAPTER IV: IMPLEMENTATION
+% CHAPTER IV: IMPLEMENTATION, TESTING SCENARIOS, AND RESULTS
+% (Chapter IV: Implementation/Testing Scenarios/Results)
 % ==============================================================================
+\chapter{Implementation, Testing Scenarios, and Results}
+\label{chap:impl_scenarios_results}
 \input{04_implementation/implementation.tex}
-
-% ==============================================================================
-% CHAPTER V: TESTING SCENARIOS, RESULTS, AND DISCUSSIONS
-% ==============================================================================
 \input{05_results_discussions/results_discussions.tex}
 
 % ==============================================================================
-% CHAPTER VI: CONCLUSIONS AND FUTURE WORK
+% CHAPTER V: CONCLUSIONS AND FUTURE WORK (Chapter V: Conclusions & Future Works)
 % ==============================================================================
 \input{06_conclusions/conclusions.tex}
 
 % ==============================================================================
 % REFERENCES
 % ==============================================================================
+\phantomsection
+\addcontentsline{toc}{chapter}{\bibname}
 \bibliographystyle{IEEEtran}
 \bibliography{references}
 
 % ==============================================================================
-% APPENDIXES (Lược bỏ theo định dạng báo cáo rút gọn)
+% APPENDIXES
 % ==============================================================================
-% \appendix
-% \input{07_appendices/appendix_a.tex}
-% \input{07_appendices/appendix_b.tex}
+\appendix
+\input{07_appendices/appendix_a.tex}
+\input{07_appendices/appendix_b.tex}
 
 \end{document}

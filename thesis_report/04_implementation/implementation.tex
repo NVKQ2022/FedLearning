@@ -1,30 +1,27 @@
-\chapter{Implementation}
-\label{chap:implementation}
+\section{System Implementation and Testbed Deployment}
+\label{sec:impl_deployment}
+Phần này mô tả chi tiết kiến trúc kỹ thuật và quy trình hiện thực hóa hệ thống đo kiểm phân tán làm phương tiện thu thập số liệu thực nghiệm tự động.
 
-\section{Experimental Testbed and Infrastructure}
-\label{sec:impl_testbed}
-Chương này mô tả cơ sở hạ tầng thực nghiệm được xây dựng làm phương tiện đo kiểm và thu thập số liệu tự động. Hệ thống được tổ chức thành 4 phân tầng kỹ thuật có kiểm soát:
+\subsection{Architectural Layering of the FL-IoT-IDS Testbed}
+Hệ thống được tổ chức thành 4 phân tầng kỹ thuật có kiểm soát nghiêm ngặt:
 \begin{enumerate}
-    \item \textbf{Data \& Partitioning Layer:} Quản lý việc đọc các tệp CSV nén của CICIoT2023, tiền xử lý, caching và chia data partitioning theo file ánh xạ index định sẵn.
-    \item \textbf{Federated Client Layer:} Quản lý các tiến trình client độc lập vận hành mô hình PyTorch \texttt{TabularIoTMLP} và local trainer.
-    \item \textbf{Federated Server Layer:} Vận hành Flower Server quản lý vòng đời huấn luyện liên đoàn, client selection và aggregation.
-    \item \textbf{Evaluation \& Monitoring Layer:} Tự động ghi nhận log chi tiết, đo thời gian huấn luyện, tính toán parameter drift ($L_2$ norm), và xuất các biểu đồ trực quan hóa.
+    \item \textbf{Data \& Partitioning Layer:} Đảm nhiệm việc nạp các tệp CSV nén của CICIoT2023, tiền xử lý, kiểm soát rò rỉ phân phối và phân bổ chỉ số mẫu vào $K$ client dựa trên ma trận ánh xạ index định sẵn.
+    \item \textbf{Federated Client Layer:} Vận hành $K$ tiến trình client hệ điều hành độc lập, mỗi client quản lý một thể hiện mô hình PyTorch \texttt{TabularIoTMLP}, bộ tối ưu AdamW và vòng lặp huấn luyện cục bộ.
+    \item \textbf{Federated Server Layer:} Vận hành Flower Server quản lý vòng đời huấn luyện liên đoàn, điều phối chu kỳ giao tiếp socket, client selection và thực thi chiến lược aggregation.
+    \item \textbf{Evaluation \& Monitoring Layer:} Tự động thu thập nhật ký chi tiết sau mỗi round, tính toán độ trôi dạt tham số parameter drift ($L_2$ norm), đánh giá global holdout test set và lưu trữ checkpoint trọng số tối ưu.
 \end{enumerate}
 
-\section{Distributed System Implementation on Flower gRPC}
-\label{sec:impl_grpc}
+\subsection{Distributed System Implementation on Flower gRPC}
 Hệ thống sử dụng nền tảng Flower (phiên bản $1.13.0$) kết nối qua giao thức Google Remote Procedure Call (gRPC). Mỗi client chạy trên một tiến trình hệ điều hành riêng biệt, thiết lập kết nối TCP/IP socket thực với server tại địa chỉ port chỉ định.
 
-\subsection{Custom Aggregation Strategy and Server Evaluation}
-Lớp \texttt{AggregateCustomStrategy} được hiện thực hóa bằng cách kế thừa trực tiếp từ chiến lược cơ sở của Flower (\texttt{flwr.server.strategy.FedAvg} và \texttt{FedProx}):
+Chiến lược tùy biến \texttt{AggregateCustomStrategy} được hiện thực hóa bằng cách kế thừa trực tiếp từ chiến lược cơ sở của Flower (\texttt{flwr.server.strategy.FedAvg} và \texttt{FedProx}):
 \begin{itemize}
-    \item \textbf{Parameter Aggregation:} Thực hiện tính trung bình gia quyền vector trọng số gửi về từ các client hợp lệ sau mỗi communication round.
+    \item \textbf{Parameter Aggregation:} Thực hiện tính trung bình gia quyền vector trọng số gửi về từ các client hợp lệ sau mỗi communication round theo công thức (\ref{eq:fedavg_agg}).
     \item \textbf{Centralized Evaluation:} Sau mỗi round aggregation, server tự động nạp vector trọng số global model mới nhất vào một mô hình đánh giá độc lập, chạy inference trên toàn bộ $1,534,918$ mẫu của global holdout test set $30\%$. Quá trình này bảo đảm kết quả đo lường giữa các vòng là hoàn toàn nhất quán và không phụ thuộc vào dữ liệu phân mảnh của client.
-    \item \textbf{Model Checkpointing:} Hệ thống tự động theo dõi Macro-F1 toàn cục sau mỗi round; trọng số đạt đỉnh cao nhất được lưu trữ vào tệp \texttt{best\_weights.npz} để sử dụng cho việc phân tích confusion matrix cuối cùng.
+    \item \textbf{Model Checkpointing:} Hệ thống tự động theo dõi Macro-F1 toàn cục sau mỗi round; trọng số đạt đỉnh cao nhất được lưu trữ vào tệp \texttt{best\_weights.npz} để sử dụng cho việc phân tích ma trận nhầm lẫn cuối cùng.
 \end{itemize}
 
-\section{Data Preprocessing Pipeline and Leakage Control}
-\label{sec:impl_preprocess}
+\subsection{Data Preprocessing Pipeline and Leakage Control}
 Module tiền xử lý (\texttt{src/data/preprocess.py}) thực hiện tuần tự các bước:
 \begin{enumerate}
     \item Loại bỏ các dòng chứa giá trị khuyết thiếu (NaN) hoặc giá trị vô hạn (Inf) phát sinh trong quá trình tính toán thống kê dòng mạng.
@@ -32,8 +29,7 @@ Module tiền xử lý (\texttt{src/data/preprocess.py}) thực hiện tuần t�
     \item Áp dụng bộ chuẩn hóa \texttt{RobustScaler}: chỉ \texttt{fit} thông số trung vị và khoảng tứ phân vị trên tập $70\%$ train, triệt tiêu nguy cơ rò rỉ phân phối vào holdout test set.
 \end{enumerate}
 
-\section{Local Training Pipeline and FedProx Integration}
-\label{sec:impl_training}
+\subsection{Local Training Pipeline and FedProx In-Batch Regularization}
 Local training module (\texttt{src/training/federated\_trainer.py}) điều khiển vòng lặp PyTorch training tại từng client:
 \begin{itemize}
     \item Sử dụng AdamW optimizer với learning rate $\eta = 10^{-3}$ và weight decay $10^{-4}$.

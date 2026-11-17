@@ -1,21 +1,27 @@
-\chapter{Testing Scenarios, Results, and Discussions}
-\label{chap:results}
+\section{Testing Scenarios and Evaluation Configurations}
+\label{sec:res_scenarios_configs}
+Để đánh giá toàn diện hành vi hội tụ và hiệu năng của hệ thống FL-IoT-IDS, nghiên cứu thiết lập ma trận gồm \textbf{23 kịch bản thực nghiệm đối chứng có kiểm soát chặt chẽ} (từ E1 đến E6) với các cấu hình tham số đầu vào và đầu ra chuẩn mực:
 
-\section{Experimental Scenario Matrix and Benchmark Setup}
-\label{sec:res_matrix}
-Nghiên cứu triển khai hệ sinh thái gồm \textbf{23 kịch bản thực nghiệm đối chứng có kiểm soát chặt chẽ} (từ E1 đến E6, bao gồm khảo sát toàn diện ma trận siêu tham số $\mu$ trên cả 4 điều kiện phân tán: IID, $\alpha=1.0$, $\alpha=0.5$ và $\alpha=0.1$) trên cùng một môi trường phần cứng và cấu hình siêu tham số đồng nhất:
+\subsection{Tham số Đầu vào Thực nghiệm (Input Parameters)}
 \begin{itemize}
-    \item Số communication rounds: $T = 10$ rounds.
-    \item Số local epochs: $E = 2$ epochs/round.
-    \item Local batch size: $B_{\text{size}} = 64$.
-    \item Learning rate: $\eta = 10^{-3}$ với optimizer AdamW.
-    \item Dải khảo sát proximal parameter: $\mu \in \{0.001, 0.01, 0.025, 0.05\}$ và baseline FedAvg ($\mu = 0.0$).
-    \item Tập kiểm định đánh giá: $100\%$ kịch bản đều được đánh giá độc lập trên cùng \textbf{Global Holdout Test Set ($30\%$ Data)} gồm đúng $1,534,918$ mẫu luồng mạng thực.
+    \item \textbf{Tập dữ liệu đầu vào:} Benchmark dataset CICIoT2023 với $5,116,391$ mẫu dòng mạng, $39$ đặc trưng số, phân chia cố định $70\%$ train ($3,581,473$ mẫu) và $30\%$ holdout test ($1,534,918$ mẫu).
+    \item \textbf{Quy mô client ($K$):} Khảo sát $K = 5$ clients (chuẩn), mở rộng kiểm tra scalability tại $K = 7$ và $K = 10$ clients.
+    \item \textbf{Mức độ phân tán dữ liệu ($\alpha$):} Phân phối IID (đồng nhất), chuỗi Dirichlet Label Skew $\alpha \in \{1.0, 0.5, 0.1\}$.
+    \item \textbf{Dải siêu tham số Proximal Penalty ($\mu$):} $\mu \in \{0.001, 0.01, 0.025, 0.05\}$ và baseline FedAvg ($\mu = 0.0$).
+    \item \textbf{Cấu hình huấn luyện cục bộ:} Optimizer AdamW ($\eta = 10^{-3}$, weight decay $= 10^{-4}$), batch size $B_{\text{size}} = 64$, local epochs $E = 2$, communication rounds $T = 10$.
 \end{itemize}
 
-\section{Master Benchmark Results and Synthesis}
-\label{sec:res_master}
-Bảng \ref{tab:master_results} trình bày toàn bộ kết quả đo kiểm thực nghiệm thu được từ đầy đủ 23 kịch bản trong hệ sinh thái của đề tài.
+\subsection{Tham số Đầu ra Đo kiểm (Output Parameters)}
+\begin{itemize}
+    \item \textbf{Độ chính xác tổng thể (Accuracy \%):} Tỷ lệ dự đoán đúng trên toàn bộ $1.53$ triệu mẫu holdout test set.
+    \item \textbf{Chỉ số Global Macro-F1 (\%):} Trung bình cộng F1 của 8 phân lớp lớn, đo lường độ công bằng giữa các lớp.
+    \item \textbf{Minority Class Recall (\%):} Tỷ lệ nhận diện hai lớp tấn công hiếm \texttt{Web-based} ($0.49\%$) và \texttt{Brute-force} ($0.26\%$).
+    \item \textbf{Độ trôi dạt tham số (Parameter Drift $L_2$ Norm):} Khoảng cách Euclidean $\|\mathbf{w}^{(k)} - \mathbf{w}_{\text{global}}\|_2$ tại round cuối cùng.
+    \item \textbf{Tổng chi phí truyền thông (Communication Cost MB):} Tổng lưu lượng mạng hai chiều trao đổi qua giao thức gRPC socket.
+\end{itemize}
+
+\subsection{Master Benchmark Matrix across 23 Scenarios}
+Bảng \ref{tab:master_results} tổng hợp toàn bộ số liệu đo kiểm thực nghiệm thu được từ đầy đủ 23 kịch bản trong hệ sinh thái của đề tài.
 
 \begin{table}[htbp]
 \centering
@@ -66,10 +72,10 @@ E6: FedAvg (IID, $K=10$) & 84.41 & 67.28 & 0.39 & 19.21 & \textbf{10.60} & 7.25 
 \end{tabularx}
 \end{table}
 
-\section{In-depth Analysis of Core Scientific Findings}
-\label{sec:res_findings}
+\section{Results Analysis and Benchmark Evaluation}
+\label{sec:res_analysis_findings}
 
-\subsection{Finding 1: Empirical Counter-Evidence on Minority Class Collapse (Negative Finding)}
+\subsection{Finding 1: Minority Class Collapse and Counter-Evidence}
 Đối chiếu trực diện giữa Centralized Baseline (E1) và các kịch bản phân tán (E2--E6) mang lại một phát hiện khoa học mang tính bước ngoặt:
 \begin{itemize}
     \item \textbf{Năng lực nội tại của kiến trúc mô hình:} Khi huấn luyện tập trung (E1), \texttt{TabularIoTMLP} đạt Recall $\mathbf{52.41\%}$ ở lớp Web-based và $\mathbf{53.36\%}$ ở lớp Brute-force (Hình \ref{fig:cm_e1_centralized}). Điều này chứng minh rằng mạng MLP có đủ capacity để nhận diện minority classes.
@@ -209,7 +215,7 @@ Phân tích định lượng tổng hợp trên 23 kịch bản thực nghiệm 
     Các kết quả thực nghiệm 23 kịch bản đặt dấu chấm hết cho quan niệm sai lầm phổ biến cho rằng "hệ số $\mu$ càng lớn thì thuật toán FedProx càng chống chịu Non-IID tốt hơn". Trong các hệ thống FL-IoT-IDS thực tế với tabular data bị class imbalance, việc áp dụng proximal penalty đòi hỏi $\mu$ phải được hiệu chỉnh ở mức nhỏ ($\mu \approx 10^{-3}$) để vừa kiểm soát được parameter drift vừa bảo toàn local plasticity cho các minority classes.
 \end{enumerate}
 
-\section{Objective Analysis of System Limitations and Defense-in-Depth Positioning}
+\subsection{Objective Analysis of System Limitations and Defense-in-Depth Positioning}
 \label{sec:res_limitations}
 Dưới góc nhìn phản biện khoa học khách quan, nghiên cứu thẳng thắn nhìn nhận 4 hạn chế kỹ thuật của hệ thống prototype hiện tại:
 \begin{enumerate}

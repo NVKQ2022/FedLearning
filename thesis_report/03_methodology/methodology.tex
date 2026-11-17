@@ -1,51 +1,67 @@
 \chapter{Methodology}
 \label{chap:methodology}
 
-\section{Controlled Empirical Benchmarking Methodology}
-Nghiên cứu áp dụng phương pháp luận đo kiểm thực nghiệm có kiểm soát nghiêm ngặt (Controlled Empirical Benchmarking). Để bảo đảm tính trung thực khoa học và loại bỏ hoàn toàn hiện tượng Data Leakage, quy trình phân chia và tiền xử lý dữ liệu được thiết kế theo các nguyên tắc chuẩn mực sau:
+\section{Algorithms and Problem-Solving Approaches}
+\label{sec:meth_approaches}
+Để giải quyết bài toán đánh giá toàn diện năng lực của Federated Learning trên dữ liệu lưu lượng IoT bị Non-IID và class imbalance cực đoan, nghiên cứu áp dụng phương pháp luận đo kiểm thực nghiệm có kiểm soát nghiêm ngặt (Controlled Empirical Benchmarking).
+
+\subsection{Controlled Empirical Benchmarking Pipeline}
+Nhằm bảo đảm tính trung thực khoa học và loại bỏ hoàn toàn hiện tượng rò rỉ dữ liệu (Data Leakage), quy trình phân chia và tiền xử lý dữ liệu được thiết kế theo 3 nguyên tắc chuẩn mực:
 \begin{enumerate}
-    \item \textbf{Phân tách Global Holdout Test Set Độc lập:} Tập dữ liệu CICIoT2023 ($5,116,391$ mẫu) được chia ngẫu nhiên thành $70\%$ tập phát triển ($3,581,473$ mẫu) và $30\%$ holdout test set ($1,534,918$ mẫu). Tập $30\%$ này được cô lập hoàn toàn, không tham gia local training, và dùng làm thước đo duy nhất đánh giá global model.
-    \item \textbf{Chuẩn hóa không rò rỉ tri thức (Leakage-Free Normalization):} Phép biến đổi chuẩn hóa \texttt{RobustScaler} (sử dụng trung vị và khoảng tứ phân vị IQR để chống nhiễu ngoại lai) chỉ được \texttt{fit} trên tập dữ liệu huấn luyện, sau đó áp dụng phép chuyển đổi \texttt{transform} một chiều lên holdout test set.
-    \item \textbf{Centralized Upper-bound Baseline:} Thiết lập kịch bản E1 huấn luyện mô hình trên toàn bộ $70\%$ dữ liệu tập trung với cùng kiến trúc \texttt{TabularIoTMLP} để xác định trần hiệu năng lý thuyết tối đa mà kiến trúc này có thể đạt được khi không có sự cản trở của môi trường phân tán.
+    \item \textbf{Phân tách Global Holdout Test Set Độc lập:} Tập dữ liệu CICIoT2023 ($5,116,391$ mẫu) được chia ngẫu nhiên thành $70\%$ tập phát triển ($3,581,473$ mẫu) và $30\%$ holdout test set ($1,534,918$ mẫu). Tập $30\%$ này được cô lập hoàn toàn, không tham gia vào quá trình local training của bất kỳ client nào, và dùng làm thước đo chuẩn duy nhất để đánh giá global model sau mỗi communication round.
+    \item \textbf{Chuẩn hóa không rò rỉ tri thức (Leakage-Free Normalization):} Phép biến đổi chuẩn hóa \texttt{RobustScaler} (sử dụng trung vị và khoảng tứ phân vị IQR để loại trừ ảnh hưởng của giá trị ngoại lai) chỉ được \texttt{fit} trên tập dữ liệu $70\%$ huấn luyện, sau đó áp dụng phép chuyển đổi \texttt{transform} một chiều lên holdout test set.
+    \item \textbf{Centralized Upper-bound Baseline:} Thiết lập kịch bản E1 huấn luyện mô hình tập trung trên toàn bộ $70\%$ dữ liệu với cùng kiến trúc \texttt{TabularIoTMLP} để xác định trần hiệu năng lý thuyết tối đa mà kiến trúc này có thể đạt được khi không có sự cản trở của môi trường phân tán.
 \end{enumerate}
 
-\section{Data Partitioning Strategies}
-Tập $70\%$ dữ liệu huấn luyện được phân chia cho $K$ client theo hai data partitioning strategies:
+\subsection{Data Partitioning Strategies}
+Tập $70\%$ dữ liệu huấn luyện được phân chia cho $K$ client theo hai chiến lược:
 \begin{itemize}
     \item \textbf{Phân vùng IID (Stratified Random Sampling):} Dữ liệu của từng lớp được xáo trộn ngẫu nhiên và phân bổ đồng đều theo tỷ lệ mẫu vào $K$ clients, bảo đảm phân phối xác suất tiên nghiệm của nhãn $P_k(y)$ tại mọi client là tương đương nhau.
-    \item \textbf{Phân vùng Dirichlet Non-IID:} Sử dụng phân phối Dirichlet $\text{Dir}(\alpha)$ trên từng nhãn với các mức tham số $\alpha \in \{1.0, 0.5, 0.1\}$. Khi $\alpha = 0.1$, hiện tượng phân cực nhãn xảy ra cực đoan, mô phỏng chính xác các mạng con IoT chuyên biệt trong thực tế (ví dụ: phân khúc mạng chỉ toàn camera giám sát bị tấn công Mirai, trong khi phân khúc máy chủ web chỉ gặp tấn công SQLi).
+    \item \textbf{Phân vùng Dirichlet Non-IID:} Sử dụng phân phối Dirichlet $\text{Dir}(\alpha)$ trên từng nhãn với các mức tham số $\alpha \in \{1.0, 0.5, 0.1\}$. Khi $\alpha = 0.1$, hiện tượng phân cực nhãn xảy ra cực đoan, mô phỏng chính xác các mạng con IoT chuyên biệt trong thực tế.
 \end{itemize}
 
-\section{Lightweight TabularIoTMLP Model Architecture}
+\subsection{Lightweight TabularIoTMLP Neural Architecture}
 Mô hình \texttt{TabularIoTMLP} được thiết kế tối ưu hóa cho dữ liệu bảng 39 đặc trưng dòng mạng, cân bằng giữa năng lực phi tuyến và tính gọn nhẹ cho IoT edge client:
 \begin{itemize}
     \item \textbf{Input Layer:} Tiếp nhận feature vector kích thước $39$.
-    \item \textbf{Hidden Layer 1:} Kết nối tuyến tính $\text{Linear}(39, 128)$, hàm kích hoạt $\text{ReLU}$, kết hợp tầng điều hòa $\text{Dropout}(0.2)$ để chống hiện tượng overfitting.
+    \item \textbf{Hidden Layer 1:} Kết nối tuyến tính $\text{Linear}(39, 128)$, hàm kích hoạt $\text{ReLU}$, kết hợp tầng điều hòa $\text{Dropout}(0.2)$ chống overfitting.
     \item \textbf{Hidden Layer 2:} Kết nối tuyến tính $\text{Linear}(128, 64)$, hàm kích hoạt $\text{ReLU}$.
     \item \textbf{Output Classifier Head:} Kết nối tuyến tính $\text{Linear}(64, 8)$ đưa ra điểm số logit cho 8 classes tấn công.
+    \item \textbf{Kích thước mô hình:} Tổng số tham số có thể huấn luyện là $14,024$ tham số (tương đương $\approx 54.28\text{ KB}$ ở định dạng FP32), bảo đảm truyền tải siêu nhẹ qua mạng IoT biên.
 \end{itemize}
-Tổng số lượng tham số của mô hình là $14,024$ tham số kiểu số thực $32$-bit (\texttt{float32}), tương đương với kích thước payload chỉ $\approx 54.28\text{ KB}$. Đây là kích thước lý tưởng cho phép lưu trữ trọn vẹn trong bộ nhớ SRAM của các vi điều khiển IoT công nghiệp hoặc router biên mà không gây quá tải tài nguyên phần cứng.
 
-\section{Multi-dimensional Evaluation Framework and Metrics}
-Nghiên cứu thiết lập hệ thống đo kiểm đa chiều để đánh giá toàn diện hệ thống:
+\subsection{Multi-Dimensional Evaluation Criteria}
+Để đánh giá toàn diện hệ thống, đề tài sử dụng hệ tiêu chí đo lường đa chiều:
+\begin{itemize}
+    \item \textbf{Global Macro-F1 Score (\%):} Trung bình cộng không trọng số F1-score của toàn bộ 8 classes, đánh giá công bằng năng lực nhận diện mà không bị chi phối bởi các majority classes:
+    \begin{equation}
+        \text{Macro-F1} = \frac{1}{C} \sum_{c=1}^C \text{F1}_c = \frac{1}{C} \sum_{c=1}^C \frac{2 \cdot \text{Precision}_c \cdot \text{Recall}_c}{\text{Precision}_c + \text{Recall}_c}
+    \end{equation}
+    \item \textbf{Minority Class Recall (\%):} Tỷ lệ nhận diện các phân lớp tấn công hiếm như Web-based và Brute-force:
+    \begin{equation}
+        \text{Recall}_c = \frac{\text{TP}_c}{\text{TP}_c + \text{FN}_c}
+    \end{equation}
+    \item \textbf{Parameter Drift ($L_2$ Norm):} Độ trôi dạt tham số của các client so với global model, đo lường mức độ ổn định của thuật toán tối ưu phân tán.
+    \item \textbf{Cumulative Communication Payload (MB):} Tổng dung lượng trao đổi hai chiều giữa server và toàn bộ các client qua các communication rounds.
+\end{itemize}
+
+\section{Algorithmic Implementation and Software Inheritance}
+\label{sec:meth_impl_inheritance}
+Nhằm hiện thực hóa giải thuật và xây dựng hệ thống đo kiểm hoàn chỉnh, nghiên cứu kết hợp giữa việc kế thừa các phần mềm nguồn mở tiêu chuẩn và phát triển các module chuyên biệt:
+
+\subsection{Kế thừa và Sử dụng Phần mềm Nền tảng (Software Inheritance)}
+Hệ thống tận dụng sức mạnh của 3 công nghệ nền tảng:
 \begin{enumerate}
-    \item \textbf{Độ chính xác Tổng thể (Accuracy):} Tỷ lệ dự đoán đúng trên tổng số mẫu kiểm định.
-    \item \textbf{Macro-Averaged F1-score (Macro-F1):} Trung bình cộng điểm F1 trên toàn bộ 8 classes:
-    \begin{equation}
-        \text{Macro-F1} = \frac{1}{C} \sum_{c=1}^C F1_c = \frac{1}{C} \sum_{c=1}^C \frac{2 \times \text{Precision}_c \times \text{Recall}_c}{\text{Precision}_c + \text{Recall}_c}
-        \label{eq:macro_f1}
-    \end{equation}
-    Đây là chỉ số quan trọng nhất phản ánh tính công bằng của mô hình đối với tất cả các lớp, ngăn chặn việc chỉ số tổng thể bị làm sai lệch bởi các majority classes (DDoS).
-    \item \textbf{Minority Recall:} Đo lường khả năng bắt trúng các minority classes: \texttt{Web-based} ($0.49\%$) và \texttt{Brute-force} ($0.26\%$).
-    \item \textbf{Cumulative Communication Cost:} Tổng dung lượng trao đổi hai chiều giữa federated server và $K$ clients qua mạng gRPC sau $T$ communication rounds:
-    \begin{equation}
-        \text{CommCost} = 2 \times \sum_{t=1}^T m_t \cdot B
-        \label{eq:comm_cost_def}
-    \end{equation}
-    Với $m_t$ là số client tham gia tại round $t$, và $B = 54.28\text{ KB}$ là kích thước vector trọng số mô hình.
-    \item \textbf{Average Client Drift:} Đo khoảng cách Euclidean giữa vector mô hình cục bộ và mô hình toàn cục để định lượng parameter drift:
-    \begin{equation}
-        \overline{\text{Drift}} = \frac{1}{K} \sum_{k=1}^K \|\mathbf{w}_{\text{local}}^{(k)} - \mathbf{w}_{\text{global}}\|_2
-        \label{eq:drift_avg}
-    \end{equation}
+    \item \textbf{PyTorch 2.x Engine:} Đảm nhiệm việc xây dựng kiến trúc mạng \texttt{TabularIoTMLP}, quản lý bộ nhớ tensor trên CPU/GPU, và tính toán đạo hàm tự động qua cơ chế Autograd.
+    \item \textbf{Flower Framework (flwr 1.13.0):} Cung cấp cấu trúc điều phối Federated Learning phân tán, quản lý giao thức bắt tay giữa server và client, và các interface chiến lược cơ sở (\texttt{flwr.server.strategy.FedAvg}, \texttt{flwr.server.strategy.FedProx}).
+    \item \textbf{Google gRPC:} Đóng vai trò lớp truyền thông (Transport Layer), thực hiện đóng gói và truyền tải các tensor trọng số mô hình qua socket TCP/IP thực giữa các tiến trình hệ điều hành độc lập.
+\end{enumerate}
+
+\subsection{Các Module Phần mềm Tự Phát triển (What Was Developed)}
+Đề tài đã thiết kế và phát triển toàn bộ hệ thống mã nguồn phục vụ đo kiểm chuyên biệt trong thư mục \texttt{src/}:
+\begin{enumerate}
+    \item \textbf{Chiến lược Aggregation Tùy biến (\texttt{AggregateCustomStrategy}):} Mở rộng từ lớp cơ sở của Flower để tích hợp hai tính năng then chốt: (i) Tự động đo đạc khoảng cách trôi tham số parameter drift ($L_2$ norm) sau mỗi vòng aggregation; (ii) Thực hiện Centralized Server Evaluation định kỳ trên $1.53$ triệu mẫu holdout test set và tự động checkpointing trọng số mô hình đạt Macro-F1 cao nhất.
+    \item \textbf{Module Tiền Xử lý và Phân vùng Không Rò rỉ (\texttt{DirichletPartitioner}):} Hiện thực hóa thuật toán phân vùng Dirichlet nhiều chiều trên nhãn lớp, lưu trữ file ánh xạ chỉ số mẫu (\texttt{partition\_indices.json}) bảo đảm tính tái lập thực nghiệm $100\%$.
+    \item \textbf{Module Huấn luyện Cục bộ FedProx (\texttt{FederatedTrainer}):} Tích hợp trực tiếp proximal penalty loss $\frac{\mu}{2}\|\mathbf{w} - \mathbf{w}_t\|_2^2$ vào hàm mất mát Cross-Entropy trong từng mini-batch, cho phép điều hòa độ dịch chuyển tham số cục bộ.
+    \item \textbf{Bộ Điều phối Đa Tiến trình Tự động hóa (\texttt{run\_grpc.py}):} Tự động khởi tạo tiến trình server và $K$ tiến trình client độc lập, đồng bộ hóa chu kỳ huấn luyện và xuất nhật ký đo kiểm định lượng ra các tệp \texttt{metrics.json}.
 \end{enumerate}

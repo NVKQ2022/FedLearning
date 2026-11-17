@@ -1,7 +1,8 @@
 \chapter{Introduction}
 \label{chap:intro}
 
-\section{Background and Research Motivation}
+\section{Overview}
+\label{sec:intro_overview}
 Sự phát triển vượt bậc của công nghệ vi điện tử và truyền thông không dây đã thúc đẩy làn sóng bùng nổ của mạng lưới Internet of Things (IoT). Từ các hạ tầng đô thị thông minh, hệ thống giám sát y tế, đến các dây chuyền sản xuất tự động hóa công nghiệp (IIoT), hàng tỷ thiết bị thông minh đang liên tục kết nối và trao đổi dữ liệu qua mạng viễn thông toàn cầu. Tuy nhiên, sự tiện ích này đi kèm với sự mở rộng nghiêm trọng của bề mặt tấn công mạng (attack surface). Hầu hết các thiết bị IoT biên (Edge IoT) được thiết kế với ngân sách năng lượng và năng lực tính toán hạn chế, thiếu vắng các cơ chế bảo mật phần cứng nghiêm ngặt, biến chúng thành những mắt xích yếu nhất trong chuỗi an ninh mạng và mục tiêu hấp dẫn cho các cuộc tấn công diện rộng như từ chối dịch vụ phân tán (DDoS), mạng máy tính ma (Botnet Mirai), hay xâm nhập đánh cắp dữ liệu \cite{neto2023ciciot2023}.
 
 Để chủ động phát hiện và ngăn chặn các nguy cơ an ninh, các Hệ thống Phát hiện Xâm nhập Mạng (Network Intrusion Detection System -- NIDS) dựa trên Machine Learning (ML) và Deep Learning (DL) đã được triển khai rộng rãi \cite{huang2022federated}. Trong mô hình học máy tập trung truyền thống (Centralized ML), toàn bộ dữ liệu lưu lượng mạng thô (raw packet captures hoặc network flow records) từ các edge client phải được truyền tải về Cloud Datacenter để phân tích và huấn luyện mô hình. Phương thức tiếp cận này hiện bộc lộ hai rào cản kỹ thuật cốt tử:
@@ -10,7 +11,8 @@ Sự phát triển vượt bậc của công nghệ vi điện tử và truyền
     \item \textbf{Nghẽn cổ chai băng thông truyền thông:} Hàng triệu thiết bị IoT liên tục phát sinh hàng terabyte dữ liệu mỗi ngày. Việc đẩy toàn bộ luồng mạng qua đường truyền Internet diện rộng (WAN) dẫn đến tắc nghẽn băng thông, độ trễ truyền dữ liệu cao, và chi phí hạ tầng mạng vượt quá khả năng chịu tải của các nút mạng biên.
 \end{enumerate}
 
-\section{Core Challenges in Distributed IoT Networks}
+\section{Statement of Problems}
+\label{sec:intro_problems}
 Federated Learning (FL) do McMahan et al. \cite{mcmahan2017communication} khởi xướng đã mang lại lời giải đột phá cho bài toán bảo vệ quyền riêng tư: các edge client giữ lại toàn bộ dữ liệu cục bộ, chỉ huấn luyện mô hình tại chỗ và định kỳ gửi model updates ($\mathbf{w}$) về federated server để aggregation thành global model. Tuy vậy, khi ứng dụng mô hình Federated Learning vào bài toán NIDS trên mạng IoT thực tế, các nhà nghiên cứu phải đối mặt với ba thách thức kỹ thuật lớn:
 \begin{enumerate}
     \item \textbf{Dữ liệu phi đồng nhất (Non-IID Statistical Heterogeneity):} Trong thế giới thực, mỗi gateway hoặc thiết bị IoT chỉ quan sát một góc nhìn hạn chế về lưu lượng mạng tùy thuộc vào vị trí địa lý, chức năng nghiệp vụ và các loại thiết bị kết nối đằng sau nó. Phân phối dữ liệu giữa các client có sự dị biệt sâu sắc (khác biệt phân phối nhãn $P_k(y)$ và phân phối có điều kiện $P_k(x|y)$). Sự phi đồng nhất này dẫn tới hiện tượng client drift, làm chệch hướng hội tụ của thuật toán Federated Averaging (FedAvg) và suy giảm nghiêm trọng độ chính xác toàn cục \cite{li2020federated, hsu2019measuring}.
@@ -18,35 +20,37 @@ Federated Learning (FL) do McMahan et al. \cite{mcmahan2017communication} khởi
     \item \textbf{Giới hạn tài nguyên phần cứng thiết bị biên (Resource Constraints):} Các IoT edge client có bộ nhớ RAM và năng lực CPU hạn chế, không thể vận hành các mô hình cồng kềnh (như Transformer hay CNN-LSTM phức tạp) vốn đòi hỏi dung lượng tải trọng trao đổi lên đến hàng chục megabyte mỗi communication round \cite{albanbay2025federated}.
 \end{enumerate}
 
-\section{Research Objectives and Scope}
-Đề tài Khóa luận Tốt nghiệp tập trung giải quyết các mục tiêu khoa học cụ thể sau:
+\section{Methodology and Key Results}
+\label{sec:intro_method_results}
+Đề tài Khóa luận Tốt nghiệp được định vị bản chất là một \textbf{Nghiên cứu Thực nghiệm và Đo kiểm Hệ thống (Empirical Benchmarking Study)}. Nghiên cứu áp dụng phương pháp luận đo kiểm đối chứng có kiểm soát nghiêm ngặt:
 \begin{itemize}
-    \item Khảo sát, chuẩn hóa và phân vùng (data partitioning) benchmark dataset CICIoT2023 theo phân phối Dirichlet ($\alpha \in \{1.0, 0.5, 0.1\}$) và phân phối IID.
-    \item Thiết kế mô hình nơ-ron nhẹ \texttt{TabularIoTMLP} cho dữ liệu 39 đặc trưng dòng mạng, bảo đảm kích thước nhỏ gọn ($\approx 54.28\text{ KB}$) phù hợp với ràng buộc phần cứng IoT edge client.
-    \item Triển khai hệ thống đo kiểm phân tán sử dụng Flower framework qua giao thức gRPC socket thực, đánh giá trực tiếp hai thuật toán aggregation nền tảng là FedAvg và FedProx.
-    \item Xây dựng Centralized Baseline (Upper-bound) trên cùng một kiến trúc mạng và tập dữ liệu để phân tách rõ ràng ảnh hưởng của năng lực mô hình với ảnh hưởng của cơ chế aggregation phân tán.
-    \item Định lượng hóa toàn diện tam giác trade-off giữa: Hiệu năng phân loại (Utility -- Macro-F1, Minority Recall), Chi phí tài nguyên (Cost -- Communication payload), và Khả năng mở rộng quy mô (Scalability -- số lượng client $K \in \{5, 7, 10\}$).
+    \item Khảo sát, chuẩn hóa và phân vùng dữ liệu không rò rỉ (Leakage-free) trên benchmark dataset CICIoT2023 ($5,116,391$ mẫu) theo phân phối IID và chuỗi lệch phân phối Dirichlet Non-IID ($\alpha \in \{1.0, 0.5, 0.1\}$).
+    \item Thiết kế kiến trúc nơ-ron nhẹ \texttt{TabularIoTMLP} ($14,024$ tham số, dung lượng $\approx 54.28\text{ KB}$) phù hợp với ràng buộc phần cứng IoT edge client.
+    \item Vận hành hệ thống đo kiểm phân tán sử dụng Flower framework qua giao thức gRPC socket thực, đánh giá trực tiếp hai thuật toán aggregation nền tảng là FedAvg và FedProx xuyên suốt 23 kịch bản thực nghiệm.
 \end{itemize}
 
-\section{Research Positioning and Scientific Contributions}
-\label{sec:contributions}
-
-\begin{quote}
-\textbf{Tuyên bố Định vị Bản chất Công trình:} Đề tài này được định vị là một \textbf{Nghiên cứu Thực nghiệm và Đo kiểm Hệ thống (Empirical Benchmarking Study)}. Mục tiêu của khóa luận là cung cấp các bằng chứng đo kiểm thực nghiệm có kiểm soát, trung thực và chính xác về mặt định lượng, vạch ra ranh giới kỹ thuật và bản chất toán học của các thuật toán FL hiện hành khi ứng dụng vào an ninh mạng IoT.
-\end{quote}
-
-\textbf{Lưu ý miễn trừ về mặt đóng góp kỹ thuật (Engineering Disclaimer):}
-Đề tài khẳng định rõ ràng: \textit{Hạ tầng thử nghiệm Flower gRPC, giao tiếp socket đa tiến trình và tối ưu bộ nhớ chỉ là phương tiện thực thi đo kiểm (experimental plumbing), hoàn toàn không cấu thành đóng góp khoa học của luận văn.}
-
-Bỏ qua các hình thức kỹ thuật bề nổi, giá trị khoa học thực chất của khóa luận bao gồm 3 đóng góp sau:
+Thông qua hệ sinh thái đo kiểm, nghiên cứu mang lại 3 kết quả khoa học cốt lõi:
 \begin{enumerate}
-    \item \textbf{Bằng chứng thực nghiệm phản biện về giới hạn nhận diện lớp thiểu số (Empirical Counter-Evidence / Negative Finding):}
-    Bằng việc thiết lập đối chứng trực diện giữa Centralized Baseline (E1) và mô hình liên đoàn (E2--E6) trên cùng không gian kiến trúc \texttt{TabularIoTMLP}, nghiên cứu chỉ ra rằng: khi huấn luyện tập trung, mô hình MLP đạt tỷ lệ Recall trên lớp \texttt{Web-based} là $52.41\%$ và \texttt{Brute-force} là $53.36\%$. Tuy nhiên, khi chuyển sang môi trường Federated Learning, tỷ lệ này sụp đổ xuống $1.66\%$ ($K=5$) và $0.39\%$ ($K=10$) ở FedAvg, và bị dập tắt hoàn toàn về $0.00\%$ ở tất cả các kịch bản FedProx. Kết quả thực nghiệm này cung cấp bằng chứng đanh thép bác bỏ giả định lạc quan trong nhiều công bố lý thuyết, chứng minh rằng sự thất bại với minority classes là hệ quả toán học tất yếu của cơ chế parameter aggregation $n_k/N$ và hiện tượng triệt tiêu local plasticity của proximal penalty term.
-    \item \textbf{Xác lập tính bất biến quy luật suy thoái và Đường cong biên Pareto đa điều kiện (Multi-Regime Pareto Frontier):}
-    Khác với phần lớn các công trình công bố chỉ thử nghiệm tại một điểm dữ liệu duy nhất ($\alpha=0.5$), nghiên cứu này thiết lập ma trận đối chứng bậc thang có kiểm soát gồm 23 kịch bản: $\text{IID} \to \alpha=1.0 \to \alpha=0.5 \to \alpha=0.1$. Đặc biệt, nghiên cứu thực hiện khảo sát toàn diện ma trận siêu tham số $\mu \in \{0.001, 0.01, 0.025, 0.05\}$ xuyên suốt toàn bộ 4 điều kiện phân tán (IID, $\alpha=1.0$, $\alpha=0.5$, $\alpha=0.1$), lần đầu tiên chứng minh tính bất biến quy luật của "Vực thẳm tuyệt chủng lớp thiểu số" khi $\mu \ge 0.01$ và xác lập universal Pareto sweet spot tại $\mu=0.001$ giúp kiềm chế parameter drift từ $78.7\% - 90.8\%$ trong khi vẫn bảo toàn local plasticity cho các minority classes.
-    \item \textbf{Khung đánh giá đánh đổi đa chiều và Khả năng mở rộng quy mô (Trade-off and Scalability Framework):}
-    Đo lường toàn diện communication cost thực tế (chỉ tiêu tốn $5.30\text{ MB} \to 10.60\text{ MB}$ cho toàn bộ 10 rounds huấn luyện), chứng minh stability tuyệt đối khi mở rộng client scalability $K=5 \to 7 \to 10$ trong môi trường IID (biến thiên Macro-F1 $<0.72\%$). Trên nền tảng các phát hiện thực nghiệm, đề tài xác lập cơ sở dữ liệu đối chuẩn thực nghiệm định lượng về sự trade-off giữa communication cost, parameter drift và hiệu năng phân loại mạng IoT.
+    \item \textbf{Bằng chứng thực nghiệm phản biện về sự sụp đổ của minority classes (Negative Finding):} Bác bỏ giả định lạc quan rằng aggregation thông thường có thể bảo vệ được minority classes. Trong khi Centralized Baseline (E1) đạt Recall lớp \texttt{Web-based} là $52.41\%$ và \texttt{Brute-force} là $53.36\%$, FedAvg làm Recall của Web-based sụt giảm xuống dưới $1.5\%$, và FedProx dập tắt hoàn toàn Recall về $0.00\%$ ở mọi kịch bản khi $\mu \ge 0.01$.
+    \item \textbf{Xác lập Đường cong biên Pareto đa điều kiện (Multi-Regime Pareto Frontier):} Khảo sát toàn diện ma trận siêu tham số $\mu \in \{0.001, 0.01, 0.025, 0.05\}$ xuyên suốt 4 điều kiện phân tán (IID, $\alpha=1.0$, $\alpha=0.5$, $\alpha=0.1$), xác lập universal Pareto sweet spot tại $\mu=0.001$ giúp kiềm chế parameter drift từ $78.7\% - 90.8\%$ mà vẫn bảo toàn local plasticity cho minority class \texttt{Brute-force} ($12.38\%$), đưa Macro-F1 tại $\alpha=0.1$ đạt đỉnh $57.42\%$ (vượt trội hơn FedAvg $+4.17\%$).
+    \item \textbf{Khung đánh giá tam giác Utility -- Cost -- Scalability:} Đo lường communication payload thực tế siêu nhẹ ($5.30\text{ MB} \to 10.60\text{ MB}$) tăng tuyến tính theo scalability client ($K=5 \to 7 \to 10$) với độ ổn định cao trong môi trường IID (biến thiên Macro-F1 $<0.72\%$).
 \end{enumerate}
 
-\section{Thesis Organization}
-Báo cáo khóa luận được cấu trúc thành 6 chương: \textbf{Chapter I} nêu bối cảnh, thách thức và 3 đóng góp khoa học thực chất của đề tài. \textbf{Chapter II} tổng quan tập dữ liệu CICIoT2023, nền tảng toán học FedAvg/FedProx, Dirichlet skew và đối sánh các nghiên cứu tiêu biểu (2022--2026). \textbf{Chapter III} trình bày phương pháp luận đo kiểm không rò rỉ dữ liệu, kiến trúc \texttt{TabularIoTMLP} và hệ tiêu chí đánh giá đa chiều. \textbf{Chapter IV} tóm lược cơ sở hạ tầng thử nghiệm phân tán Flower gRPC socket thực. \textbf{Chapter V} phân tích chuyên sâu 23 kịch bản Master Benchmark, 4 phát hiện khoa học, đường cong biên Pareto đa điều kiện và định vị phòng thủ chiều sâu. \textbf{Chapter VI} tổng kết thành tựu và thiết lập giả thuyết kiến trúc Decoupled FL cho các nghiên cứu tiếp nối.
+\section{Scopes and Limitations}
+\label{sec:intro_scopes_limitations}
+Để bảo đảm tính khách quan và minh bạch học thuật, đề tài xác định rõ phạm vi và giới hạn nghiên cứu:
+\begin{itemize}
+    \item \textbf{Phạm vi nghiên cứu (Scopes):} Đề tài tập trung phát hiện bất thường lưu lượng mạng tại Tầng Mạng và Giao vận (Layer 3/4) dựa trên 39 đặc trưng số trích xuất từ header gói tin và luồng mạng. Nghiên cứu phân loại 8 classes lưu lượng trên tập CICIoT2023, vận hành mô phỏng đa tiến trình Flower qua kết nối gRPC socket thực trên máy chủ Linux.
+    \item \textbf{Giới hạn kỹ thuật (Limitations):} Hệ thống không giải mã payload HTTP\slash HTTPS tại Tầng Ứng dụng (do WAF đảm nhiệm). Kết quả dựa trên tập dữ liệu đơn (Single-Dataset Bias), và các thuật toán aggregation mặc định client trung thực (chưa chống đầu độc Byzantine).
+\end{itemize}
+
+\section{Structures of Thesis}
+\label{sec:intro_structures}
+Báo cáo khóa luận được cấu trúc thành 5 chương chính theo chuẩn cấu trúc luận văn:
+\begin{itemize}
+    \item \textbf{Chapter I: Introduction (Giới thiệu):} Trình bày tổng quan bối cảnh, đặt vấn đề về các thách thức cốt tử trong mạng IoT phân tán, tóm tắt phương pháp luận và các kết quả cốt lõi, phạm vi, giới hạn của đề tài và cấu trúc báo cáo.
+    \item \textbf{Chapter II: Literature Review (Các nghiên cứu, công nghệ liên quan):} Trình bày kiến thức nền tảng về IoT, công nghệ ảo hóa hạ tầng phân tán, các framework phát triển ứng dụng phân tán, nền tảng toán học Federated Learning (FedAvg, FedProx, Dirichlet Non-IID skew), và phân tích đối sánh các công trình khoa học giai đoạn 2022--2026.
+    \item \textbf{Chapter III: Methodology (Phương pháp luận):} Trình bày giải thuật và hướng tiếp cận giải quyết vấn đề (quy trình đo kiểm có kiểm soát, phân vùng dữ liệu không rò rỉ, kiến trúc mạng \texttt{TabularIoTMLP}), và chi tiết việc hiện thực giải thuật, thừa kế phần mềm (PyTorch, Flower, gRPC) cùng các module tự phát triển.
+    \item \textbf{Chapter IV: Implementation, Testing Scenarios, and Results (Hiện thực, Kịch bản thử nghiệm và Kết quả):} Chi tiết hóa kiến trúc 4 phân tầng kỹ thuật của hệ thống, thiết lập ma trận 23 kịch bản thực nghiệm đối chứng, phân tích định lượng kết quả đo kiểm, 4 phát hiện khoa học cốt lõi, đường cong biên Pareto đa điều kiện, và định vị phòng thủ chiều sâu.
+    \item \textbf{Chapter V: Conclusions and Future Work (Kết luận và Hướng phát triển):} Tổng kết các đóng góp thực nghiệm của đề tài, thiết lập đề xuất kiến trúc Decoupled Federated Learning (FedPer/FedRep) như giải pháp lý thuyết hóa giải sự sụp đổ của minority classes, và định hướng các nghiên cứu tiếp nối.
+\end{itemize}
