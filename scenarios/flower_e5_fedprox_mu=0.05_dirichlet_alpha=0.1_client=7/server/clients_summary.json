@@ -1,0 +1,72 @@
+[
+  {
+    "client_id": 0,
+    "samples": 183809,
+    "train_samples": 128666,
+    "val_samples": 18381,
+    "test_samples": 36762,
+    "dominant_class": "Recon",
+    "dominant_pct": 76.87,
+    "entropy": 0.3427
+  },
+  {
+    "client_id": 1,
+    "samples": 356652,
+    "train_samples": 249656,
+    "val_samples": 35665,
+    "test_samples": 71331,
+    "dominant_class": "Recon",
+    "dominant_pct": 67.32,
+    "entropy": 0.3342
+  },
+  {
+    "client_id": 2,
+    "samples": 1492325,
+    "train_samples": 1044627,
+    "val_samples": 149232,
+    "test_samples": 298466,
+    "dominant_class": "DDoS",
+    "dominant_pct": 76.06,
+    "entropy": 0.2989
+  },
+  {
+    "client_id": 3,
+    "samples": 685273,
+    "train_samples": 479691,
+    "val_samples": 68527,
+    "test_samples": 137055,
+    "dominant_class": "Benign",
+    "dominant_pct": 95.67,
+    "entropy": 0.0998
+  },
+  {
+    "client_id": 4,
+    "samples": 2454,
+    "train_samples": 1717,
+    "val_samples": 245,
+    "test_samples": 492,
+    "dominant_class": "Recon",
+    "dominant_pct": 65.61,
+    "entropy": 0.3716
+  },
+  {
+    "client_id": 5,
+    "samples": 22010,
+    "train_samples": 15406,
+    "val_samples": 2201,
+    "test_samples": 4403,
+    "dominant_class": "Web-based",
+    "dominant_pct": 64.35,
+    "entropy": 0.3247
+  },
+  {
+    "client_id": 6,
+    "samples": 327310,
+    "train_samples": 229116,
+    "val_samples": 32731,
+    "test_samples": 65463,
+    "dominant_class": "Spoof",
+    "dominant_pct": 64.37,
+    "entropy": 0.3142
+  }
+]
