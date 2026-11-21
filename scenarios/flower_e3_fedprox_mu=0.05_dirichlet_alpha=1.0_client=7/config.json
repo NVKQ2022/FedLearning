@@ -5,7 +5,7 @@
     "mu": 0.05
   },
   "federated_strategy": "fedprox",
-  "num_clients": 7,
+  "num_clients": 10,
   "num_rounds": 10,
   "local_epochs": 2,
   "partition_type": "dirichlet",

@@ -6,19 +6,19 @@
 | **Kịch bản (Scenario)** | `flower_e3_fedprox_mu=0.05_dirichlet_alpha=1.0_client=7` | Tên định danh kịch bản thực nghiệm |
 | **Chiến lược FL (Strategy)** | `FEDPROX` (mu=0.05) | Thuật toán tổng hợp tham số tại Server |
 | **Phân vùng dữ liệu (Partition)** | `dirichlet` (alpha=1.0) | Mức độ dị biệt Non-IID giữa các Client |
-| **Số lượng Edge Clients (K)** | `7` clients | Số trạm mạng IoT biên tham gia huấn luyện |
+| **Số lượng Edge Clients (K)** | `10` clients | Số trạm mạng IoT biên tham gia huấn luyện |
 | **Số vòng giao tiếp (Rounds)** | `10` rounds (Epochs cục bộ: `2`) | Tổng chu kỳ huấn luyện liên đoàn |
-| **Chi phí truyền thông (Comm Cost)** | **7.42 MB** | Tổng lưu lượng mạng tải lên/tải xuống |
-| **Độ trôi dạt tham số (Client Drift)** | **0.57** | Độ lệch chuẩn Euclidean ||w_local - w_global||_2 |
+| **Chi phí truyền thông (Comm Cost)** | **10.60 MB** | Tổng lưu lượng mạng tải lên/tải xuống |
+| **Độ trôi dạt tham số (Client Drift)** | **0.61** | Độ lệch chuẩn Euclidean ||w_local - w_global||_2 |
 
 ## 2. Kết quả Đánh giá Tổng thể trên Global Test Set (30% Upcoming Data)
 | Chỉ số Đánh giá (Metric) | Kết quả (%) | Ý nghĩa theo Đề cương Luận văn KLTN |
 | :--- | :---: | :--- |
-| **Test Accuracy** | **75.83%** | Độ chính xác tổng thể trên toàn bộ lưu lượng kiểm định |
-| **Macro-F1 Score** | **53.14%** | **Chỉ số cốt lõi** đánh giá cân bằng (không thiên lệch lớp đa số) |
-| **Weighted-F1 Score** | **72.99%** | F1 có tính trọng số theo tần suất xuất hiện thực tế |
-| **Macro-Precision** | **61.56%** | Độ chuẩn xác trung bình trên 8 lớp tấn công |
-| **Macro-Recall** | **52.18%** | Tỷ lệ nhận diện trung bình trên 8 lớp tấn công |
+| **Test Accuracy** | **76.98%** | Độ chính xác tổng thể trên toàn bộ lưu lượng kiểm định |
+| **Macro-F1 Score** | **54.84%** | **Chỉ số cốt lõi** đánh giá cân bằng (không thiên lệch lớp đa số) |
+| **Weighted-F1 Score** | **74.34%** | F1 có tính trọng số theo tần suất xuất hiện thực tế |
+| **Macro-Precision** | **62.09%** | Độ chuẩn xác trung bình trên 8 lớp tấn công |
+| **Macro-Recall** | **53.40%** | Tỷ lệ nhận diện trung bình trên 8 lớp tấn công |
 
 ## 3. Khả năng Phát hiện các Lớp Tấn công Thiểu số (Minority Attack Recall)
 > [!IMPORTANT]
@@ -32,13 +32,13 @@
 ## 4. Chi tiết Hiệu năng theo từng Lớp Tấn công (Per-Class Metrics)
 | Lớp tấn công (Class) | Phân loại | Precision (%) | Recall (%) | F1-Score (%) | Số mẫu (Support) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Benign** | Đa số / Chuẩn | 68.62% | 82.10% | 74.76% | 329,458 |
+| **Benign** | Đa số / Chuẩn | 68.34% | 89.29% | 77.42% | 329,458 |
 | **Brute-force** | Thiểu số (Minority) | 0.00% | 0.00% | 0.00% | 3,919 |
-| **DDoS** | Đa số / Chuẩn | 79.03% | 98.57% | 87.72% | 576,601 |
-| **DoS** | Đa số / Chuẩn | 89.42% | 31.16% | 46.21% | 219,103 |
-| **Mirai** | Đa số / Chuẩn | 98.90% | 99.18% | 99.04% | 63,247 |
-| **Recon** | Đa số / Chuẩn | 64.31% | 73.10% | 68.42% | 207,160 |
-| **Spoof** | Đa số / Chuẩn | 92.20% | 33.30% | 48.93% | 127,981 |
+| **DDoS** | Đa số / Chuẩn | 78.90% | 98.36% | 87.56% | 576,601 |
+| **DoS** | Đa số / Chuẩn | 87.88% | 30.77% | 45.58% | 219,103 |
+| **Mirai** | Đa số / Chuẩn | 99.00% | 98.96% | 98.98% | 63,247 |
+| **Recon** | Đa số / Chuẩn | 72.83% | 62.84% | 67.47% | 207,160 |
+| **Spoof** | Đa số / Chuẩn | 89.82% | 46.96% | 61.67% | 127,981 |
 | **Web-based** | Thiểu số (Minority) | 0.00% | 0.00% | 0.00% | 7,449 |
 
 ## 5. Trực quan hóa Đồ thị Thực nghiệm
