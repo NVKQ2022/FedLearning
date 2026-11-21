@@ -1,0 +1,32 @@
+{
+  "client_id": 6,
+  "total_samples": 411203,
+  "num_classes": 8,
+  "dominant_class": "Benign",
+  "dominant_class_pct": 69.3,
+  "shannon_entropy": 1.0513,
+  "normalized_entropy": 0.5056,
+  "imbalance_ratio": 638.92,
+  "present_classes_count": 8,
+  "missing_classes": [],
+  "class_counts": {
+    "Benign": 284958,
+    "Brute-force": 882,
+    "DDoS": 49116,
+    "DoS": 2468,
+    "Mirai": 14547,
+    "Recon": 35690,
+    "Spoof": 23096,
+    "Web-based": 446
+  },
+  "class_percentages": {
+    "Benign": 69.3,
+    "Brute-force": 0.21,
+    "DDoS": 11.94,
+    "DoS": 0.6,
+    "Mirai": 3.54,
+    "Recon": 8.68,
+    "Spoof": 5.62,
+    "Web-based": 0.11
+  }
+}
